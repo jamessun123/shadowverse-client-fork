@@ -11,7 +11,7 @@ const SERVER_URL =
   (window.location.hostname === "localhost" ||
     window.location.hostname === "127.0.0.1")
     ? "http://localhost:5000"
-    : "https://shadowverse-server.onrender.com/";
+    : "https://shadowverse-client-fork-server.onrender.com";
 
 export const socket = io(SERVER_URL, {
   transports: ["websocket"],
