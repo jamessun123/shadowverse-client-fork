@@ -34,6 +34,7 @@ export default function Card({
   atkVal,
   defVal,
   counterVal,
+  discountedPlayCost,
   aura,
   bane,
   ward,
@@ -58,6 +59,7 @@ export default function Card({
   const reduxEnemyCardSelectedOnField = useSelector(
     (state) => state.card.enemyCardSelectedOnField
   );
+  const gameMode = useSelector((state) => state.gameState.gameMode);
 
   useEffect(() => {
     setAtk(Number(atkVal));
@@ -69,6 +71,7 @@ export default function Card({
   }, [counterVal]);
 
   const handleTap = () => {
+    if (gameMode === "automated") return;
     if (onField && !opponentField && !ready && !hoverInput) {
       dispatch(setEngaged(idx));
     }
@@ -186,6 +189,28 @@ export default function Card({
             : "none"
         }
       >
+        {discountedPlayCost != null && (
+          <div
+            style={{
+              position: "absolute",
+              top: "25%",
+              left: "30%",
+              borderRadius: "50px",
+              color: "white",
+              fontSize: "30px",
+              fontFamily: "Noto Serif JP, serif",
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              height: "50px",
+              width: "50px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              pointerEvents: "none",
+            }}
+          >
+            {discountedPlayCost}
+          </div>
+        )}
         {counterVal > 0 && (
           <>
             <input
