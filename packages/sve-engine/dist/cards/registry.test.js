@@ -13,4 +13,12 @@ const registry_1 = require("./registry");
         const def = (0, registry_1.getCardDef)("SDD05-012EN");
         (0, vitest_1.expect)(def?.cardNo).toBe("SDD05-012EN");
     });
+    (0, vitest_1.it)("propagates hand-authored activate abilities from reprint to base printing", () => {
+        const base = (0, registry_1.getCardDef)("BP07-069EN");
+        (0, vitest_1.expect)(base?.abilities?.some((a) => a.timing === "activated")).toBe(true);
+    });
+    (0, vitest_1.it)("propagates hand-authored activate abilities across token printings", () => {
+        const legacy = (0, registry_1.getCardDef)("BP07-T01EN");
+        (0, vitest_1.expect)(legacy?.abilities?.some((a) => a.timing === "activated")).toBe(true);
+    });
 });

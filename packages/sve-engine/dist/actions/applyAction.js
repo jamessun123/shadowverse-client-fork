@@ -18,11 +18,15 @@ function fail(state, error) {
 }
 function hasPlayableQuickCards(state, player) {
     const pp = state.players[player].pp;
-    for (const card of state.players[player].zones.hand) {
+    const quickZones = [
+        ...state.players[player].zones.hand.map((card) => ({ card, fromZone: "hand" })),
+        ...state.players[player].zones.exArea.map((card) => ({ card, fromZone: "exArea" })),
+    ];
+    for (const { card, fromZone } of quickZones) {
         const def = (0, registry_1.getCardDef)(card.cardNo);
         if (!def?.abilities?.some((a) => a.quick))
             continue;
-        const cost = (0, queries_1.getEffectivePlayCost)(card, card.cardNo, state, player, "hand");
+        const cost = (0, queries_1.getEffectivePlayCost)(card, card.cardNo, state, player, fromZone);
         if (pp >= cost && (0, resolver_1.canPlayCardFromZones)(state, player, card.cardNo))
             return true;
     }
@@ -632,6 +636,9 @@ function attack(state, player, attackerId, targetId) {
     const phaseErr = assertPhase(state, ["main"], "Cannot attack now");
     if (phaseErr)
         return phaseErr;
+    if (state.combat?.phase === "quickWindow") {
+        return fail(state, "Resolve quick window first");
+    }
     const attackerFound = (0, queries_1.findInstance)(state, attackerId);
     if (!attackerFound || attackerFound.zone !== "field" || attackerFound.player !== player) {
         return fail(state, "Invalid attacker");

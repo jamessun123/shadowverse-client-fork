@@ -221,8 +221,15 @@ export default function Field({
   const selectedAttackerId = useSelector((state) => state.gameState.selectedAttackerId);
   const leaderActive = useSelector((state) => state.card.leaderActive);
   const pendingChoices = useSelector((state) => state.gameState.pendingChoices);
+  const quickWindow = useSelector((state) => state.gameState.quickWindow);
+  const quickWindowPlayer = useSelector((state) => state.gameState.quickWindowPlayer);
   const engineView = useSelector((state) => state.gameState.engineView);
   const playerSlot = useSelector((state) => state.gameState.playerSlot);
+  const opponentQuickWindow =
+    quickWindow &&
+    quickWindowPlayer != null &&
+    playerSlot != null &&
+    quickWindowPlayer !== playerSlot;
   const { sendAction } = useEngineSync();
   const chromeVisible = useUiChromeVisible();
   const enemyHandModalOpen = useUiModalOpen(reduxShowEnemyHand);
@@ -1170,6 +1177,7 @@ export default function Field({
     automated &&
     leaderActive &&
     !pendingChoices &&
+    !opponentQuickWindow &&
     instanceId &&
     legalActions.includes(`ATTACK:${instanceId}`);
 
@@ -1227,7 +1235,7 @@ export default function Field({
   };
 
   const handleAutomatedEnemyFieldClick = (enemyIdx) => {
-    if (!automated || !selectedAttackerId || pendingChoices) return;
+    if (!automated || !selectedAttackerId || pendingChoices || opponentQuickWindow) return;
     const targetId = enemyFieldInstanceIds[enemyIdx];
     if (!targetId || reduxEnemyField[enemyIdx] === 0) return;
     if (!isValidAttackTarget(targetId)) return;

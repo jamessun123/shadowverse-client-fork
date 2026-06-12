@@ -10,6 +10,8 @@ export const GameStateSlice = createSlice({
     legalActions: [],
     enginePhase: null,
     engineWinner: null,
+    quickWindow: null,
+    quickWindowPlayer: null,
     instanceMap: {},
     selectedAttackerId: null,
     lastSeq: 0,
@@ -36,6 +38,8 @@ export const GameStateSlice = createSlice({
       state.legalActions = view?.legalActions ?? [];
       state.enginePhase = view?.state?.phase ?? null;
       state.engineWinner = view?.state?.winner ?? null;
+      state.quickWindow = view?.state?.quickWindow ?? null;
+      state.quickWindowPlayer = view?.state?.quickWindowPlayer ?? null;
       state.selectedAttackerId = null;
       if (seq != null) state.lastSeq = seq;
     },
@@ -54,6 +58,8 @@ export const GameStateSlice = createSlice({
       state.legalActions = [];
       state.enginePhase = null;
       state.engineWinner = null;
+      state.quickWindow = null;
+      state.quickWindowPlayer = null;
       state.instanceMap = {};
       state.selectedAttackerId = null;
       state.lastSeq = 0;

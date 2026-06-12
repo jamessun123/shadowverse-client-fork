@@ -24,7 +24,8 @@ function createPlayerView(state, self) {
         cardNo: "HIDDEN",
     }));
     const legalActions = [];
-    if (state.phase === "main" && state.activePlayer === self && !state.pendingChoices) {
+    const combatQuickWindow = state.combat?.phase === "quickWindow";
+    if (state.phase === "main" && state.activePlayer === self && !state.pendingChoices && !combatQuickWindow) {
         legalActions.push("END_MAIN");
         const pp = state.players[self].pp;
         const p = state.players[self];

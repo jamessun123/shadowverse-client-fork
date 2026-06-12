@@ -89,6 +89,16 @@ describe("batch 7 regression fixes", () => {
     if (defAfter) {
       expect(getEffectiveStats(defAfter, afterPass).def).toBeLessThan(defBefore);
     }
+
+    const blockedAttack = applyAction(attacked.state, 0, {
+      type: "ATTACK",
+      attackerId: atk.instanceId,
+      targetId: def.instanceId,
+    });
+    expect(blockedAttack.ok).toBe(false);
+
+    const attackerView = createPlayerView(attacked.state, 0);
+    expect(attackerView.legalActions.some((a) => a.startsWith("ATTACK:"))).toBe(false);
   });
 
   it("offers end-phase quick window before ward engage", () => {
@@ -111,6 +121,23 @@ describe("batch 7 regression fixes", () => {
 
     const afterPass = passQuick(ended.state, 1);
     expect(afterPass.pendingChoices?.type).toBe("wardEngage");
+  });
+
+  it("opens end-phase quick window when quick spell is only in EX area", () => {
+    let state = createInitialGameState(0);
+    state.phase = "main";
+    state.activePlayer = 0;
+    state.pendingChoices = null;
+    const ward = createCardInstance("MVP-002", 0);
+    state.players[0].zones.field.push(ward);
+    state.players[1].pp = 1;
+    state.players[1].maxPp = 1;
+    state.players[1].zones.exArea.push(createCardInstance("BP17-T18EN", 1));
+
+    const ended = applyAction(state, 0, { type: "END_MAIN" });
+    expect(ended.ok).toBe(true);
+    expect(ended.state.quickWindow).toBe("endPhase");
+    expect(ended.state.quickWindowPlayer).toBe(1);
   });
 
   it("ward engage accepts multiple followers", () => {

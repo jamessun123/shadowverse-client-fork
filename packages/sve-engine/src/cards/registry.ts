@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { CardDefinition } from "../types";
 import { MVP_CARD_DEFS } from "./mvp-cards";
-import { buildReprintMap, mergePrintingWithGameplay } from "./reprints";
+import { buildReprintMap, cardIdentityKey, mergePrintingWithGameplay } from "./reprints";
 
 let scrapedCards: Record<string, CardDefinition> = {};
 const cardsPath = path.join(__dirname, "..", "..", "data", "cards.json");
@@ -43,6 +43,37 @@ function toCardDef(raw: Record<string, unknown>): CardDefinition {
 
 const reprintMap = buildReprintMap(scrapedCards as Record<string, CardDefinition>);
 
+/** Hand-authored DSL may live on a promo/reprint cardNo while decks use the base printing. */
+const abilitiesByIdentity = new Map<string, CardDefinition["abilities"]>();
+const abilitiesByReprintTarget = new Map<string, CardDefinition["abilities"]>();
+for (const [cardNo, overlay] of Object.entries(handAuthored)) {
+  if (!overlay.abilities?.length) continue;
+  const scraped = scrapedCards[cardNo];
+  if (scraped) {
+    const key = cardIdentityKey(scraped);
+    if (!abilitiesByIdentity.has(key)) abilitiesByIdentity.set(key, overlay.abilities);
+    const reprintOf = (scraped as CardDefinition & { reprintOf?: string }).reprintOf;
+    if (reprintOf && !abilitiesByReprintTarget.has(reprintOf)) {
+      abilitiesByReprintTarget.set(reprintOf, overlay.abilities);
+    }
+  }
+}
+
+function resolveHandAuthoredAbilities(
+  cardNo: string,
+  printing: CardDefinition,
+  gameplayNo: string,
+): CardDefinition["abilities"] | undefined {
+  const handForPrinting = handAuthored[cardNo]?.abilities;
+  const handForGameplay = gameplayNo !== cardNo ? handAuthored[gameplayNo]?.abilities : undefined;
+  return (
+    handForPrinting ||
+    handForGameplay ||
+    abilitiesByReprintTarget.get(cardNo) ||
+    abilitiesByIdentity.get(cardIdentityKey(printing))
+  );
+}
+
 function registerCardDef(cardNo: string, def: CardDefinition): void {
   registry.set(cardNo, def);
 }
@@ -60,7 +91,7 @@ for (const raw of Object.values(scrapedCards)) {
   const handOverlay = {
     ...(handForGameplay || {}),
     ...(handForPrinting || {}),
-    abilities: handForPrinting?.abilities || handForGameplay?.abilities,
+    abilities: resolveHandAuthoredAbilities(cardNo, printing, gameplayNo),
     keywords: handForPrinting?.keywords || handForGameplay?.keywords,
     evolvesFrom: handForPrinting?.evolvesFrom || handForGameplay?.evolvesFrom,
     evolvesTo: handForPrinting?.evolvesTo || handForGameplay?.evolvesTo,
