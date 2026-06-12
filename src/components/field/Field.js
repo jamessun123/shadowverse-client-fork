@@ -1181,14 +1181,6 @@ export default function Field({
     instanceId &&
     legalActions.includes(`ATTACK:${instanceId}`);
 
-  const canActivateField = (instanceId) =>
-    automated &&
-    leaderActive &&
-    !pendingChoices &&
-    instanceId &&
-    (legalActions.includes(`ACTIVATE:${instanceId}`) ||
-      legalActions.includes(`ACTIVATE_EP:${instanceId}`));
-
   const isValidAttackTarget = (targetId) =>
     selectedAttackerId &&
     legalActions.includes(`ATTACK_TARGET:${selectedAttackerId}:${targetId}`);
@@ -1210,9 +1202,6 @@ export default function Field({
     }
     if (!isEnemy && idx < 5 && canAttackWith(instanceId)) {
       return { outline: "2px solid #4caf50", borderRadius: "8px", cursor: "pointer" };
-    }
-    if (!isEnemy && idx < 5 && canActivateField(instanceId)) {
-      return { outline: "2px solid #ff9800", borderRadius: "8px", cursor: "pointer" };
     }
     if (isEnemy && selectedAttackerId && isValidAttackTarget(instanceId)) {
       return { outline: "3px solid #f44336", borderRadius: "8px", cursor: "pointer" };
@@ -1242,14 +1231,6 @@ export default function Field({
       dispatch(
         setSelectedAttackerId(selectedAttackerId === instanceId ? null : instanceId),
       );
-      return;
-    }
-    if (idx < 5 && canActivateField(instanceId)) {
-      if (legalActions.includes(`ACTIVATE:${instanceId}`)) {
-        sendAction({ type: "ACTIVATE", fieldInstanceId: instanceId, useEvoPoint: false });
-      } else if (legalActions.includes(`ACTIVATE_EP:${instanceId}`)) {
-        sendAction({ type: "ACTIVATE", fieldInstanceId: instanceId, useEvoPoint: true });
-      }
     }
   };
 
