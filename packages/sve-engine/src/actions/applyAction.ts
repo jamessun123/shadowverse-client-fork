@@ -54,10 +54,17 @@ function fail(state: GameState, error: string): ActionResult {
 
 function hasPlayableQuickCards(state: GameState, player: PlayerId): boolean {
   const pp = state.players[player].pp;
-  for (const card of state.players[player].zones.hand) {
+  const quickZones: Array<{
+    card: (typeof state.players)[0]["zones"]["hand"][0];
+    fromZone: "hand" | "exArea";
+  }> = [
+    ...state.players[player].zones.hand.map((card) => ({ card, fromZone: "hand" as const })),
+    ...state.players[player].zones.exArea.map((card) => ({ card, fromZone: "exArea" as const })),
+  ];
+  for (const { card, fromZone } of quickZones) {
     const def = getCardDef(card.cardNo);
     if (!def?.abilities?.some((a) => a.quick)) continue;
-    const cost = getEffectivePlayCost(card, card.cardNo, state, player, "hand");
+    const cost = getEffectivePlayCost(card, card.cardNo, state, player, fromZone);
     if (pp >= cost && canPlayCardFromZones(state, player, card.cardNo)) return true;
   }
   return false;
@@ -711,6 +718,9 @@ function attack(
   if (activeErr) return activeErr;
   const phaseErr = assertPhase(state, ["main"], "Cannot attack now");
   if (phaseErr) return phaseErr;
+  if (state.combat?.phase === "quickWindow") {
+    return fail(state, "Resolve quick window first");
+  }
 
   const attackerFound = findInstance(state, attackerId);
   if (!attackerFound || attackerFound.zone !== "field" || attackerFound.player !== player) {

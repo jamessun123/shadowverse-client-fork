@@ -80,6 +80,14 @@ function passQuick(state, player) {
         if (defAfter) {
             (0, vitest_1.expect)((0, queries_1.getEffectiveStats)(defAfter, afterPass).def).toBeLessThan(defBefore);
         }
+        const blockedAttack = (0, applyAction_1.applyAction)(attacked.state, 0, {
+            type: "ATTACK",
+            attackerId: atk.instanceId,
+            targetId: def.instanceId,
+        });
+        (0, vitest_1.expect)(blockedAttack.ok).toBe(false);
+        const attackerView = (0, filterView_1.createPlayerView)(attacked.state, 0);
+        (0, vitest_1.expect)(attackerView.legalActions.some((a) => a.startsWith("ATTACK:"))).toBe(false);
     });
     (0, vitest_1.it)("offers end-phase quick window before ward engage", () => {
         let state = (0, factory_1.createInitialGameState)(0);
@@ -98,6 +106,18 @@ function passQuick(state, player) {
         (0, vitest_1.expect)(ended.state.pendingChoices).toBeNull();
         const afterPass = passQuick(ended.state, 1);
         (0, vitest_1.expect)(afterPass.pendingChoices?.type).toBe("wardEngage");
+    });
+    (0, vitest_1.it)("opens end-phase quick window when quick spell is only in EX area", () => {
+        let state = (0, factory_1.createInitialGameState)(0);
+        state.phase = "main";
+        state.activePlayer = 0;
+        state.pendingChoices = null;
+        state.players[1].pp = 1;
+        state.players[1].zones.exArea.push((0, factory_1.createCardInstance)("BP17-T18EN", 1));
+        const ended = (0, applyAction_1.applyAction)(state, 0, { type: "END_MAIN" });
+        (0, vitest_1.expect)(ended.ok).toBe(true);
+        (0, vitest_1.expect)(ended.state.quickWindow).toBe("endPhase");
+        (0, vitest_1.expect)(ended.state.quickWindowPlayer).toBe(1);
     });
     (0, vitest_1.it)("ward engage accepts multiple followers", () => {
         let state = (0, factory_1.createInitialGameState)(0);

@@ -221,8 +221,15 @@ export default function Field({
   const selectedAttackerId = useSelector((state) => state.gameState.selectedAttackerId);
   const leaderActive = useSelector((state) => state.card.leaderActive);
   const pendingChoices = useSelector((state) => state.gameState.pendingChoices);
+  const quickWindow = useSelector((state) => state.gameState.quickWindow);
+  const quickWindowPlayer = useSelector((state) => state.gameState.quickWindowPlayer);
   const engineView = useSelector((state) => state.gameState.engineView);
   const playerSlot = useSelector((state) => state.gameState.playerSlot);
+  const opponentQuickWindow =
+    quickWindow &&
+    quickWindowPlayer != null &&
+    playerSlot != null &&
+    quickWindowPlayer !== playerSlot;
   const { sendAction } = useEngineSync();
   const chromeVisible = useUiChromeVisible();
   const enemyHandModalOpen = useUiModalOpen(reduxShowEnemyHand);
@@ -1170,8 +1177,17 @@ export default function Field({
     automated &&
     leaderActive &&
     !pendingChoices &&
+    !opponentQuickWindow &&
     instanceId &&
     legalActions.includes(`ATTACK:${instanceId}`);
+
+  const canActivateField = (instanceId) =>
+    automated &&
+    leaderActive &&
+    !pendingChoices &&
+    instanceId &&
+    (legalActions.includes(`ACTIVATE:${instanceId}`) ||
+      legalActions.includes(`ACTIVATE_EP:${instanceId}`));
 
   const isValidAttackTarget = (targetId) =>
     selectedAttackerId &&
@@ -1194,6 +1210,9 @@ export default function Field({
     }
     if (!isEnemy && idx < 5 && canAttackWith(instanceId)) {
       return { outline: "2px solid #4caf50", borderRadius: "8px", cursor: "pointer" };
+    }
+    if (!isEnemy && idx < 5 && canActivateField(instanceId)) {
+      return { outline: "2px solid #ff9800", borderRadius: "8px", cursor: "pointer" };
     }
     if (isEnemy && selectedAttackerId && isValidAttackTarget(instanceId)) {
       return { outline: "3px solid #f44336", borderRadius: "8px", cursor: "pointer" };
@@ -1223,11 +1242,19 @@ export default function Field({
       dispatch(
         setSelectedAttackerId(selectedAttackerId === instanceId ? null : instanceId),
       );
+      return;
+    }
+    if (idx < 5 && canActivateField(instanceId)) {
+      if (legalActions.includes(`ACTIVATE:${instanceId}`)) {
+        sendAction({ type: "ACTIVATE", fieldInstanceId: instanceId, useEvoPoint: false });
+      } else if (legalActions.includes(`ACTIVATE_EP:${instanceId}`)) {
+        sendAction({ type: "ACTIVATE", fieldInstanceId: instanceId, useEvoPoint: true });
+      }
     }
   };
 
   const handleAutomatedEnemyFieldClick = (enemyIdx) => {
-    if (!automated || !selectedAttackerId || pendingChoices) return;
+    if (!automated || !selectedAttackerId || pendingChoices || opponentQuickWindow) return;
     const targetId = enemyFieldInstanceIds[enemyIdx];
     if (!targetId || reduxEnemyField[enemyIdx] === 0) return;
     if (!isValidAttackTarget(targetId)) return;

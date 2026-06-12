@@ -29,6 +29,12 @@ export default function AutomatedControls() {
 
   const pendingChoices = useSelector((s) => s.gameState.pendingChoices);
 
+  const quickWindow = useSelector((s) => s.gameState.quickWindow);
+
+  const quickWindowPlayer = useSelector((s) => s.gameState.quickWindowPlayer);
+
+  const playerSlot = useSelector((s) => s.gameState.playerSlot);
+
   const { sendAction } = useEngineSync();
 
 
@@ -37,9 +43,21 @@ export default function AutomatedControls() {
 
 
 
+  const opponentQuickWindow =
+
+    quickWindow &&
+
+    quickWindowPlayer != null &&
+
+    playerSlot != null &&
+
+    quickWindowPlayer !== playerSlot;
+
   const canAttackLeader =
 
     selectedAttackerId &&
+
+    !opponentQuickWindow &&
 
     legal.includes(`ATTACK_LEADER:${selectedAttackerId}`);
 
@@ -78,7 +96,29 @@ export default function AutomatedControls() {
 
       )}
 
-      {selectedAttackerId && !pendingChoices && (
+      {opponentQuickWindow && (
+
+        <Chip
+
+          label={
+
+            quickWindow === "afterAttack"
+
+              ? "Opponent may use a quick spell"
+
+              : "Opponent may use a quick spell (end phase)"
+
+          }
+
+          color="warning"
+
+          size="small"
+
+        />
+
+      )}
+
+      {selectedAttackerId && !pendingChoices && !opponentQuickWindow && (
 
         <Chip label="Select attack target" color="warning" size="small" />
 
