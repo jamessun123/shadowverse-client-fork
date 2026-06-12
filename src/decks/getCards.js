@@ -5573,6 +5573,8 @@ export const cardImage = (cardName) => {
       return "../textures/ECP02-010EN.png";
     case "Blossoms' Advance":
       return "../textures/ECP02-011EN.png";
+    case "Rin Shibuya [Cinderella Girl]":
+      return "../textures/ECP02-012EN.png";
     case "Mio Honda [Cinderella Girl]":
       return "../textures/ECP02-013EN.png";
     case "Mio Honda [Cinderella Girl] Evolved":
