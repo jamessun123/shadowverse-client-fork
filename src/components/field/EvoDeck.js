@@ -270,7 +270,7 @@ export default function EvoDeck({
         }}
       >
         <Box sx={style}>
-          <ModalHideUiRow />
+          <ModalHideUiRow onHide={handleModalClose} />
           <CardMUI
             sx={{
               //   backgroundColor: "rgba(255, 255, 255, 0.1)",

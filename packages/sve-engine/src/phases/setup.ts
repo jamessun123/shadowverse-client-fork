@@ -4,6 +4,8 @@ import { createCardInstance } from "../state/factory";
 import { isBoxed } from "../state/passives";
 import { drawCard, shuffleDeck } from "../state/zones";
 import { CardInstance, GameState, PlayerId, UniverseId } from "../types";
+import { queueStartOfMainAbilities } from "../rules/trigger-queue";
+import { runConfirmationTiming } from "../rules/confirmation";
 
 const FALLBACK_MAIN = "Vanilla Soldier";
 const FALLBACK_EVO = "Eager Recruit Evolved";
@@ -20,6 +22,7 @@ function clearTurnScopedCardState(card: CardInstance): void {
   card.counters = {};
   card.modifiers = card.modifiers.filter((m) => !m.untilEndOfTurn);
   card.playCostReduction = 0;
+  card.evolveCostOverride = undefined;
   if (card.grantedOnCardPlayed?.length) {
     card.grantedOnCardPlayed = card.grantedOnCardPlayed.filter((g) => !g.untilEndOfTurn);
   }
@@ -138,5 +141,7 @@ export function beginStartPhase(state: GameState): GameState {
 
   next.phase = "main";
   next.eventLog.push({ type: "startPhase", player });
+  queueStartOfMainAbilities(next, player);
+  next = runConfirmationTiming(next);
   return next;
 }

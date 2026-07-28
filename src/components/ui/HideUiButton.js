@@ -4,18 +4,25 @@ import { IconButton, Tooltip } from "@mui/material";
 import { useDispatch, useSelector } from "react-redux";
 import { setUiChromeHidden } from "../../redux/GameStateSlice";
 
-export default function HideUiButton({ sx = {}, size = "small" }) {
+export default function HideUiButton({ sx = {}, size = "small", onHide, title }) {
   const dispatch = useDispatch();
   const hidden = useSelector((s) => s.gameState.uiChromeHidden);
 
-  if (hidden) return null;
+  // Global chrome hide: button disappears once overlays are hidden.
+  // Local onHide (zone modals): always show so this panel can be dismissed.
+  if (!onHide && hidden) return null;
+
+  const handleClick = () => {
+    if (onHide) onHide();
+    else dispatch(setUiChromeHidden(true));
+  };
 
   return (
-    <Tooltip title="Hide UI to view board and hand">
+    <Tooltip title={title || (onHide ? "Hide this panel" : "Hide UI to view board and hand")}>
       <IconButton
         size={size}
         aria-label="Hide UI"
-        onClick={() => dispatch(setUiChromeHidden(true))}
+        onClick={handleClick}
         sx={{
           color: "white",
           backgroundColor: "rgba(0, 0, 0, 0.55)",
@@ -29,7 +36,7 @@ export default function HideUiButton({ sx = {}, size = "small" }) {
   );
 }
 
-export function ModalHideUiRow() {
+export function ModalHideUiRow({ onHide }) {
   return (
     <div
       style={{
@@ -40,7 +47,7 @@ export function ModalHideUiRow() {
         boxSizing: "border-box",
       }}
     >
-      <HideUiButton />
+      <HideUiButton onHide={onHide} />
     </div>
   );
 }

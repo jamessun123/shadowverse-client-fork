@@ -193,13 +193,22 @@ export function getEffectivePlayCost(
 export function getEffectiveStats(card: CardInstance, state?: GameState) {
   const statsNo = state ? resolveCardNo(state, card) : getBaseCardNoForInstance(card.name);
   const cardDef = getCardDef(statsNo);
+  // Amulets (and non-followers) have no attack/defense; never treat missing stats as 0 HP.
+  if (cardDef?.cardType && cardDef.cardType !== "follower") {
+    return { atk: 0, def: 0, cost: cardDef.cost ?? 0, hasCombatStats: false as const };
+  }
   let atk = cardDef?.attack ?? 0;
   let def = cardDef?.defense ?? 0;
   for (const m of card.modifiers) {
     atk += m.atk ?? 0;
     def += m.def ?? 0;
   }
-  return { atk, def, cost: cardDef?.cost ?? 0 };
+  return { atk, def, cost: cardDef?.cost ?? 0, hasCombatStats: true as const };
+}
+
+export function isFollowerCard(card: CardInstance, state?: GameState): boolean {
+  const statsNo = state ? resolveCardNo(state, card) : getBaseCardNoForInstance(card.name);
+  return getCardDef(statsNo)?.cardType === "follower";
 }
 
 /** PP cost to evolve (separate from a card's play cost). */
@@ -309,6 +318,15 @@ export function getActivatedAbilities(
       }).length;
       if (have < need) continue;
     }
+    if (a.cost?.engageFromField) {
+      const need = a.cost.engageFieldCount ?? 1;
+      const have = getPlayer(state, player).zones.field.filter((c) => {
+        if (c.engaged) return false;
+        if (a.cost?.excludeSelfFromEngage && c.instanceId === card.instanceId) return false;
+        return cardMatchesFilter(c.name, a.cost!.engageFromField!);
+      }).length;
+      if (have < need) continue;
+    }
     if (a.cost?.burySelf && zone !== "field") continue;
     if (zone === "field" && a.cost?.engage && card.engaged) continue;
     if (!canActivateEffectResolve(state, player, a.effect)) continue;
@@ -368,7 +386,7 @@ export function canAttackLeader(state: GameState, attacker: CardInstance, player
 
 export function getWardTargets(state: GameState, defender: PlayerId): CardInstance[] {
   return state.players[defender].zones.field.filter(
-    (c) => hasKeyword(c, "ward", state) && c.engaged,
+    (c) => isFollowerCard(c, state) && hasKeyword(c, "ward", state) && c.engaged,
   );
 }
 
@@ -391,6 +409,8 @@ export function getLegalAttackTargets(
   }
 
   for (const f of state.players[enemy].zones.field) {
+    const fDef = getCardDef(resolveCardNo(state, f));
+    if (fDef?.cardType !== "follower") continue;
     if (hasKeyword(f, "intimidate", state)) continue;
     // Reserved (not engaged) followers require Assail to be attacked.
     if (!f.engaged && !hasKeyword(attacker, "assail", state)) continue;

@@ -157,7 +157,7 @@ export default function EnemyEvoDeck({ setHovering, ready }) {
         }}
       >
         <Box sx={style}>
-          <ModalHideUiRow />
+          <ModalHideUiRow onHide={handleModalClose} />
           <CardMUI
             sx={{
               backgroundColor: "rgba(0, 0, 0, 0.7)",

@@ -18,7 +18,7 @@ function describeEffect(effect) {
         case "dealDamage":
             return "deal damage";
         case "damageFollowerAndLeader":
-            return "deal 3 to a follower and 1 to leader";
+            return `deal ${effect.followerAmount} to a follower and ${effect.leaderAmount} to leader`;
         case "draw":
             return `draw ${effect.count}`;
         case "sequence":

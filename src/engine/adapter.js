@@ -68,13 +68,21 @@ export function engineViewToRedux(view, playerSlot) {
 
   const applyStats = (inst, idx, displayKey) => {
     const stats = getCardStatsClient(displayKey || instanceKey(inst));
-    let atk = stats.attack;
-    let defVal = stats.defense;
-    for (const m of inst.modifiers || []) {
-      atk += m.atk ?? 0;
-      defVal += m.def ?? 0;
+    const isFollower = stats.cardType === "follower";
+    let atk = stats.attack ?? 0;
+    let defVal = stats.defense ?? 0;
+    if (isFollower) {
+      for (const m of inst.modifiers || []) {
+        atk += m.atk ?? 0;
+        defVal += m.def ?? 0;
+      }
     }
-    customValues[idx] = { showAtk: true, atk, showDef: true, def: defVal };
+    customValues[idx] = {
+      showAtk: isFollower,
+      atk,
+      showDef: isFollower,
+      def: defVal,
+    };
     wardField[idx] = stats.keywords.includes("ward") ? 1 : 0;
     baneField[idx] = stats.keywords.includes("bane") ? 1 : 0;
     auraField[idx] = stats.keywords.includes("aura") ? 1 : 0;
@@ -131,26 +139,42 @@ export function engineViewToRedux(view, playerSlot) {
     }
     const displayKey = evoInst ? instanceKey(evoInst) : instanceKey(inst);
     const est = getCardStatsClient(displayKey);
-    let atk = est.attack;
-    let defVal = est.defense;
-    for (const m of inst.modifiers || []) {
-      atk += m.atk ?? 0;
-      defVal += m.def ?? 0;
+    const isFollower = est.cardType === "follower";
+    let atk = est.attack ?? 0;
+    let defVal = est.defense ?? 0;
+    if (isFollower) {
+      for (const m of inst.modifiers || []) {
+        atk += m.atk ?? 0;
+        defVal += m.def ?? 0;
+      }
     }
-    enemyCustom[i] = { showAtk: true, atk, showDef: true, def: defVal };
+    enemyCustom[i] = {
+      showAtk: isFollower,
+      atk,
+      showDef: isFollower,
+      def: defVal,
+    };
   });
   es.zones.exArea.forEach((inst, i) => {
     const idx = 5 + i;
     enemyField[idx] = cardName(inst);
     enemyFieldInstanceIds[idx] = inst.instanceId;
     const est = getCardStatsClient(instanceKey(inst));
-    let atk = est.attack;
-    let defVal = est.defense;
-    for (const m of inst.modifiers || []) {
-      atk += m.atk ?? 0;
-      defVal += m.def ?? 0;
+    const isFollower = est.cardType === "follower";
+    let atk = est.attack ?? 0;
+    let defVal = est.defense ?? 0;
+    if (isFollower) {
+      for (const m of inst.modifiers || []) {
+        atk += m.atk ?? 0;
+        defVal += m.def ?? 0;
+      }
     }
-    enemyCustom[idx] = { showAtk: true, atk, showDef: true, def: defVal };
+    enemyCustom[idx] = {
+      showAtk: isFollower,
+      atk,
+      showDef: isFollower,
+      def: defVal,
+    };
     const printed = getCardStatsClient(instanceKey(inst)).cost ?? 0;
     const effective = view.opponentExPlayCosts?.[inst.instanceId];
     if (effective != null && effective < printed) {

@@ -501,7 +501,7 @@ export default function Deck({
         }}
       >
         <Box sx={style}>
-          <ModalHideUiRow />
+          <ModalHideUiRow onHide={handleModalClose} />
           {reveal && (
             <div
               style={{

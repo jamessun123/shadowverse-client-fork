@@ -1625,7 +1625,7 @@ export default function Field({
         }}
       >
         <Box sx={style}>
-          <ModalHideUiRow />
+          <ModalHideUiRow onHide={handleModalClose} />
           <Typography
             sx={{
               color: "white",

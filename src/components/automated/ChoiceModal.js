@@ -288,15 +288,22 @@ export default function ChoiceModal({ setHovering }) {
       if (pending.type === "selectDeckSummon") {
         const option = pending.options.find((o) => o.instanceId === instanceId);
         if (!option?.eligible) return prev;
-        const currentCost = prev.reduce((sum, id) => {
-          const o = pending.options.find((x) => x.instanceId === id);
-          return sum + (o?.cost ?? 0);
-        }, 0);
-        if (currentCost + option.cost > pending.maxTotalCost) return prev;
+        if (pending.maxCount != null && prev.length >= pending.maxCount) return prev;
+        if (pending.maxTotalCost != null) {
+          const currentCost = prev.reduce((sum, id) => {
+            const o = pending.options.find((x) => x.instanceId === id);
+            return sum + (o?.cost ?? 0);
+          }, 0);
+          if (currentCost + option.cost > pending.maxTotalCost) return prev;
+        }
         return [...prev, instanceId];
       }
 
-      if (prev.length >= pending.count) return prev;
+      const maxSelectable =
+        pending.type === "selectZoneCards"
+          ? (pending.maxCount ?? pending.count)
+          : pending.count;
+      if (prev.length >= maxSelectable) return prev;
 
       return [...prev, instanceId];
 
@@ -426,16 +433,27 @@ export default function ChoiceModal({ setHovering }) {
 
           <Typography sx={{ mb: 1 }}>
 
-            Select {pending.count} card{pending.count === 1 ? "" : "s"} to{" "}
+            Select{" "}
+
+            {pending.minCount != null &&
+            pending.maxCount != null &&
+            pending.minCount !== pending.maxCount
+              ? `${pending.minCount}-${pending.maxCount}`
+              : pending.count}{" "}
+
+            card{(pending.maxCount ?? pending.count) === 1 ? "" : "s"} to{" "}
 
             {pending.action === "banish"
               ? "banish"
               : pending.action === "bury"
                 ? "bury"
-                : "discard"}{" "}
+                : pending.action === "engage"
+                  ? "engage"
+                  : "discard"}{" "}
+
             ({selectedDiscardIds.length}/
 
-            {pending.count}).
+            {pending.maxCount ?? pending.count}).
 
           </Typography>
 
@@ -543,9 +561,15 @@ export default function ChoiceModal({ setHovering }) {
 
           <Typography sx={{ mb: 1 }}>
 
-            Select Machina followers to summon (total cost {selectedDeckSummonCost}/
+            {pending.maxCount != null
+              ? `Selected ${selectedDiscardIds.length}/${pending.maxCount}`
+              : `Selected ${selectedDiscardIds.length}`}
 
-            {pending.maxTotalCost} or less). Unselected cards go to the bottom of your deck.
+            {pending.maxTotalCost != null
+              ? ` · total cost ${selectedDeckSummonCost}/${pending.maxTotalCost}`
+              : ""}
+
+            .
 
           </Typography>
 
@@ -778,7 +802,10 @@ export default function ChoiceModal({ setHovering }) {
               const deckSummonDisabled =
                 pending.type === "selectDeckSummon" &&
                 !selected &&
-                selectedDeckSummonCost + (o.cost ?? 0) > pending.maxTotalCost;
+                ((pending.maxCount != null &&
+                  selectedDiscardIds.length >= pending.maxCount) ||
+                  (pending.maxTotalCost != null &&
+                    selectedDeckSummonCost + (o.cost ?? 0) > pending.maxTotalCost));
 
               return (
 
@@ -949,7 +976,10 @@ export default function ChoiceModal({ setHovering }) {
 
             variant="contained"
 
-            disabled={selectedDiscardIds.length !== pending.count}
+            disabled={
+              selectedDiscardIds.length < (pending.minCount ?? pending.count) ||
+              selectedDiscardIds.length > (pending.maxCount ?? pending.count)
+            }
 
             onClick={() =>
 
@@ -1171,7 +1201,7 @@ export default function ChoiceModal({ setHovering }) {
 
             >
 
-              Summon selected
+              {pending.to === "exArea" ? "Confirm selected" : "Summon selected"}
 
             </Button>
 
@@ -1181,7 +1211,7 @@ export default function ChoiceModal({ setHovering }) {
 
             >
 
-              Summon none
+              {pending.to === "exArea" ? "Select none" : "Summon none"}
 
             </Button>
 

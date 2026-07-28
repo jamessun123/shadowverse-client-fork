@@ -4,6 +4,7 @@ exports.queueOnCardPlayed = queueOnCardPlayed;
 exports.queueLastWords = queueLastWords;
 exports.queueFanfare = queueFanfare;
 exports.queueStartOfEndAbilities = queueStartOfEndAbilities;
+exports.queueStartOfMainAbilities = queueStartOfMainAbilities;
 exports.queueAllyFollowerEnterTriggers = queueAllyFollowerEnterTriggers;
 exports.queueCemeteryOnAllyFollowerEnter = queueCemeteryOnAllyFollowerEnter;
 exports.onCardEntersExAreaTriggers = onCardEntersExAreaTriggers;
@@ -25,7 +26,7 @@ function pushTrigger(state, instanceId, player, cardNo, ability, timing, idPrefi
         forcedTargetId,
     });
 }
-function canFireOnCardPlayedTrigger(fieldCard, key, opts) {
+function canFireLimitedTrigger(fieldCard, key, opts) {
     if (opts.oncePerTurn && fieldCard.abilitiesActivatedThisTurn.includes(key))
         return false;
     if (opts.maxPerTurn != null && (fieldCard.counters[key] ?? 0) >= opts.maxPerTurn)
@@ -48,7 +49,7 @@ function queueOnCardPlayed(state, playedInstanceId, player) {
             if (ability.filter && !(0, conditions_1.cardMatchesFilter)(playedNo, ability.filter))
                 continue;
             const key = `onCardPlayed:${idx}`;
-            if (!canFireOnCardPlayedTrigger(fieldCard, key, ability))
+            if (!canFireLimitedTrigger(fieldCard, key, ability))
                 continue;
             pushTrigger(state, fieldCard.instanceId, player, cardNo, ability, "onCardPlayed", "ocp", key);
         }
@@ -60,7 +61,7 @@ function queueOnCardPlayed(state, playedInstanceId, player) {
             if (granted.filter && !(0, conditions_1.cardMatchesFilter)(playedNo, granted.filter))
                 continue;
             const key = `onCardPlayed:${idx}`;
-            if (!canFireOnCardPlayedTrigger(fieldCard, key, {
+            if (!canFireLimitedTrigger(fieldCard, key, {
                 oncePerTurn: granted.oncePerTurn,
                 maxPerTurn: granted.maxPerTurn,
             })) {
@@ -79,7 +80,7 @@ function queueOnCardPlayed(state, playedInstanceId, player) {
             if (granted.filter && !(0, conditions_1.cardMatchesFilter)(playedNo, granted.filter))
                 continue;
             const key = `grantedOnCardPlayed:${gIdx}`;
-            if (!canFireOnCardPlayedTrigger(fieldCard, key, granted))
+            if (!canFireLimitedTrigger(fieldCard, key, granted))
                 continue;
             const pseudoAbility = {
                 timing: "onCardPlayed",
@@ -136,6 +137,18 @@ function queueStartOfEndAbilities(state, player) {
         }
     }
 }
+function queueStartOfMainAbilities(state, player) {
+    for (const card of [...(0, queries_1.getPlayer)(state, player).zones.field]) {
+        if ((0, passives_1.isBoxed)(card, state))
+            continue;
+        const def = (0, registry_1.getCardDef)((0, queries_1.resolveCardNo)(state, card));
+        for (const ability of def?.abilities ?? []) {
+            if (ability.timing !== "startOfMain")
+                continue;
+            pushTrigger(state, card.instanceId, player, card.name, ability, "startOfMain", "som");
+        }
+    }
+}
 function queueAllyFollowerEnterTriggers(state, enteredInstanceId, player) {
     const entered = (0, queries_1.findInstance)(state, enteredInstanceId);
     if (!entered || entered.zone !== "field")
@@ -152,7 +165,10 @@ function queueAllyFollowerEnterTriggers(state, enteredInstanceId, player) {
                 continue;
             if (ability.filter && !(0, conditions_1.cardMatchesFilter)(enteredNo, ability.filter))
                 continue;
-            pushTrigger(state, fieldCard.instanceId, player, fieldCard.name, ability, "onAllyFollowerEnter", "afe", `afe:${idx}`, enteredInstanceId);
+            const key = `afe:${idx}`;
+            if (!canFireLimitedTrigger(fieldCard, key, ability))
+                continue;
+            pushTrigger(state, fieldCard.instanceId, player, fieldCard.name, ability, "onAllyFollowerEnter", "afe", key, enteredInstanceId);
         }
     }
 }

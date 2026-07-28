@@ -71,6 +71,10 @@ export interface AbilityDefinition {
     buryFieldCount?: number;
     excludeSelfFromBury?: boolean;
     burySelf?: boolean;
+    /** Engage N matching ally field cards (does not bury them). */
+    engageFromField?: DeckFilter;
+    engageFieldCount?: number;
+    excludeSelfFromEngage?: boolean;
   };
   quick?: boolean;
   condition?: Condition;
@@ -97,9 +101,11 @@ export type TargetSelector =
   | { type: "self" }
   | { type: "selfLeader" }
   | { type: "enemyLeader" }
-  | { type: "enemyFollower"; count?: number }
-  | { type: "anyFollower"; count?: number }
-  | { type: "selfFollower"; count?: number };
+  | { type: "enemyFollower"; count?: number; trait?: string; cardType?: CardType }
+  | { type: "anyFollower"; count?: number; trait?: string; cardType?: CardType }
+  | { type: "selfFollower"; count?: number; trait?: string; cardType?: CardType }
+  /** Ally field card (follower or amulet), optionally trait-filtered. */
+  | { type: "selfFieldCard"; count?: number; trait?: string; cardType?: CardType };
 
 export type DeckFilter = {
   /** Exact card name (gameplay identity). */
@@ -107,6 +113,8 @@ export type DeckFilter = {
   /** @deprecated Use `name`. Still accepted for one release. */
   cardNo?: string;
   trait?: string;
+  /** Require every listed trait (e.g. Omen + Idolatry). */
+  allTraits?: string[];
   cardClass?: string;
   maxCost?: number;
   minCost?: number;
@@ -142,12 +150,19 @@ export type Condition =
   | { type: "discardedCardType"; cardType: CardType }
   | { type: "handMin"; count: number }
   | { type: "ownCemeteryMin"; count: number }
-  | { type: "fieldTraitMax"; trait: string; count: number };
+  | { type: "fieldTraitMax"; trait: string; count: number }
+  /** Count all field cards (followers + amulets) with the trait. */
+  | { type: "fieldCardTraitMin"; trait: string; count: number }
+  /** True when the player's leader defense is at most `count`. */
+  | { type: "leaderDefMax"; count: number };
 
 export type DamageAmount =
   | number
   | { op: "otherFieldTraitCount"; trait: string }
-  | { op: "fieldTraitCount"; trait: string };
+  | { op: "fieldTraitCount"; trait: string; multiplier?: number }
+  | { op: "engagedFieldTraitCount"; trait: string; multiplier?: number }
+  /** Cards engaged via engageFromFieldAsCost during this resolution. */
+  | { op: "engagedAsCostCount"; multiplier?: number };
 
 export type Effect =
   | { op: "draw"; count: number }
@@ -175,6 +190,7 @@ export type Effect =
   | { op: "buryOpponentMaxAttackFollower" }
   | { op: "healLeader"; amount: number }
   | { op: "discard"; count: number }
+  | { op: "discardOpponentRandom"; count: number }
   | {
       op: "choose";
       options: { label: string; effect: Effect; additionalPpCost?: number }[];
@@ -258,7 +274,12 @@ export type Effect =
       op: "searchDeckSummonMultiple";
       filter: DeckFilter;
       lookAt: number;
-      maxTotalCost: number;
+      /** Optional total play-cost budget across chosen cards. */
+      maxTotalCost?: number;
+      /** Cap how many cards may be chosen (default unlimited within cost). */
+      maxCount?: number;
+      /** Destination zone (default field). */
+      to?: "field" | "exArea";
       remainderTo?: "cemetery" | "deckBottom";
     }
   | {
@@ -268,7 +289,7 @@ export type Effect =
       excludeSelf?: boolean;
       sourceOnly?: boolean;
     }
-  | { op: "dealDamageAllEnemies"; amount: number; followersOnly?: boolean }
+  | { op: "dealDamageAllEnemies"; amount: DamageAmount; followersOnly?: boolean; leadersOnly?: boolean }
   | {
       op: "grantOnCardPlayed";
       filter?: DeckFilter;
@@ -277,6 +298,14 @@ export type Effect =
       oncePerTurn?: boolean;
       maxPerTurn?: number;
       label?: string;
+    }
+  | { op: "setSourceEvolveCostOverride"; amount: number }
+  | {
+      /** Optional additional cost: engage between min and max matching field cards. */
+      op: "engageFromFieldAsCost";
+      filter: DeckFilter;
+      min?: number;
+      max?: number;
     };
 
 export interface Modifier {
@@ -320,6 +349,8 @@ export interface CardInstance {
   grantedLastWords?: Effect[];
   /** Granted "when you play a card" triggers (e.g. Tetra Serene super-evolve). */
   grantedOnCardPlayed?: GrantedOnCardPlayed[];
+  /** Temporary evolve PP cost override for this instance (cleared end of turn). */
+  evolveCostOverride?: number;
 }
 
 export interface EvolveLink {
@@ -454,9 +485,16 @@ export type ChoicePrompt = ChoiceSourceContext &
       type: "selectZoneCards";
       player: PlayerId;
       fromZone: "cemetery" | "hand" | "exArea" | "field";
+      /** Exact count when minCount/maxCount are omitted. */
       count: number;
-      action: "banish" | "discard" | "bury";
+      /** Inclusive lower bound for variable selection (defaults to count). */
+      minCount?: number;
+      /** Inclusive upper bound for variable selection (defaults to count). */
+      maxCount?: number;
+      action: "banish" | "discard" | "bury" | "engage";
       options: { instanceId: string; label: string; name: string }[];
+      /** Store selected count on resolutionContext.engagedAsCostCount. */
+      recordEngagedAsCost?: boolean;
       resumeActivate?: {
         sourceInstanceId: string;
         zone: "field" | "cemetery" | "exArea" | "hand";
@@ -482,7 +520,9 @@ export type ChoicePrompt = ChoiceSourceContext &
   | {
       type: "selectDeckSummon";
       player: PlayerId;
-      maxTotalCost: number;
+      maxTotalCost?: number;
+      maxCount?: number;
+      to?: "field" | "exArea";
       filter: DeckFilter;
       topInstanceIds: string[];
       remainderTo: "cemetery" | "deckBottom";
@@ -516,6 +556,8 @@ export interface ResolutionContext {
   buriedCosts?: number[];
   /** Card no. of the most recently discarded card this effect sequence. */
   lastDiscardedCardName?: string;
+  /** Number of cards engaged via engageFromFieldAsCost this resolution. */
+  engagedAsCostCount?: number;
 }
 
 export interface RevealedCardInfo {

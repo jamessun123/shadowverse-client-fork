@@ -1,0 +1,841 @@
+{
+  "Joy of Destruction": {
+    "name": "Joy of Destruction",
+    "cardNo": "BP08-051EN",
+    "class": "rune",
+    "printingType": "base",
+    "cost": 0,
+    "cardType": "spell",
+    "traits": ["Omen", "Idolatry"],
+    "keywords": [],
+    "cardText": "If there's an Idolatry card on your field, recover 1 play point. If there's a Lishenna, Omen of Destruction on your field, draw a card.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "if",
+              "condition": { "type": "fieldCardTraitMin", "trait": "Idolatry", "count": 1 },
+              "then": { "op": "recoverPp", "amount": 1 }
+            },
+            {
+              "op": "if",
+              "condition": {
+                "type": "namedFollowerOnFieldByName",
+                "identityName": "Lishenna, Omen of Destruction"
+              },
+              "then": { "op": "draw", "count": 1 }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Hermit of Destruction": {
+    "name": "Hermit of Destruction",
+    "cardNo": "BP15-054EN",
+    "class": "rune",
+    "printingType": "base",
+    "cost": 1,
+    "attack": 2,
+    "defense": 2,
+    "cardType": "follower",
+    "traits": ["Omen", "Idolatry"],
+    "keywords": ["fanfare"],
+    "cardText": "[fanfare] Select an enemy follower on the field and, if there are at least 3 Idolatry cards on your field, deal it 3 damage.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "if",
+          "condition": { "type": "fieldCardTraitMin", "trait": "Idolatry", "count": 3 },
+          "then": {
+            "op": "dealDamage",
+            "amount": 3,
+            "targets": { "type": "enemyFollower", "count": 1 }
+          }
+        }
+      }
+    ]
+  },
+  "Devastating Soprano": {
+    "name": "Devastating Soprano",
+    "cardNo": "BP20-045EN",
+    "class": "rune",
+    "printingType": "base",
+    "cost": 1,
+    "cardType": "spell",
+    "traits": ["Omen", "Idolatry"],
+    "keywords": [],
+    "cardText": "Choose one. (1) Select an Idolatry card on your field. Destroy it and draw a card. (2) Summon a White Psalm, New Revelation token.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "choose",
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "label": "Destroy an Idolatry and draw",
+              "effect": {
+                "op": "sequence",
+                "steps": [
+                  {
+                    "op": "destroy",
+                    "targets": { "type": "selfFieldCard", "trait": "Idolatry", "count": 1 }
+                  },
+                  { "op": "draw", "count": 1 }
+                ]
+              }
+            },
+            {
+              "label": "Summon White Psalm, New Revelation",
+              "effect": {
+                "op": "summon",
+                "tokenName": "White Psalm, New Revelation",
+                "count": 1,
+                "zone": "field"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Wasteland of Destruction": {
+    "name": "Wasteland of Destruction",
+    "cardNo": "BP20-055EN",
+    "class": "rune",
+    "printingType": "base",
+    "cost": 1,
+    "cardType": "amulet",
+    "traits": ["Omen", "Idolatry"],
+    "keywords": ["fanfare"],
+    "cardText": "Fanfare Look at the top 2 cards of your deck. You may reveal a card with Omen and Idolatry traits from among them and add it to your hand. Put the rest on the bottom of your deck in any order.\nActivate Bury this: Bury another Idolatry card on your field.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "searchDeckChoose",
+          "filter": { "allTraits": ["Omen", "Idolatry"] },
+          "lookAt": 2,
+          "to": "hand",
+          "optional": true,
+          "remainderTo": "deckBottom",
+          "reveal": true
+        }
+      },
+      {
+        "timing": "activated",
+        "condition": { "type": "fieldCardTraitMin", "trait": "Idolatry", "count": 2 },
+        "cost": { "burySelf": true },
+        "effect": {
+          "op": "destroy",
+          "targets": { "type": "selfFieldCard", "trait": "Idolatry", "count": 1 }
+        }
+      }
+    ]
+  },
+  "Gilnelise, Ravenous Craving": {
+    "name": "Gilnelise, Ravenous Craving",
+    "cardNo": "BP15-SP02EN",
+    "class": "neutral",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 2,
+    "cardType": "follower",
+    "traits": ["Omen"],
+    "keywords": ["evolve"],
+    "evolveCost": 1,
+    "evolvesTo": "Gilnelise, Ravenous Craving Evolved",
+    "cardText": "[evolve] [cost01]: Evolve this. While your leader's defense is 10 or less, this has Drain.",
+    "abilities": [
+      {
+        "timing": "passive",
+        "condition": { "type": "leaderDefMax", "count": 10 },
+        "effect": { "op": "passiveKeywords", "keywords": ["drain"] }
+      }
+    ]
+  },
+  "Gilnelise, Ravenous Craving Evolved": {
+    "name": "Gilnelise, Ravenous Craving Evolved",
+    "cardNo": "BP15-U07EN",
+    "class": "neutral",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 3,
+    "defense": 3,
+    "cardType": "follower",
+    "traits": ["Omen"],
+    "keywords": ["onEvolve"],
+    "evolvesFrom": "Gilnelise, Ravenous Craving",
+    "cardText": "While your leader's defense is 10 or less, this has Drain. On Evolve - Choose 1. (1) Select another follower on the field and give it [attack]+2/[defense]-2. (2) Put a Ravenous Sweetness token into your EX area.",
+    "abilities": [
+      {
+        "timing": "passive",
+        "condition": { "type": "leaderDefMax", "count": 10 },
+        "effect": { "op": "passiveKeywords", "keywords": ["drain"] }
+      },
+      {
+        "timing": "onEvolve",
+        "effect": {
+          "op": "choose",
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "label": "Give another follower +2/-2",
+              "effect": {
+                "op": "buff",
+                "atk": 2,
+                "def": -2,
+                "targets": { "type": "anyFollower", "count": 1 }
+              }
+            },
+            {
+              "label": "Put Ravenous Sweetness into EX",
+              "effect": {
+                "op": "summon",
+                "tokenName": "Ravenous Sweetness",
+                "count": 1,
+                "zone": "exArea"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Lishenna, Melody Manifest": {
+    "name": "Lishenna, Melody Manifest",
+    "cardNo": "BP20-037EN",
+    "class": "rune",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 1,
+    "defense": 1,
+    "cardType": "follower",
+    "traits": ["Omen", "Idolatry"],
+    "keywords": ["fanfare"],
+    "cardText": "Fanfare Choose one. (1) Select another Idolatry card on your field. Destroy it and put a Melodious Monody token into your EX area. (2) Summon a White Psalm, New Revelation token.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "choose",
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "label": "Destroy another Idolatry → Melodious Monody to EX",
+              "effect": {
+                "op": "sequence",
+                "steps": [
+                  {
+                    "op": "destroy",
+                    "targets": { "type": "selfFieldCard", "trait": "Idolatry", "count": 1 }
+                  },
+                  {
+                    "op": "summon",
+                    "tokenName": "Melodious Monody",
+                    "count": 1,
+                    "zone": "exArea"
+                  }
+                ]
+              }
+            },
+            {
+              "label": "Summon White Psalm, New Revelation",
+              "effect": {
+                "op": "summon",
+                "tokenName": "White Psalm, New Revelation",
+                "count": 1,
+                "zone": "field"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Adherent of Melody": {
+    "name": "Adherent of Melody",
+    "cardNo": "BP15-049EN",
+    "class": "rune",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 3,
+    "cardType": "follower",
+    "traits": ["Omen", "Idolatry"],
+    "keywords": ["fanfare"],
+    "cardText": "[fanfare] Look at the top 3 cards of your deck. You may reveal an Idolatry card from among them and add it to your hand. Put the rest on the bottom of your deck in any order.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "searchDeckChoose",
+          "filter": { "trait": "Idolatry" },
+          "lookAt": 3,
+          "to": "hand",
+          "optional": true,
+          "remainderTo": "deckBottom",
+          "reveal": true
+        }
+      }
+    ]
+  },
+  "Supplicant of Destruction": {
+    "name": "Supplicant of Destruction",
+    "cardNo": "BP20-048EN",
+    "class": "rune",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 3,
+    "cardType": "follower",
+    "traits": ["Omen", "Idolatry"],
+    "keywords": [],
+    "cardText": "Activate Engage this and bury another Idolatry card on your field: Select an enemy leader or enemy follower on the field and deal it 2 damage.",
+    "abilities": [
+      {
+        "timing": "activated",
+        "cost": {
+          "engage": true,
+          "buryFromField": { "trait": "Idolatry" },
+          "buryFieldCount": 1,
+          "excludeSelfFromBury": true
+        },
+        "effect": {
+          "op": "choose",
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "label": "Deal 2 to an enemy follower",
+              "effect": {
+                "op": "dealDamage",
+                "amount": 2,
+                "targets": { "type": "enemyFollower", "count": 1 }
+              }
+            },
+            {
+              "label": "Deal 2 to the enemy leader",
+              "effect": {
+                "op": "dealDamage",
+                "amount": 2,
+                "targets": { "type": "enemyLeader" }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Axia, Heir to Destruction": {
+    "name": "Axia, Heir to Destruction",
+    "cardNo": "BP20-040EN",
+    "class": "rune",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 2,
+    "cardType": "follower",
+    "traits": ["Omen", "Heir", "Idolatry"],
+    "keywords": ["evolve"],
+    "evolveCost": 1,
+    "evolvesTo": "Axia, Heir to Destruction Evolved",
+    "cardText": "Evolve (1): Evolve this.",
+    "abilities": []
+  },
+  "Axia, Heir to Destruction Evolved": {
+    "name": "Axia, Heir to Destruction Evolved",
+    "cardNo": "BP20-041EN",
+    "class": "rune",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 3,
+    "defense": 3,
+    "cardType": "follower",
+    "traits": ["Omen", "Heir", "Idolatry"],
+    "keywords": ["onEvolve", "onSuperEvolve"],
+    "evolvesFrom": "Axia, Heir to Destruction",
+    "cardText": "Once per turn, whenever an Idolatry amulet is put onto your field, select an enemy follower on the field and deal it 2 damage.\nOn Evolve - Bury another Idolatry card on your field: Search your deck for a follower with \"Lishenna\" in its name, reveal, add it to your hand, then shuffle.\nOn Super Evolve - Deal each enemy leader damage equal to the number of Idolatry cards on your field.",
+    "abilities": [
+      {
+        "timing": "onAllyFollowerEnter",
+        "oncePerTurn": true,
+        "filter": { "trait": "Idolatry", "cardType": "amulet" },
+        "effect": {
+          "op": "dealDamage",
+          "amount": 2,
+          "targets": { "type": "enemyFollower", "count": 1 }
+        }
+      },
+      {
+        "timing": "onEvolve",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "destroy",
+              "targets": { "type": "selfFieldCard", "trait": "Idolatry", "count": 1 }
+            },
+            {
+              "op": "tutorFromDeck",
+              "filter": { "identityNameContains": "Lishenna", "cardType": "follower" },
+              "to": "hand",
+              "reveal": true
+            }
+          ]
+        }
+      },
+      {
+        "timing": "onSuperEvolve",
+        "effect": {
+          "op": "dealDamage",
+          "amount": { "op": "fieldTraitCount", "trait": "Idolatry" },
+          "targets": { "type": "enemyLeader" }
+        }
+      }
+    ]
+  },
+  "Servant of Destruction": {
+    "name": "Servant of Destruction",
+    "cardNo": "BP05-048EN",
+    "class": "rune",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 2,
+    "cardType": "follower",
+    "traits": ["Omen", "Idolatry"],
+    "keywords": ["evolve", "fanfare"],
+    "evolveCost": 2,
+    "evolvesTo": "Servant of Destruction Evolved",
+    "cardText": "[evolve] [cost02]: Evolve this follower. [fanfare] If there are at least 3 Idolatry cards on your field, change this card's [evolve] cost to 0 for the rest of this turn.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "if",
+          "condition": { "type": "fieldCardTraitMin", "trait": "Idolatry", "count": 3 },
+          "then": { "op": "setSourceEvolveCostOverride", "amount": 0 }
+        }
+      }
+    ]
+  },
+  "Servant of Destruction Evolved": {
+    "name": "Servant of Destruction Evolved",
+    "cardNo": "BP05-049EN",
+    "class": "rune",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 4,
+    "defense": 4,
+    "cardType": "follower",
+    "traits": ["Omen", "Idolatry"],
+    "keywords": ["onEvolve"],
+    "evolvesFrom": "Servant of Destruction",
+    "cardText": "On Evolve: Select an enemy follower on the field. Deal 2 damage to it and its leader.",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "effect": {
+          "op": "damageFollowerAndLeader",
+          "followerAmount": 2,
+          "leaderAmount": 2
+        }
+      }
+    ]
+  },
+  "Monochromatic Destruction": {
+    "name": "Monochromatic Destruction",
+    "cardNo": "BP05-045EN",
+    "class": "rune",
+    "printingType": "base",
+    "cost": 2,
+    "cardType": "spell",
+    "traits": ["Omen", "Idolatry"],
+    "keywords": ["quick"],
+    "cardText": "[quick] Select an enemy follower on the field. Deal it 2 damage and, if there are at least 2 Idolatry cards on your field, deal 2 damage to its leader and give your leader [defense]+2.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "quick": true,
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "dealDamage",
+              "amount": 2,
+              "targets": { "type": "enemyFollower", "count": 1 }
+            },
+            {
+              "op": "if",
+              "condition": { "type": "fieldCardTraitMin", "trait": "Idolatry", "count": 2 },
+              "then": {
+                "op": "sequence",
+                "steps": [
+                  {
+                    "op": "dealDamage",
+                    "amount": 2,
+                    "targets": { "type": "enemyLeader" }
+                  },
+                  { "op": "healLeader", "amount": 2 }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Melody's Return": {
+    "name": "Melody's Return",
+    "cardNo": "BP15-045EN",
+    "class": "rune",
+    "printingType": "base",
+    "cost": 2,
+    "cardType": "spell",
+    "traits": ["Omen", "Idolatry"],
+    "keywords": [],
+    "cardText": "As an additional cost to play this, banish a follower with \"Lishenna\" in its name from your cemetery. ---------- If there are at least 2 Idolatry cards on your field, search your deck for a follower with \"Lishenna\" in its name, summon it, then shuffle.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "banishFromCemetery",
+              "filter": { "identityNameContains": "Lishenna", "cardType": "follower" },
+              "count": 1
+            },
+            {
+              "op": "if",
+              "condition": { "type": "fieldCardTraitMin", "trait": "Idolatry", "count": 2 },
+              "then": {
+                "op": "tutorFromDeck",
+                "filter": { "identityNameContains": "Lishenna", "cardType": "follower" },
+                "to": "field",
+                "reveal": true
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Lishenna, Melodious Destruction": {
+    "name": "Lishenna, Melodious Destruction",
+    "cardNo": "BP15-039EN",
+    "class": "rune",
+    "printingType": "base",
+    "cost": 3,
+    "attack": 3,
+    "defense": 3,
+    "cardType": "follower",
+    "traits": ["Omen", "Idolatry"],
+    "keywords": ["evolve", "fanfare"],
+    "evolveCost": 1,
+    "evolvesTo": "Lishenna, Melodious Destruction Evolved",
+    "cardText": "[evolve] [cost01]: Evolve this. [fanfare] If there are at least 3 Idolatry cards on your field, put a Melodious Monody token into your EX area.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "if",
+          "condition": { "type": "fieldCardTraitMin", "trait": "Idolatry", "count": 3 },
+          "then": {
+            "op": "summon",
+            "tokenName": "Melodious Monody",
+            "count": 1,
+            "zone": "exArea"
+          }
+        }
+      }
+    ]
+  },
+  "Lishenna, Melodious Destruction Evolved": {
+    "name": "Lishenna, Melodious Destruction Evolved",
+    "cardNo": "BP15-040EN",
+    "class": "rune",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 4,
+    "defense": 4,
+    "cardType": "follower",
+    "traits": ["Omen", "Idolatry"],
+    "keywords": ["onEvolve"],
+    "evolvesFrom": "Lishenna, Melodious Destruction",
+    "cardText": "On Evolve - Look at the top 4 cards of your deck. You may put up to 2 Idolatry cards from among them into your EX area. Put the rest on the bottom of your deck in any order.",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "effect": {
+          "op": "searchDeckSummonMultiple",
+          "filter": { "trait": "Idolatry" },
+          "lookAt": 4,
+          "maxCount": 2,
+          "to": "exArea",
+          "remainderTo": "deckBottom"
+        }
+      }
+    ]
+  },
+  "Zealot of Destruction": {
+    "name": "Zealot of Destruction",
+    "cardNo": "BP08-050EN",
+    "class": "rune",
+    "printingType": "base",
+    "cost": 3,
+    "attack": 3,
+    "defense": 4,
+    "cardType": "follower",
+    "traits": ["Omen", "Idolatry", "Cutthroat"],
+    "keywords": ["fanfare"],
+    "cardText": "[fanfare] If there are at least 3 Idolatry cards on your field, select an enemy follower on the field. Destroy it, deal 2 damage to its leader, and give your leader [defense]+2.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "if",
+          "condition": { "type": "fieldCardTraitMin", "trait": "Idolatry", "count": 3 },
+          "then": {
+            "op": "sequence",
+            "steps": [
+              {
+                "op": "destroy",
+                "targets": { "type": "enemyFollower", "count": 1 }
+              },
+              {
+                "op": "dealDamage",
+                "amount": 2,
+                "targets": { "type": "enemyLeader" }
+              },
+              { "op": "healLeader", "amount": 2 }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "Lishenna, Omen of Destruction": {
+    "name": "Lishenna, Omen of Destruction",
+    "cardNo": "BP05-U03EN",
+    "class": "rune",
+    "printingType": "base",
+    "cost": 4,
+    "attack": 2,
+    "defense": 4,
+    "cardType": "follower",
+    "traits": ["Omen", "Idolatry"],
+    "keywords": ["fanfare"],
+    "cardText": "[fanfare] Put a Destruction in White and Destruction in Black token into your EX area.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "summon",
+              "tokenName": "Destruction in White",
+              "count": 1,
+              "zone": "exArea"
+            },
+            {
+              "op": "summon",
+              "tokenName": "Destruction in Black",
+              "count": 1,
+              "zone": "exArea"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Ravenous Sweetness TOKEN": {
+    "name": "Ravenous Sweetness TOKEN",
+    "cardNo": "BP15-PR18EN",
+    "class": "neutral",
+    "printingType": "token",
+    "specialType": "token",
+    "cost": 5,
+    "cardType": "spell",
+    "traits": ["Omen"],
+    "keywords": [],
+    "cardText": "Deal 2 damage to each enemy leader. Give your leader [defense]+2. Draw 2 cards. Each opponent discards 2 random cards.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            { "op": "dealDamageAllEnemies", "amount": 2, "leadersOnly": true },
+            { "op": "healLeader", "amount": 2 },
+            { "op": "draw", "count": 2 },
+            { "op": "discardOpponentRandom", "count": 2 }
+          ]
+        }
+      }
+    ]
+  },
+  "White Psalm, New Revelation TOKEN": {
+    "name": "White Psalm, New Revelation TOKEN",
+    "cardNo": "BP20-T03EN",
+    "class": "rune",
+    "printingType": "token",
+    "specialType": "token",
+    "cost": 1,
+    "cardType": "amulet",
+    "traits": ["Omen", "Idolatry"],
+    "keywords": ["lastWords"],
+    "cardText": "Last Words Summon a Black Psalm, New Revelation token and give your leader 🛡️+1.\nActivate Engage 3 Idolatry cards on your field: Bury this.",
+    "abilities": [
+      {
+        "timing": "lastWords",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "summon",
+              "tokenName": "Black Psalm, New Revelation",
+              "count": 1,
+              "zone": "field"
+            },
+            { "op": "healLeader", "amount": 1 }
+          ]
+        }
+      },
+      {
+        "timing": "activated",
+        "cost": {
+          "engageFromField": { "trait": "Idolatry" },
+          "engageFieldCount": 3,
+          "burySelf": true
+        },
+        "effect": { "op": "noop" }
+      }
+    ]
+  },
+  "Black Psalm, New Revelation TOKEN": {
+    "name": "Black Psalm, New Revelation TOKEN",
+    "cardNo": "BP20-T04EN",
+    "class": "rune",
+    "printingType": "token",
+    "specialType": "token",
+    "cost": 1,
+    "cardType": "amulet",
+    "traits": ["Omen", "Idolatry"],
+    "keywords": ["lastWords"],
+    "cardText": "Last Words Summon a White Psalm, New Revelation token and deal 1 damage to each enemy leader.\nActivate Engage 3 Idolatry cards on your field: Bury this.",
+    "abilities": [
+      {
+        "timing": "lastWords",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "summon",
+              "tokenName": "White Psalm, New Revelation",
+              "count": 1,
+              "zone": "field"
+            },
+            { "op": "dealDamageAllEnemies", "amount": 1, "leadersOnly": true }
+          ]
+        }
+      },
+      {
+        "timing": "activated",
+        "cost": {
+          "engageFromField": { "trait": "Idolatry" },
+          "engageFieldCount": 3,
+          "burySelf": true
+        },
+        "effect": { "op": "noop" }
+      }
+    ]
+  },
+  "Melodious Monody TOKEN": {
+    "name": "Melodious Monody TOKEN",
+    "cardNo": "BP15-PR12EN",
+    "class": "rune",
+    "printingType": "token",
+    "specialType": "token",
+    "cost": 0,
+    "cardType": "spell",
+    "traits": ["Omen", "Idolatry"],
+    "keywords": [],
+    "cardText": "As an additional cost to play this, you may engage any number of Idolatry cards on your field. ---------- Select an enemy follower on the field and deal it damage equal to 2 times the number of Idolatry cards you engaged as the additional cost to play this.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "engageFromFieldAsCost",
+              "filter": { "trait": "Idolatry" },
+              "min": 0
+            },
+            {
+              "op": "dealDamage",
+              "amount": { "op": "engagedAsCostCount", "multiplier": 2 },
+              "targets": { "type": "enemyFollower", "count": 1 }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Destruction in White TOKEN": {
+    "name": "Destruction in White TOKEN",
+    "cardNo": "BP05-T01EN",
+    "class": "rune",
+    "printingType": "token",
+    "specialType": "token",
+    "cost": 1,
+    "cardType": "amulet",
+    "traits": ["Omen", "Idolatry"],
+    "keywords": [],
+    "cardText": "At the start of your main phase, give your leader [defense]+2.",
+    "abilities": [
+      {
+        "timing": "startOfMain",
+        "effect": { "op": "healLeader", "amount": 2 }
+      }
+    ]
+  },
+  "Destruction in Black TOKEN": {
+    "name": "Destruction in Black TOKEN",
+    "cardNo": "BP05-T02EN",
+    "class": "rune",
+    "printingType": "token",
+    "specialType": "token",
+    "cost": 2,
+    "cardType": "amulet",
+    "traits": ["Omen", "Idolatry"],
+    "keywords": [],
+    "cardText": "At the start of your main phase, deal 2 damage to each enemy leader.",
+    "abilities": [
+      {
+        "timing": "startOfMain",
+        "effect": {
+          "op": "dealDamageAllEnemies",
+          "amount": 2,
+          "leadersOnly": true
+        }
+      }
+    ]
+  }
+}

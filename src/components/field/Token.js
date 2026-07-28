@@ -99,7 +99,7 @@ export default function Token({ ready, setReady, setTokenReady, setHovering }) {
         }}
       >
         <Box sx={style}>
-          <ModalHideUiRow />
+          <ModalHideUiRow onHide={handleModalClose} />
           <input
             style={{
               padding: ".3em",

@@ -24,6 +24,7 @@ import {
   opponentOf,
   resolveCardDefCost,
   resolveCardNo,
+  isFollowerCard,
 } from "../state/queries";
 import { resetCardInstanceState } from "../state/card-reset";
 import { destroyFollower, drawCard, moveCard, shuffleDeck } from "../state/zones";
@@ -41,79 +42,79 @@ export function appendResumeEffects(state: GameState, effects: Effect[]): GameSt
   if (effects.length === 0) return state;
   const next = structuredClone(state);
   const existing = next.resolutionContext?.resumeAfterChoice ?? [];
+  const prev = next.resolutionContext;
   next.resolutionContext = {
-    sourceInstanceId: next.resolutionContext?.sourceInstanceId,
-    effectStack: next.resolutionContext?.effectStack ?? [],
+    sourceInstanceId: prev?.sourceInstanceId,
+    effectStack: prev?.effectStack ?? [],
     resumeAfterChoice: [...existing, ...effects],
-    forcedTargetId: next.resolutionContext?.forcedTargetId,
+    forcedTargetId: prev?.forcedTargetId,
+    buriedCosts: prev?.buriedCosts,
+    lastDiscardedCardName: prev?.lastDiscardedCardName,
+    engagedAsCostCount: prev?.engagedAsCostCount,
     deferTriggers: true,
   };
   return next;
 }
 
 function getTargetCandidates(
-
   state: GameState,
-
   player: PlayerId,
-
   selector: TargetSelector,
-
 ): string[] {
-
   const enemy = opponentOf(player);
+  const matchesExtra = (c: { name: string; instanceId: string }) => {
+    const def = getCardDef(c.name);
+    if (!def) return false;
+    if ("trait" in selector && selector.trait && !def.traits?.includes(selector.trait)) {
+      return false;
+    }
+    if ("cardType" in selector && selector.cardType && def.cardType !== selector.cardType) {
+      return false;
+    }
+    return true;
+  };
 
   switch (selector.type) {
-
     case "selfLeader":
-
       return ["selfLeader"];
-
     case "enemyLeader":
-
       return ["leader"];
-
     case "enemyFollower":
-
       return getPlayer(state, enemy).zones.field
+        .filter((c) => isFollowerCard(c, state))
         .filter((c) => !hasKeyword(c, "aura", state, enemy))
+        .filter(matchesExtra)
         .map((c) => c.instanceId);
-
     case "selfFollower":
-
       return getPlayer(state, player).zones.field
-
         .filter((c) => c.instanceId !== state.resolutionContext?.sourceInstanceId)
-
+        .filter((c) => isFollowerCard(c, state))
+        .filter(matchesExtra)
         .map((c) => c.instanceId);
-
+    case "selfFieldCard":
+      return getPlayer(state, player).zones.field
+        .filter((c) => c.instanceId !== state.resolutionContext?.sourceInstanceId)
+        .filter(matchesExtra)
+        .map((c) => c.instanceId);
     case "anyFollower":
-
       return [...getPlayer(state, 0).zones.field, ...getPlayer(state, 1).zones.field]
         .filter((c) => {
+          if (!isFollowerCard(c, state)) return false;
           const owner = getPlayer(state, 0).zones.field.some((f) => f.instanceId === c.instanceId)
             ? 0
             : 1;
           const effectEnemy = opponentOf(player);
           if (owner === effectEnemy && hasKeyword(c, "aura", state, owner)) return false;
-          return true;
+          return matchesExtra(c);
         })
         .map((c) => c.instanceId);
-
     case "self":
-
       return state.resolutionContext?.sourceInstanceId
-
         ? [state.resolutionContext.sourceInstanceId]
-
         : [];
-
     default:
-
       return [];
-
   }
-
 }
 
 function shouldPromptTargetSelection(
@@ -121,12 +122,33 @@ function shouldPromptTargetSelection(
   candidates: string[],
 ): boolean {
   if (candidates.length === 0) return false;
-  if (candidates.length > 1) return true;
-  return (
-    selector.type === "enemyFollower" ||
-    selector.type === "anyFollower" ||
-    selector.type === "selfFollower"
-  );
+  // Leaders / self have no real choice — resolve immediately (e.g. Zealot's
+  // follow-up leader damage after destroying a follower).
+  if (
+    selector.type === "enemyLeader" ||
+    selector.type === "selfLeader" ||
+    selector.type === "self"
+  ) {
+    return false;
+  }
+  // Always let the player confirm field-card targets, even with one candidate.
+  return true;
+}
+
+function pickTargetFromCandidates(
+  forced: string | undefined,
+  candidates: string[],
+  shouldPrompt: boolean,
+): { targetId?: string; needsPrompt: boolean } {
+  if (candidates.length === 0) return { needsPrompt: false };
+  // forcedTargetId is only used when it is a legal candidate for this effect
+  // (e.g. buff the ally that entered). Ignore it for unrelated target selectors
+  // such as enemy followers.
+  if (forced && candidates.includes(forced)) {
+    return { targetId: forced, needsPrompt: false };
+  }
+  if (shouldPrompt) return { needsPrompt: true };
+  return { targetId: candidates[0], needsPrompt: false };
 }
 
 
@@ -138,6 +160,9 @@ function dealDamageToFollower(state: GameState, instanceId: string, amount: numb
   const found = findInstance(next, instanceId);
 
   if (!found) return state;
+
+  // Damage only applies to followers — amulets have no defense and cannot be damaged.
+  if (!isFollowerCard(found.card, next)) return state;
 
   const dmg = clampDamageToFollower(next, found.card, found.player, amount);
 
@@ -170,10 +195,22 @@ function resolveDamageAmount(state: GameState, player: PlayerId, amount: DamageA
     }).length;
   }
   if (amount.op === "fieldTraitCount") {
-    return getPlayer(state, player).zones.field.filter((c) => {
+    const n = getPlayer(state, player).zones.field.filter((c) => {
       const def = getCardDef(c.name);
       return def?.traits?.includes(amount.trait);
     }).length;
+    return n * (amount.multiplier ?? 1);
+  }
+  if (amount.op === "engagedFieldTraitCount") {
+    const n = getPlayer(state, player).zones.field.filter((c) => {
+      if (!c.engaged) return false;
+      const def = getCardDef(c.name);
+      return def?.traits?.includes(amount.trait);
+    }).length;
+    return n * (amount.multiplier ?? 1);
+  }
+  if (amount.op === "engagedAsCostCount") {
+    return (state.resolutionContext?.engagedAsCostCount ?? 0) * (amount.multiplier ?? 1);
   }
   return 0;
 }
@@ -183,23 +220,38 @@ function promptSelectZoneCards(
   player: PlayerId,
   fromZone: "cemetery" | "hand" | "exArea" | "field",
   count: number,
-  action: "banish" | "discard" | "bury",
+  action: "banish" | "discard" | "bury" | "engage",
   matches: { instanceId: string; name: string }[],
   resumeActivate?: {
     sourceInstanceId: string;
     zone: "field" | "cemetery" | "exArea" | "hand";
     abilityKey: string;
   },
+  opts?: {
+    minCount?: number;
+    maxCount?: number;
+    recordEngagedAsCost?: boolean;
+    reasonLabel?: string;
+  },
 ): GameState {
   const next = structuredClone(state);
+  const minCount = opts?.minCount;
+  const maxCount = opts?.maxCount;
+  const rangeLabel =
+    minCount != null && maxCount != null && minCount !== maxCount
+      ? `${minCount}-${maxCount}`
+      : String(count);
   next.pendingChoices = withChoiceContext(next, {
     type: "selectZoneCards",
     player,
     fromZone,
     count,
+    minCount,
+    maxCount,
     action,
     resumeActivate,
-    reasonLabel: `${action} ${count} card(s)`,
+    recordEngagedAsCost: opts?.recordEngagedAsCost,
+    reasonLabel: opts?.reasonLabel ?? `${action} ${rangeLabel} card(s)`,
     options: zoneCardOptions(matches),
   });
   return next;
@@ -232,6 +284,8 @@ function labelForInstance(state: GameState, id: string): string {
   const def = getCardDef(found.card.name);
 
   const name = def?.name || found.card.name;
+
+  if (def?.cardType !== "follower") return name;
 
   const { atk, def: defense } = getEffectiveStats(found.card, state);
 
@@ -378,23 +432,49 @@ function promptSearchDeckTop(
 
 }
 
+function describeDeckFilter(filter: DeckFilter): string {
+  const parts: string[] = [];
+  if (filter.trait) parts.push(filter.trait);
+  if (filter.allTraits?.length) parts.push(...filter.allTraits);
+  if (filter.cardType) parts.push(filter.cardType);
+  if (filter.identityNameContains) parts.push(`"${filter.identityNameContains}"`);
+  if (filter.identityName) parts.push(filter.identityName);
+  if (parts.length === 0) return "matching cards";
+  if (filter.cardType) return parts.join(" ");
+  return `${parts.join(" ")} card(s)`;
+}
+
 function promptSelectDeckSummon(
   state: GameState,
   player: PlayerId,
   top: { instanceId: string; name: string }[],
   filter: DeckFilter,
-  maxTotalCost: number,
+  maxTotalCost: number | undefined,
   remainderTo: "cemetery" | "deckBottom",
+  maxCount?: number,
+  to: "field" | "exArea" = "field",
 ): GameState {
   const next = structuredClone(state);
+  const filterLabel = describeDeckFilter(filter);
+  const destLabel = to === "exArea" ? "into your EX area" : "onto your field";
+  const countLabel =
+    maxCount != null ? `up to ${maxCount} ${filterLabel}` : filterLabel;
+  const costLabel =
+    maxTotalCost != null ? ` (total cost ${maxTotalCost} or less)` : "";
+  const remainderLabel =
+    remainderTo === "deckBottom"
+      ? " Unselected cards go to the bottom of your deck."
+      : " Unselected cards go to the cemetery.";
   next.pendingChoices = withChoiceContext(next, {
     type: "selectDeckSummon",
     player,
     maxTotalCost,
+    maxCount,
+    to,
     filter,
     topInstanceIds: top.map((c) => c.instanceId),
     remainderTo,
-    reasonLabel: "Summon followers from deck",
+    reasonLabel: `Select ${countLabel} to put ${destLabel}${costLabel}.${remainderLabel}`,
     options: top.map((c) => ({
       instanceId: c.instanceId,
       label: getCardDef(c.name)?.name || c.name,
@@ -600,6 +680,7 @@ export function resolveEffect(
       forcedTargetId: next.resolutionContext?.forcedTargetId,
       buriedCosts: next.resolutionContext?.buriedCosts,
       lastDiscardedCardName: next.resolutionContext?.lastDiscardedCardName,
+      engagedAsCostCount: next.resolutionContext?.engagedAsCostCount,
       deferTriggers: true,
     };
   }
@@ -685,26 +766,15 @@ export function resolveEffect(
 
       if (candidates.length === 0) break;
 
-      let targetId: string;
-
-      if (forced) {
-
-        if (!candidates.includes(forced)) break;
-
-        targetId = forced;
-
-      } else if (
-        shouldPromptTargetSelection(effect.targets, candidates) &&
-        !next.pendingChoices
-      ) {
-
+      const picked = pickTargetFromCandidates(
+        forced,
+        candidates,
+        shouldPromptTargetSelection(effect.targets, candidates) && !next.pendingChoices,
+      );
+      if (picked.needsPrompt) {
         return promptSelectTarget(next, player, effect, candidates);
-
-      } else {
-
-        targetId = candidates[0];
-
       }
+      const targetId = picked.targetId!;
 
       const damage = resolveDamageAmount(next, player, effect.amount);
 
@@ -735,7 +805,10 @@ export function resolveEffect(
         if (effect.excludeSelf && card.instanceId === sourceId) continue;
         const def = getCardDef(card.name);
         if (!def?.traits?.includes(effect.trait)) continue;
-        card.modifiers.push({ atk: effect.atk ?? 0, def: effect.def ?? 0, sourceId });
+        // Atk/def buffs only apply to followers; amulets may still receive keywords.
+        if (def.cardType === "follower" && (effect.atk || effect.def)) {
+          card.modifiers.push({ atk: effect.atk ?? 0, def: effect.def ?? 0, sourceId });
+        }
         if (effect.keyword && !card.grantedKeywords.includes(effect.keyword)) {
           card.grantedKeywords.push(effect.keyword);
         }
@@ -751,30 +824,19 @@ export function resolveEffect(
 
       if (candidates.length === 0) break;
 
-      let targetId: string;
-
-      if (forced) {
-
-        if (!candidates.includes(forced)) break;
-
-        targetId = forced;
-
-      } else if (
-        shouldPromptTargetSelection(effect.targets, candidates) &&
-        !next.pendingChoices
-      ) {
-
+      const picked = pickTargetFromCandidates(
+        forced,
+        candidates,
+        shouldPromptTargetSelection(effect.targets, candidates) && !next.pendingChoices,
+      );
+      if (picked.needsPrompt) {
         return promptSelectTarget(next, player, effect, candidates);
-
-      } else {
-
-        targetId = candidates[0];
-
       }
+      const targetId = picked.targetId!;
 
       const found = findInstance(next, targetId);
 
-      if (found) {
+      if (found && isFollowerCard(found.card, next)) {
 
         found.card.modifiers.push({
 
@@ -810,25 +872,24 @@ export function resolveEffect(
 
       if (candidates.length === 0) break;
 
-      let targetId: string;
-
-      if (forced) {
-
-        if (!candidates.includes(forced)) break;
-
-        targetId = forced;
-
-      } else if (
-        shouldPromptTargetSelection(effect.targets, candidates) &&
-        !next.pendingChoices
-      ) {
-
+      const picked = pickTargetFromCandidates(
+        forced,
+        candidates,
+        shouldPromptTargetSelection(effect.targets, candidates) && !next.pendingChoices,
+      );
+      if (picked.needsPrompt) {
         return promptSelectTarget(next, player, effect, candidates);
+      }
+      const targetId = picked.targetId!;
 
-      } else {
-
-        targetId = candidates[0];
-
+      // Follower-only selectors must never destroy amulets (or other non-followers).
+      const followerOnly =
+        effect.targets.type === "enemyFollower" ||
+        effect.targets.type === "selfFollower" ||
+        effect.targets.type === "anyFollower";
+      if (followerOnly) {
+        const found = findInstance(next, targetId);
+        if (!found || !isFollowerCard(found.card, next)) break;
       }
 
       queueLastWords(next, targetId, player);
@@ -900,6 +961,18 @@ export function resolveEffect(
 
     }
 
+    case "discardOpponentRandom": {
+      const opp = opponentOf(player);
+      const hand = next.players[opp].zones.hand;
+      const toDiscard = Math.min(effect.count, hand.length);
+      for (let i = 0; i < toDiscard; i++) {
+        const idx = Math.floor(Math.random() * hand.length);
+        const [card] = hand.splice(idx, 1);
+        if (card) next.players[opp].zones.cemetery.push(card);
+      }
+      break;
+    }
+
 
 
     case "if":
@@ -952,6 +1025,7 @@ export function resolveEffect(
         forcedTargetId: next.resolutionContext?.forcedTargetId,
         buriedCosts: next.resolutionContext?.buriedCosts,
         lastDiscardedCardName: next.resolutionContext?.lastDiscardedCardName,
+        engagedAsCostCount: next.resolutionContext?.engagedAsCostCount,
         deferTriggers: true,
       };
       for (let i = 0; i < effect.steps.length; i++) {
@@ -1078,26 +1152,16 @@ export function resolveEffect(
 
       if (candidates.length === 0) break;
 
-      let targetId: string;
-
-      if (forced) {
-
-        if (!candidates.includes(forced)) break;
-
-        targetId = forced;
-
-      } else if (
+      const picked = pickTargetFromCandidates(
+        forced,
+        candidates,
         shouldPromptTargetSelection({ type: "enemyFollower", count: 1 }, candidates) &&
-        !next.pendingChoices
-      ) {
-
+          !next.pendingChoices,
+      );
+      if (picked.needsPrompt) {
         return promptSelectTarget(next, player, effect, candidates);
-
-      } else {
-
-        targetId = candidates[0];
-
       }
+      const targetId = picked.targetId!;
 
       next = dealDamageToFollower(next, targetId, effect.followerAmount);
 
@@ -1167,7 +1231,7 @@ export function resolveEffect(
 
       fieldOnNext.card.evolvedThisTurn = true;
 
-      fieldOnNext.card.onFieldSinceTurnStart = false;
+      // Preserve prior leader-attack eligibility; Rush comes from evolvedThisTurn.
 
       next.players[player].flags.evolvedThisTurn = true;
 
@@ -1288,23 +1352,15 @@ export function resolveEffect(
 
       if (candidates.length === 0) break;
 
-      let targetId: string;
-
-      if (forced) {
-
-        if (!candidates.includes(forced)) break;
-
-        targetId = forced;
-
-      } else if (candidates.length >= 1 && !next.pendingChoices) {
-
+      const picked = pickTargetFromCandidates(
+        forced,
+        candidates,
+        candidates.length >= 1 && !next.pendingChoices,
+      );
+      if (picked.needsPrompt) {
         return promptSelectTarget(next, player, effect, candidates);
-
-      } else {
-
-        targetId = candidates[0];
-
       }
+      const targetId = picked.targetId!;
 
       const found = findInstance(next, targetId);
 
@@ -1669,10 +1725,6 @@ export function resolveEffect(
       if (matches.length === 0) break;
 
       if (!next.pendingChoices) {
-        if (matches.length === 1) {
-          next = moveZoneCardTo(next, player, matches[0].instanceId, "evolveDeck", "field");
-          break;
-        }
         return promptSelectZoneCard(next, player, "evolveDeck", "field", matches);
       }
 
@@ -1774,6 +1826,8 @@ export function resolveEffect(
           effect.filter,
           effect.maxTotalCost,
           effect.remainderTo ?? "deckBottom",
+          effect.maxCount,
+          effect.to ?? "field",
         );
       }
       break;
@@ -1814,11 +1868,18 @@ export function resolveEffect(
 
     case "dealDamageAllEnemies": {
       const opp = opponentOf(player);
-      if (!effect.followersOnly) {
-        next = dealDamageToLeader(next, opp, effect.amount);
+      const amount = resolveDamageAmount(next, player, effect.amount);
+      const leadersOnly = effect.leadersOnly === true;
+      const followersOnly = effect.followersOnly === true;
+      if (!followersOnly) {
+        next = dealDamageToLeader(next, opp, amount);
       }
-      for (const card of [...next.players[opp].zones.field]) {
-        next = dealDamageToFollower(next, card.instanceId, effect.amount);
+      if (!leadersOnly) {
+        for (const card of [...next.players[opp].zones.field]) {
+          const def = getCardDef(card.name);
+          if (def?.cardType !== "follower") continue;
+          next = dealDamageToFollower(next, card.instanceId, amount);
+        }
       }
       break;
     }
@@ -1836,6 +1897,41 @@ export function resolveEffect(
         maxPerTurn: effect.maxPerTurn,
         label: effect.label,
       });
+      break;
+    }
+
+    case "setSourceEvolveCostOverride": {
+      const sourceId = next.resolutionContext?.sourceInstanceId;
+      const found = sourceId ? findInstance(next, sourceId) : null;
+      if (found) found.card.evolveCostOverride = effect.amount;
+      break;
+    }
+
+    case "engageFromFieldAsCost": {
+      const p = next.players[player];
+      const matches = p.zones.field.filter(
+        (c) => !c.engaged && cardMatchesFilter(c.name, effect.filter),
+      );
+      const min = effect.min ?? 0;
+      const max = Math.min(effect.max ?? matches.length, matches.length);
+      if (matches.length < min) break;
+      if (matches.length === 0 || max <= 0) {
+        next.resolutionContext = {
+          ...next.resolutionContext,
+          sourceInstanceId: next.resolutionContext?.sourceInstanceId,
+          effectStack: next.resolutionContext?.effectStack ?? [],
+          engagedAsCostCount: 0,
+        };
+        break;
+      }
+      if (!next.pendingChoices) {
+        return promptSelectZoneCards(next, player, "field", max, "engage", matches, undefined, {
+          minCount: min,
+          maxCount: max,
+          recordEngagedAsCost: true,
+          reasonLabel: "Engage any number of Idolatry as an additional cost",
+        });
+      }
       break;
     }
 
@@ -1873,6 +1969,9 @@ export function canEffectResolve(state: GameState, player: PlayerId, effect: Eff
     case "sequence":
       return effect.steps.every((step) => canEffectResolve(state, player, step));
     case "if":
+      if (!evalCondition(state, player, effect.condition)) {
+        return effect.else ? canEffectResolve(state, player, effect.else) : true;
+      }
       return canEffectResolve(state, player, effect.then);
     case "optionalCost":
       return canEffectResolve(state, player, effect.then);

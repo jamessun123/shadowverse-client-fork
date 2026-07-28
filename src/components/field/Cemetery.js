@@ -242,7 +242,7 @@ export default function Cemetery({
             alignItems: "center",
           }}
         >
-          <ModalHideUiRow />
+          <ModalHideUiRow onHide={handleModalClose} />
           <FormControl>
             <RadioGroup
               row

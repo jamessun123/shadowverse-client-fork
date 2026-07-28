@@ -113,11 +113,14 @@ export function getCardStatsClient(nameOrCardNo) {
   const cardNo = def?.cardNo || nameOrCardNo;
   const gameplayNo = resolveGameplayCardNo(cardNo);
   const stats = cardStats[cardNo] || cardStats[gameplayNo] || {};
+  const cardType = def?.cardType ?? stats.cardType ?? null;
+  const isFollower = cardType === "follower";
   return {
-    attack: statValue(def?.attack, stats.attack),
-    defense: statValue(def?.defense, stats.defense),
+    attack: isFollower ? statValue(def?.attack, stats.attack) : null,
+    defense: isFollower ? statValue(def?.defense, stats.defense) : null,
     cost: statValue(def?.cost, stats.cost),
     keywords: def?.keywords ?? stats.keywords ?? [],
+    cardType,
   };
 }
 

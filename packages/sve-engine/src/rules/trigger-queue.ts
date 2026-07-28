@@ -29,7 +29,7 @@ function pushTrigger(
   });
 }
 
-function canFireOnCardPlayedTrigger(
+function canFireLimitedTrigger(
   fieldCard: { abilitiesActivatedThisTurn: string[]; counters: Record<string, number> },
   key: string,
   opts: { oncePerTurn?: boolean; maxPerTurn?: number },
@@ -57,7 +57,7 @@ export function queueOnCardPlayed(
       if (ability.timing !== "onCardPlayed") continue;
       if (ability.filter && !cardMatchesFilter(playedNo, ability.filter)) continue;
       const key = `onCardPlayed:${idx}`;
-      if (!canFireOnCardPlayedTrigger(fieldCard, key, ability)) continue;
+      if (!canFireLimitedTrigger(fieldCard, key, ability)) continue;
       pushTrigger(state, fieldCard.instanceId, player, cardNo, ability, "onCardPlayed", "ocp", key);
     }
 
@@ -68,7 +68,7 @@ export function queueOnCardPlayed(
       if (granted.filter && !cardMatchesFilter(playedNo, granted.filter)) continue;
       const key = `onCardPlayed:${idx}`;
       if (
-        !canFireOnCardPlayedTrigger(fieldCard, key, {
+        !canFireLimitedTrigger(fieldCard, key, {
           oncePerTurn: granted.oncePerTurn,
           maxPerTurn: granted.maxPerTurn,
         })
@@ -97,7 +97,7 @@ export function queueOnCardPlayed(
     for (const [gIdx, granted] of (fieldCard.grantedOnCardPlayed ?? []).entries()) {
       if (granted.filter && !cardMatchesFilter(playedNo, granted.filter)) continue;
       const key = `grantedOnCardPlayed:${gIdx}`;
-      if (!canFireOnCardPlayedTrigger(fieldCard, key, granted)) continue;
+      if (!canFireLimitedTrigger(fieldCard, key, granted)) continue;
       const pseudoAbility: AbilityDefinition = {
         timing: "onCardPlayed",
         effect: granted.effect,
@@ -169,6 +169,17 @@ export function queueStartOfEndAbilities(state: GameState, player: PlayerId): vo
   }
 }
 
+export function queueStartOfMainAbilities(state: GameState, player: PlayerId): void {
+  for (const card of [...getPlayer(state, player).zones.field]) {
+    if (isBoxed(card, state)) continue;
+    const def = getCardDef(resolveCardNo(state, card));
+    for (const ability of def?.abilities ?? []) {
+      if (ability.timing !== "startOfMain") continue;
+      pushTrigger(state, card.instanceId, player, card.name, ability, "startOfMain", "som");
+    }
+  }
+}
+
 export function queueAllyFollowerEnterTriggers(
   state: GameState,
   enteredInstanceId: string,
@@ -184,6 +195,8 @@ export function queueAllyFollowerEnterTriggers(
       if (ability.timing !== "onAllyFollowerEnter") continue;
       if (ability.activateFrom === "cemetery") continue;
       if (ability.filter && !cardMatchesFilter(enteredNo, ability.filter)) continue;
+      const key = `afe:${idx}`;
+      if (!canFireLimitedTrigger(fieldCard, key, ability)) continue;
       pushTrigger(
         state,
         fieldCard.instanceId,
@@ -192,7 +205,7 @@ export function queueAllyFollowerEnterTriggers(
         ability,
         "onAllyFollowerEnter",
         "afe",
-        `afe:${idx}`,
+        key,
         enteredInstanceId,
       );
     }

@@ -22,6 +22,11 @@ export function cardMatchesFilter(cardNo: string, filter: DeckFilter): boolean {
     if (cardIdentityKey(def) !== cardIdentityKey(filterDef)) return false;
   }
   if (filter.trait && !def.traits?.includes(filter.trait)) return false;
+  if (filter.allTraits?.length) {
+    for (const t of filter.allTraits) {
+      if (!def.traits?.includes(t)) return false;
+    }
+  }
   if (filter.cardClass && def.class !== filter.cardClass) return false;
   const cost = resolveCardDefCost(cardNo);
   if (filter.maxCost != null && cost > filter.maxCost) return false;
@@ -138,6 +143,10 @@ export function evalCondition(state: GameState, player: PlayerId, condition: Con
       return getPlayer(state, player).zones.cemetery.length >= condition.count;
     case "fieldTraitMax":
       return countTraitInZone(state, player, "field", condition.trait) <= condition.count;
+    case "fieldCardTraitMin":
+      return countTraitInZone(state, player, "field", condition.trait) >= condition.count;
+    case "leaderDefMax":
+      return getPlayer(state, player).leaderDef <= condition.count;
     default:
       return false;
   }

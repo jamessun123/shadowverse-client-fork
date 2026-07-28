@@ -115,7 +115,7 @@ export default function EnemyCemetery({ setHovering, ready }) {
         }}
       >
         <Box sx={style}>
-          <ModalHideUiRow />
+          <ModalHideUiRow onHide={handleModalClose} />
           <FormControl>
             <RadioGroup
               row

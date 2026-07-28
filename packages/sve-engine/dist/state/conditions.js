@@ -21,6 +21,12 @@ function cardMatchesFilter(cardNo, filter) {
     }
     if (filter.trait && !def.traits?.includes(filter.trait))
         return false;
+    if (filter.allTraits?.length) {
+        for (const t of filter.allTraits) {
+            if (!def.traits?.includes(t))
+                return false;
+        }
+    }
     if (filter.cardClass && def.class !== filter.cardClass)
         return false;
     const cost = (0, queries_1.resolveCardDefCost)(cardNo);
@@ -135,6 +141,10 @@ function evalCondition(state, player, condition) {
             return (0, queries_1.getPlayer)(state, player).zones.cemetery.length >= condition.count;
         case "fieldTraitMax":
             return countTraitInZone(state, player, "field", condition.trait) <= condition.count;
+        case "fieldCardTraitMin":
+            return countTraitInZone(state, player, "field", condition.trait) >= condition.count;
+        case "leaderDefMax":
+            return (0, queries_1.getPlayer)(state, player).leaderDef <= condition.count;
         default:
             return false;
     }

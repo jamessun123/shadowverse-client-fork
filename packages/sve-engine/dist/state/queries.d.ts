@@ -26,7 +26,14 @@ export declare function getEffectiveStats(card: CardInstance, state?: GameState)
     atk: number;
     def: number;
     cost: number;
+    hasCombatStats: false;
+} | {
+    atk: number;
+    def: number;
+    cost: number;
+    hasCombatStats: true;
 };
+export declare function isFollowerCard(card: CardInstance, state?: GameState): boolean;
 /** PP cost to evolve (separate from a card's play cost). */
 export declare function getEvolveCost(evoCardNo: string, baseCardNo?: string): number;
 export declare function hasKeyword(card: CardInstance, keyword: Keyword, state?: GameState, player?: PlayerId): boolean;

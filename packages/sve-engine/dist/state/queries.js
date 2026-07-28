@@ -12,6 +12,7 @@ exports.getExAreaPlayCostReduction = getExAreaPlayCostReduction;
 exports.getPassivePlayCostReduction = getPassivePlayCostReduction;
 exports.getEffectivePlayCost = getEffectivePlayCost;
 exports.getEffectiveStats = getEffectiveStats;
+exports.isFollowerCard = isFollowerCard;
 exports.getEvolveCost = getEvolveCost;
 exports.hasKeyword = hasKeyword;
 exports.clampDamageToFollower = clampDamageToFollower;
@@ -183,13 +184,21 @@ function getEffectivePlayCost(card, cardNo, state, player, fromZone) {
 function getEffectiveStats(card, state) {
     const statsNo = state ? resolveCardNo(state, card) : getBaseCardNoForInstance(card.name);
     const cardDef = (0, registry_1.getCardDef)(statsNo);
+    // Amulets (and non-followers) have no attack/defense; never treat missing stats as 0 HP.
+    if (cardDef?.cardType && cardDef.cardType !== "follower") {
+        return { atk: 0, def: 0, cost: cardDef.cost ?? 0, hasCombatStats: false };
+    }
     let atk = cardDef?.attack ?? 0;
     let def = cardDef?.defense ?? 0;
     for (const m of card.modifiers) {
         atk += m.atk ?? 0;
         def += m.def ?? 0;
     }
-    return { atk, def, cost: cardDef?.cost ?? 0 };
+    return { atk, def, cost: cardDef?.cost ?? 0, hasCombatStats: true };
+}
+function isFollowerCard(card, state) {
+    const statsNo = state ? resolveCardNo(state, card) : getBaseCardNoForInstance(card.name);
+    return (0, registry_1.getCardDef)(statsNo)?.cardType === "follower";
 }
 /** PP cost to evolve (separate from a card's play cost). */
 function getEvolveCost(evoCardNo, baseCardNo) {
@@ -297,6 +306,18 @@ function getActivatedAbilities(state, card, player, zone) {
             if (have < need)
                 continue;
         }
+        if (a.cost?.engageFromField) {
+            const need = a.cost.engageFieldCount ?? 1;
+            const have = getPlayer(state, player).zones.field.filter((c) => {
+                if (c.engaged)
+                    return false;
+                if (a.cost?.excludeSelfFromEngage && c.instanceId === card.instanceId)
+                    return false;
+                return (0, conditions_1.cardMatchesFilter)(c.name, a.cost.engageFromField);
+            }).length;
+            if (have < need)
+                continue;
+        }
         if (a.cost?.burySelf && zone !== "field")
             continue;
         if (zone === "field" && a.cost?.engage && card.engaged)
@@ -350,7 +371,7 @@ function canAttackLeader(state, attacker, player) {
     return false;
 }
 function getWardTargets(state, defender) {
-    return state.players[defender].zones.field.filter((c) => hasKeyword(c, "ward", state) && c.engaged);
+    return state.players[defender].zones.field.filter((c) => isFollowerCard(c, state) && hasKeyword(c, "ward", state) && c.engaged);
 }
 function getLegalAttackTargets(state, attacker, player) {
     const enemy = opponentOf(player);
@@ -365,6 +386,9 @@ function getLegalAttackTargets(state, attacker, player) {
         return targets;
     }
     for (const f of state.players[enemy].zones.field) {
+        const fDef = (0, registry_1.getCardDef)(resolveCardNo(state, f));
+        if (fDef?.cardType !== "follower")
+            continue;
         if (hasKeyword(f, "intimidate", state))
             continue;
         // Reserved (not engaged) followers require Assail to be attacked.

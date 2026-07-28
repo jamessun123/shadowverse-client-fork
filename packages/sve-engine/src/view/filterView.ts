@@ -62,11 +62,13 @@ export function createPlayerView(state: GameState, self: PlayerId): PlayerView {
     }
     for (const card of p.zones.field) {
       if (!card.engaged && !isBoxed(card, state)) {
+        const cardDef = getCardDef(resolveCardNo(state, card));
         const canAttack =
-          card.onFieldSinceTurnStart ||
-          card.evolvedThisTurn ||
-          hasKeyword(card, "storm", state) ||
-          hasKeyword(card, "rush", state);
+          cardDef?.cardType === "follower" &&
+          (card.onFieldSinceTurnStart ||
+            card.evolvedThisTurn ||
+            hasKeyword(card, "storm", state) ||
+            hasKeyword(card, "rush", state));
         if (canAttack) {
           legalActions.push(`ATTACK:${card.instanceId}`);
           for (const target of getLegalAttackTargets(state, card, self)) {
@@ -101,7 +103,8 @@ export function createPlayerView(state: GameState, self: PlayerId): PlayerView {
       ) {
         const evoMatch = findMatchingEvolveCard(state, self, card.instanceId);
         if (evoMatch) {
-          const cost = getEvolveCost(evoMatch.name, card.name);
+          const cost =
+            card.evolveCostOverride ?? getEvolveCost(evoMatch.name, card.name);
           const canSuper = canSuperEvolveNow(state, self);
           const ppPay = computeEvolvePayment(cost, pp, p.evoPoints, false);
           const epPay = computeEvolvePayment(cost, pp, p.evoPoints, true);

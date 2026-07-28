@@ -74,6 +74,7 @@ function contextForTriggerResolution(state, sourceInstanceId, effect) {
         deferTriggers: prev?.deferTriggers,
         buriedCosts: prev?.buriedCosts,
         lastDiscardedCardName: prev?.lastDiscardedCardName,
+        engagedAsCostCount: prev?.engagedAsCostCount,
     };
 }
 function getChoiceContext(state) {

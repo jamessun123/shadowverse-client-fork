@@ -47,8 +47,11 @@ function destroyAtZeroDef(state: GameState): GameState {
     changed = false;
     for (const pid of [0, 1] as PlayerId[]) {
       for (const card of [...getPlayer(next, pid).zones.field]) {
-        const { def } = getEffectiveStats(card, next);
-        if (def <= 0) {
+        const stats = getEffectiveStats(card, next);
+        // Amulets and other non-followers have no defense and must not be
+        // destroyed by the zero-def rule that applies to followers.
+        if (!stats.hasCombatStats) continue;
+        if (stats.def <= 0) {
           queueLastWords(next, card.instanceId, pid);
           next = destroyFollower(next, card.instanceId);
           changed = true;
@@ -148,8 +151,9 @@ export function onCardEntersExArea(
   onCardEntersExAreaTriggers(state, instanceId, player);
 }
 
-function markOnCardPlayedTriggerUsed(state: GameState, trigger: PendingTrigger): void {
-  if (trigger.timing !== "onCardPlayed" || !trigger.abilityKey) return;
+function markTriggerAbilityUsed(state: GameState, trigger: PendingTrigger): void {
+  if (!trigger.abilityKey) return;
+  if (trigger.timing !== "onCardPlayed" && trigger.timing !== "onAllyFollowerEnter") return;
   const found = findInstance(state, trigger.sourceInstanceId);
   if (!found) return;
   const { ability, abilityKey } = trigger;
@@ -169,7 +173,7 @@ function resolveOneTrigger(state: GameState, trigger: PendingTrigger): GameState
     forcedTargetId: trigger.forcedTargetId,
   };
   next = resolveEffect(next, trigger.ability.effect, trigger.controller);
-  markOnCardPlayedTriggerUsed(next, trigger);
+  markTriggerAbilityUsed(next, trigger);
   if (shouldClearResolutionContext(next)) {
     next.resolutionContext = null;
   }
@@ -181,9 +185,13 @@ export function runConfirmationTiming(state: GameState): GameState {
 
   let next = structuredClone(state);
   let loop = true;
+  /** Hard cap so last-words summon chains (e.g. White/Black Psalm) cannot softlock or auto-win. */
+  let resolutions = 0;
+  const maxResolutions = 64;
 
   while (loop) {
     loop = false;
+    if (resolutions >= maxResolutions) return next;
 
     if (next.pendingChoices && next.pendingChoices.type !== "mulligan") return next;
 
@@ -213,6 +221,7 @@ export function runConfirmationTiming(state: GameState): GameState {
 
     if (activeTriggers.length === 1) {
       next = resolveOneTrigger(next, activeTriggers[0]);
+      resolutions += 1;
       loop = true;
       continue;
     }
@@ -232,6 +241,7 @@ export function runConfirmationTiming(state: GameState): GameState {
 
     if (inactiveTriggers.length === 1) {
       next = resolveOneTrigger(next, inactiveTriggers[0]);
+      resolutions += 1;
       loop = true;
     }
   }

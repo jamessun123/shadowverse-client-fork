@@ -38,8 +38,12 @@ function destroyAtZeroDef(state) {
         changed = false;
         for (const pid of [0, 1]) {
             for (const card of [...(0, queries_1.getPlayer)(next, pid).zones.field]) {
-                const { def } = (0, queries_1.getEffectiveStats)(card, next);
-                if (def <= 0) {
+                const stats = (0, queries_1.getEffectiveStats)(card, next);
+                // Amulets and other non-followers have no defense and must not be
+                // destroyed by the zero-def rule that applies to followers.
+                if (!stats.hasCombatStats)
+                    continue;
+                if (stats.def <= 0) {
                     (0, trigger_queue_1.queueLastWords)(next, card.instanceId, pid);
                     next = (0, zones_1.destroyFollower)(next, card.instanceId);
                     changed = true;
@@ -130,8 +134,10 @@ function onFollowerEntersField(state, instanceId, player) {
 function onCardEntersExArea(state, instanceId, player) {
     (0, trigger_queue_1.onCardEntersExAreaTriggers)(state, instanceId, player);
 }
-function markOnCardPlayedTriggerUsed(state, trigger) {
-    if (trigger.timing !== "onCardPlayed" || !trigger.abilityKey)
+function markTriggerAbilityUsed(state, trigger) {
+    if (!trigger.abilityKey)
+        return;
+    if (trigger.timing !== "onCardPlayed" && trigger.timing !== "onAllyFollowerEnter")
         return;
     const found = (0, queries_1.findInstance)(state, trigger.sourceInstanceId);
     if (!found)
@@ -152,7 +158,7 @@ function resolveOneTrigger(state, trigger) {
         forcedTargetId: trigger.forcedTargetId,
     };
     next = (0, resolver_1.resolveEffect)(next, trigger.ability.effect, trigger.controller);
-    markOnCardPlayedTriggerUsed(next, trigger);
+    markTriggerAbilityUsed(next, trigger);
     if ((0, effect_utils_1.shouldClearResolutionContext)(next)) {
         next.resolutionContext = null;
     }
@@ -163,8 +169,13 @@ function runConfirmationTiming(state) {
         return state;
     let next = structuredClone(state);
     let loop = true;
+    /** Hard cap so last-words summon chains (e.g. White/Black Psalm) cannot softlock or auto-win. */
+    let resolutions = 0;
+    const maxResolutions = 64;
     while (loop) {
         loop = false;
+        if (resolutions >= maxResolutions)
+            return next;
         if (next.pendingChoices && next.pendingChoices.type !== "mulligan")
             return next;
         next = capPlayPoints(next);
@@ -191,6 +202,7 @@ function runConfirmationTiming(state) {
         }
         if (activeTriggers.length === 1) {
             next = resolveOneTrigger(next, activeTriggers[0]);
+            resolutions += 1;
             loop = true;
             continue;
         }
@@ -208,6 +220,7 @@ function runConfirmationTiming(state) {
         }
         if (inactiveTriggers.length === 1) {
             next = resolveOneTrigger(next, inactiveTriggers[0]);
+            resolutions += 1;
             loop = true;
         }
     }
