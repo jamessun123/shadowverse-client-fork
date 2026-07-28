@@ -3,10 +3,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.loadDecks = loadDecks;
 exports.applyMulligan = applyMulligan;
 exports.beginStartPhase = beginStartPhase;
+const registry_1 = require("../cards/registry");
 const detectIdentity_1 = require("../deck/detectIdentity");
 const factory_1 = require("../state/factory");
 const passives_1 = require("../state/passives");
 const zones_1 = require("../state/zones");
+const FALLBACK_MAIN = "Vanilla Soldier";
+const FALLBACK_EVO = "Eager Recruit Evolved";
+/** Resolve a deck entry to a known registry name so unknown cards stay playable. */
+function resolveDeckCardName(nameOrCardNo, fallback) {
+    if (!nameOrCardNo)
+        return fallback;
+    const def = (0, registry_1.getCardDef)(nameOrCardNo);
+    return def?.name ?? fallback;
+}
 function clearTurnScopedCardState(card) {
     card.abilitiesActivatedThisTurn = [];
     card.counters = {};
@@ -34,8 +44,8 @@ function loadDecks(state, decks) {
     let next = structuredClone(state);
     for (const pid of [0, 1]) {
         const input = decks[pid];
-        next.players[pid].zones.deck = input.mainDeck.map((cardNo) => (0, factory_1.createCardInstance)(cardNo, pid));
-        next.players[pid].zones.evolveDeck = input.evolveDeck.map((cardNo) => (0, factory_1.createCardInstance)(cardNo, pid));
+        next.players[pid].zones.deck = input.mainDeck.map((cardNo) => (0, factory_1.createCardInstance)(resolveDeckCardName(cardNo, FALLBACK_MAIN), pid));
+        next.players[pid].zones.evolveDeck = input.evolveDeck.map((cardNo) => (0, factory_1.createCardInstance)(resolveDeckCardName(cardNo, FALLBACK_EVO), pid));
         next = (0, zones_1.shuffleDeck)(next, pid);
         if (input.universe === "idolmaster") {
             const p = next.players[pid];

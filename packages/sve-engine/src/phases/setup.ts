@@ -1,8 +1,19 @@
+import { getCardDef } from "../cards/registry";
 import { COOL_EARRINGS_CARD_NO } from "../deck/detectIdentity";
 import { createCardInstance } from "../state/factory";
 import { isBoxed } from "../state/passives";
 import { drawCard, shuffleDeck } from "../state/zones";
 import { CardInstance, GameState, PlayerId, UniverseId } from "../types";
+
+const FALLBACK_MAIN = "Vanilla Soldier";
+const FALLBACK_EVO = "Eager Recruit Evolved";
+
+/** Resolve a deck entry to a known registry name so unknown cards stay playable. */
+function resolveDeckCardName(nameOrCardNo: string, fallback: string): string {
+  if (!nameOrCardNo) return fallback;
+  const def = getCardDef(nameOrCardNo);
+  return def?.name ?? fallback;
+}
 
 function clearTurnScopedCardState(card: CardInstance): void {
   card.abilitiesActivatedThisTurn = [];
@@ -44,10 +55,10 @@ export function loadDecks(
   for (const pid of [0, 1] as PlayerId[]) {
     const input = decks[pid];
     next.players[pid].zones.deck = input.mainDeck.map((cardNo) =>
-      createCardInstance(cardNo, pid),
+      createCardInstance(resolveDeckCardName(cardNo, FALLBACK_MAIN), pid),
     );
     next.players[pid].zones.evolveDeck = input.evolveDeck.map((cardNo) =>
-      createCardInstance(cardNo, pid),
+      createCardInstance(resolveDeckCardName(cardNo, FALLBACK_EVO), pid),
     );
     next = shuffleDeck(next, pid);
     if (input.universe === "idolmaster") {

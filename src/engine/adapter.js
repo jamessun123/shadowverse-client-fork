@@ -1,10 +1,13 @@
 import {
   getCardDefClient,
+  getCardByNameClient,
   getNameByCardNoClient,
   getCardStatsClient,
 } from "./cardLookup";
-import { cardImage } from "../decks/getCards";
+import { cardImage, getCardNoFromName } from "../decks/getCards";
 import { detectDeckIdentity } from "../decks/detectDeck";
+import cardStats from "./card-stats.json";
+import mvpCards from "./mvp-cards.json";
 
 /** SEP is usable once turn threshold is met (7 for first player, 6 for second). */
 function canSuperEvolveNow(state, playerId) {
@@ -210,12 +213,40 @@ function buildInstanceMap(ps) {
   return map;
 }
 
+/** Names the authoritative engine actually knows (card-stats sync + MVP stubs). */
+const ENGINE_CARD_NAMES = new Set([
+  ...Object.values(cardStats).map((s) => s?.name).filter(Boolean),
+  ...mvpCards.map((c) => c.name).filter(Boolean),
+]);
+
+/**
+ * Map a deck-builder name to an engine identity. Unknown cards fall back to a
+ * playable MVP filler so Rules Enforced never softlocks with zero legal plays.
+ */
+function resolveEngineCardName(name, fallback) {
+  if (!name) return fallback;
+  if (ENGINE_CARD_NAMES.has(name)) return name;
+  const cardNo =
+    getCardByNameClient(name)?.cardNo ||
+    getCardDefClient(name)?.cardNo ||
+    getCardNoFromName(name);
+  if (cardNo) {
+    const fromStats = cardStats[cardNo]?.name;
+    if (fromStats && ENGINE_CARD_NAMES.has(fromStats)) return fromStats;
+    const fromMvp = mvpCards.find((c) => c.cardNo === cardNo)?.name;
+    if (fromMvp) return fromMvp;
+  }
+  return fallback;
+}
+
 /** Build deck payload for server from deck names. Engine identity is the card name. */
 export function deckToEnginePayload(mainDeckNames, evoDeckNames) {
   const identity = detectDeckIdentity(mainDeckNames, evoDeckNames);
   return {
-    mainDeck: mainDeckNames.map((name) => name || "Vanilla Soldier"),
-    evolveDeck: evoDeckNames.map((name) => name || "Eager Recruit Evolved"),
+    mainDeck: mainDeckNames.map((name) => resolveEngineCardName(name, "Vanilla Soldier")),
+    evolveDeck: evoDeckNames.map((name) =>
+      resolveEngineCardName(name, "Eager Recruit Evolved"),
+    ),
     universe: identity.universe ?? undefined,
   };
 }

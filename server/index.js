@@ -2,13 +2,21 @@ const express = require("express");
 const http = require("http");
 const cors = require("cors");
 const { Server } = require("socket.io");
+const { getAllCardDefs } = require("sve-engine");
 const { GameRoom } = require("./gameRoom");
 
 const PORT = process.env.PORT || 5000;
+const SERVER_VERSION = "0.2.1";
+const CARD_DEF_COUNT = getAllCardDefs().length;
 const app = express();
 app.use(cors());
 app.get("/", (_req, res) =>
-  res.json({ status: "ok", mode: "authoritative", version: "0.2.0" }),
+  res.json({
+    status: "ok",
+    mode: "authoritative",
+    version: SERVER_VERSION,
+    cardDefs: CARD_DEF_COUNT,
+  }),
 );
 
 const server = http.createServer(app);
@@ -181,5 +189,7 @@ io.on("connection", (socket) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Shadowverse authoritative server on :${PORT}`);
+  console.log(
+    `Shadowverse authoritative server on :${PORT} (v${SERVER_VERSION}, ${CARD_DEF_COUNT} card defs)`,
+  );
 });
