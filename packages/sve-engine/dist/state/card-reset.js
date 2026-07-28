@@ -15,6 +15,7 @@ function resetCardInstanceState(card) {
     card.evolvedThisTurn = false;
     card.superEvolved = false;
     card.enteredFromHand = undefined;
+    card.enteredFromCemetery = undefined;
     card.boxedUntilTurn = undefined;
     card.foughtWithBane = false;
     card.foughtWithInstanceId = undefined;

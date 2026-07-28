@@ -21,7 +21,7 @@ export function moveCard(
 
   let actualZone = toZone;
   if (toZone === "cemetery") {
-    actualZone = destinationForDestroyedCard(card.cardNo);
+    actualZone = destinationForDestroyedCard(card.name);
   }
 
   card.controller = toPlayer;
@@ -49,7 +49,7 @@ export function removeFromField(
   const idx = p.zones.field.findIndex((c) => c.instanceId === instanceId);
   if (idx < 0) return null;
   const [card] = p.zones.field.splice(idx, 1);
-  const dest = destinationForDestroyedCard(card.cardNo);
+  const dest = destinationForDestroyedCard(card.name);
   resetCardInstanceState(card);
   p.zones[dest].push(card);
   return { state: next, card, player: found.player };

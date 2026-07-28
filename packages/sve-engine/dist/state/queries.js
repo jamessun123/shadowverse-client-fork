@@ -38,7 +38,7 @@ function canActivateEffectResolve(state, player, effect) {
             return canActivateEffectResolve(state, player, effect.then);
         case "discardFromHand": {
             const need = effect.count ?? 1;
-            return getPlayer(state, player).zones.hand.filter((c) => (0, conditions_1.cardMatchesFilter)(c.cardNo, effect.filter)).length >= need;
+            return getPlayer(state, player).zones.hand.filter((c) => (0, conditions_1.cardMatchesFilter)(c.name, effect.filter)).length >= need;
         }
         default:
             return true;
@@ -105,13 +105,13 @@ function resolveCardNo(state, card) {
     if (state && card.linkedEvoInstanceId) {
         const evo = findInstance(state, card.linkedEvoInstanceId);
         if (evo)
-            return evo.card.cardNo;
+            return evo.card.name;
     }
-    const def = (0, registry_1.getCardDef)(card.cardNo);
+    const def = (0, registry_1.getCardDef)(card.name);
     if (def?.evolvesFrom && !def.evolvesTo) {
-        return card.cardNo;
+        return card.name;
     }
-    return getBaseCardNoForInstance(card.cardNo, card.linkedEvoInstanceId);
+    return getBaseCardNoForInstance(card.name, card.linkedEvoInstanceId);
 }
 var passives_2 = require("./passives");
 Object.defineProperty(exports, "isBoxed", { enumerable: true, get: function () { return passives_2.isBoxed; } });
@@ -181,7 +181,7 @@ function getEffectivePlayCost(card, cardNo, state, player, fromZone) {
     return Math.max(0, base - instanceReduction);
 }
 function getEffectiveStats(card, state) {
-    const statsNo = state ? resolveCardNo(state, card) : getBaseCardNoForInstance(card.cardNo);
+    const statsNo = state ? resolveCardNo(state, card) : getBaseCardNoForInstance(card.name);
     const cardDef = (0, registry_1.getCardDef)(statsNo);
     let atk = cardDef?.attack ?? 0;
     let def = cardDef?.defense ?? 0;
@@ -244,7 +244,7 @@ function canEvolveFollower(state, player, fieldInstanceId) {
         return false;
     if (!findMatchingEvolveCard(state, player, fieldInstanceId))
         return false;
-    const baseNo = getBaseCardNoForInstance(fieldFound.card.cardNo, fieldFound.card.linkedEvoInstanceId);
+    const baseNo = getBaseCardNoForInstance(fieldFound.card.name, fieldFound.card.linkedEvoInstanceId);
     const def = (0, registry_1.getCardDef)(baseNo);
     const evolveRules = (def?.abilities ?? []).filter((a) => a.timing === "evolve");
     return evolveRules.every((a) => !a.condition || (0, conditions_1.evalCondition)(state, player, a.condition));
@@ -277,22 +277,28 @@ function getActivatedAbilities(state, card, player, zone) {
             continue;
         if (a.cost?.banishFromCemetery) {
             const need = a.cost.banishCount ?? 1;
-            const have = getPlayer(state, player).zones.cemetery.filter((c) => (0, conditions_1.cardMatchesFilter)(c.cardNo, a.cost.banishFromCemetery)).length;
+            const have = getPlayer(state, player).zones.cemetery.filter((c) => (0, conditions_1.cardMatchesFilter)(c.name, a.cost.banishFromCemetery)).length;
             if (have < need)
                 continue;
         }
         if (a.cost?.banishFromExArea) {
             const need = a.cost.banishCount ?? 1;
-            const have = getPlayer(state, player).zones.exArea.filter((c) => (0, conditions_1.cardMatchesFilter)(c.cardNo, a.cost.banishFromExArea)).length;
+            const have = getPlayer(state, player).zones.exArea.filter((c) => (0, conditions_1.cardMatchesFilter)(c.name, a.cost.banishFromExArea)).length;
             if (have < need)
                 continue;
         }
         if (a.cost?.buryFromField) {
             const need = a.cost.buryFieldCount ?? 1;
-            const have = getPlayer(state, player).zones.field.filter((c) => (0, conditions_1.cardMatchesFilter)(c.cardNo, a.cost.buryFromField)).length;
+            const have = getPlayer(state, player).zones.field.filter((c) => {
+                if (a.cost?.excludeSelfFromBury && c.instanceId === card.instanceId)
+                    return false;
+                return (0, conditions_1.cardMatchesFilter)(c.name, a.cost.buryFromField);
+            }).length;
             if (have < need)
                 continue;
         }
+        if (a.cost?.burySelf && zone !== "field")
+            continue;
         if (zone === "field" && a.cost?.engage && card.engaged)
             continue;
         if (!canActivateEffectResolve(state, player, a.effect))
@@ -322,7 +328,7 @@ function findMatchingEvolveCard(state, player, fieldInstanceId) {
         return null;
     if (fieldFound.card.linkedEvoInstanceId)
         return null;
-    return (state.players[player].zones.evolveDeck.find((evo) => evolveCardsMatch(fieldFound.card.cardNo, evo.cardNo)) ?? null);
+    return (state.players[player].zones.evolveDeck.find((evo) => evolveCardsMatch(fieldFound.card.name, evo.name)) ?? null);
 }
 function getStrikeAbilities(state, card) {
     if ((0, passives_1.isBoxed)(card, state))

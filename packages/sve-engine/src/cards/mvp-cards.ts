@@ -186,7 +186,7 @@ export const MVP_CARD_DEFS: CardDefinition[] = [
     cardText: "",
     evolveCost: 1,
     abilities: [],
-    evolvesTo: "MVP-014",
+    evolvesTo: "Eager Recruit Evolved",
   },
   {
     cardNo: "MVP-014",
@@ -200,7 +200,7 @@ export const MVP_CARD_DEFS: CardDefinition[] = [
     traits: [],
     keywords: ["storm", "onEvolve"],
     cardText: "Storm. On Evolve: Draw a card.",
-    evolvesFrom: "MVP-013",
+    evolvesFrom: "Eager Recruit",
     abilities: [{ timing: "onEvolve", effect: { op: "draw", count: 1 } }],
   },
   {
@@ -281,7 +281,7 @@ export const MVP_CARD_DEFS: CardDefinition[] = [
   },
   {
     cardNo: "MVP-020",
-    name: "Goblin TOKEN",
+    name: "Goblin",
     class: "neutral",
     cardType: "follower",
     specialType: "token",
@@ -307,7 +307,7 @@ export const MVP_CARD_DEFS: CardDefinition[] = [
     abilities: [
       {
         timing: "fanfare",
-        effect: { op: "summon", tokenCardNo: "MVP-020", count: 1, zone: "field" },
+        effect: { op: "summon", tokenName: "Goblin", count: 1, zone: "field" },
       },
     ],
   },
@@ -379,7 +379,7 @@ export const MVP_CARD_DEFS: CardDefinition[] = [
     traits: [],
     keywords: ["evolve", "onSuperEvolve"],
     cardText: "Evolve. On Super-Evolve: Deal 2 damage to the enemy leader.",
-    evolvesTo: "MVP-026",
+    evolvesTo: "Super Evo Knight Evolved",
     abilities: [
       {
         timing: "onSuperEvolve",
@@ -399,7 +399,7 @@ export const MVP_CARD_DEFS: CardDefinition[] = [
     traits: [],
     keywords: ["storm"],
     cardText: "Storm.",
-    evolvesFrom: "MVP-025",
+    evolvesFrom: "Super Evo Knight",
     abilities: [],
   },
 ];

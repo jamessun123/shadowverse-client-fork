@@ -24,16 +24,16 @@ export function createPlayerView(state: GameState, self: PlayerId): PlayerView {
 
   view.players[opponent].zones.hand = view.players[opponent].zones.hand.map((c) => ({
     ...c,
-    cardNo: "HIDDEN",
+    name: "HIDDEN",
   }));
   view.players[self].zones.evolveDeck = view.players[self].zones.evolveDeck;
   view.players[opponent].zones.evolveDeck = view.players[opponent].zones.evolveDeck.map((c) => ({
     ...c,
-    cardNo: "HIDDEN",
+    name: "HIDDEN",
   }));
   view.players[opponent].zones.deck = view.players[opponent].zones.deck.map((c) => ({
     ...c,
-    cardNo: "HIDDEN",
+    name: "HIDDEN",
   }));
 
   const legalActions: string[] = [];
@@ -43,8 +43,8 @@ export function createPlayerView(state: GameState, self: PlayerId): PlayerView {
     const pp = state.players[self].pp;
     const p = state.players[self];
     for (const card of p.zones.hand) {
-      const cost = getEffectivePlayCost(card, card.cardNo, state, self, "hand");
-      if (pp >= cost && canPlayCardFromZones(state, self, card.cardNo)) {
+      const cost = getEffectivePlayCost(card, card.name, state, self, "hand");
+      if (pp >= cost && canPlayCardFromZones(state, self, card.name)) {
         legalActions.push(`PLAY:${card.instanceId}`);
       }
       const handActivated = getActivatedAbilities(state, card, self, "hand");
@@ -55,8 +55,8 @@ export function createPlayerView(state: GameState, self: PlayerId): PlayerView {
       }
     }
     for (const card of p.zones.exArea) {
-      const cost = getEffectivePlayCost(card, card.cardNo, state, self, "exArea");
-      if (pp >= cost && canPlayCardFromZones(state, self, card.cardNo)) {
+      const cost = getEffectivePlayCost(card, card.name, state, self, "exArea");
+      if (pp >= cost && canPlayCardFromZones(state, self, card.name)) {
         legalActions.push(`PLAY:${card.instanceId}`);
       }
     }
@@ -101,7 +101,7 @@ export function createPlayerView(state: GameState, self: PlayerId): PlayerView {
       ) {
         const evoMatch = findMatchingEvolveCard(state, self, card.instanceId);
         if (evoMatch) {
-          const cost = getEvolveCost(evoMatch.cardNo, card.cardNo);
+          const cost = getEvolveCost(evoMatch.name, card.name);
           const canSuper = canSuperEvolveNow(state, self);
           const ppPay = computeEvolvePayment(cost, pp, p.evoPoints, false);
           const epPay = computeEvolvePayment(cost, pp, p.evoPoints, true);
@@ -129,23 +129,20 @@ export function createPlayerView(state: GameState, self: PlayerId): PlayerView {
   }
   if (state.quickWindow && state.quickWindowPlayer === self && !state.pendingChoices) {
     const pp = state.players[self].pp;
-    let hasQuickPlay = false;
     const quickZones: Array<{ card: (typeof state.players)[0]["zones"]["hand"][0]; fromZone: "hand" | "exArea" }> = [
       ...state.players[self].zones.hand.map((card) => ({ card, fromZone: "hand" as const })),
       ...state.players[self].zones.exArea.map((card) => ({ card, fromZone: "exArea" as const })),
     ];
     for (const { card, fromZone } of quickZones) {
-      const def = getCardDef(card.cardNo);
+      const def = getCardDef(card.name);
       if (!def?.abilities?.some((a) => a.quick)) continue;
-      const cost = getEffectivePlayCost(card, card.cardNo, state, self, fromZone);
-      if (pp >= cost && canPlayCardFromZones(state, self, card.cardNo)) {
+      const cost = getEffectivePlayCost(card, card.name, state, self, fromZone);
+      if (pp >= cost && canPlayCardFromZones(state, self, card.name)) {
         legalActions.push(`QUICK_PLAY:${card.instanceId}`);
-        hasQuickPlay = true;
       }
     }
-    if (hasQuickPlay) {
-      legalActions.push("PASS_QUICK_WINDOW");
-    }
+    // Always allow pass so the window can end after playing the last playable quick.
+    legalActions.push("PASS_QUICK_WINDOW");
   }
   if (state.pendingChoices?.player === self) {
     legalActions.push("CHOICE_REQUIRED");
@@ -155,7 +152,7 @@ export function createPlayerView(state: GameState, self: PlayerId): PlayerView {
   for (const card of state.players[self].zones.exArea) {
     exPlayCosts[card.instanceId] = getEffectivePlayCost(
       card,
-      card.cardNo,
+      card.name,
       state,
       self,
       "exArea",
@@ -165,7 +162,7 @@ export function createPlayerView(state: GameState, self: PlayerId): PlayerView {
   for (const card of state.players[opponent].zones.exArea) {
     opponentExPlayCosts[card.instanceId] = getEffectivePlayCost(
       card,
-      card.cardNo,
+      card.name,
       state,
       opponent,
       "exArea",

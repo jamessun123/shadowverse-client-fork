@@ -1,4 +1,4 @@
-import { getCardDef } from "../cards/registry";
+import { getCardDef, resolveTokenName } from "../cards/registry";
 import { AbilityDefinition, Effect } from "../types";
 
 export function describeEffect(effect: Effect): string {
@@ -7,9 +7,12 @@ export function describeEffect(effect: Effect): string {
       return "choose an option";
     case "chooseMultiple":
       return "choose options";
-    case "summon":
-      return `summon ${getCardDef(effect.tokenCardNo)?.name ?? effect.tokenCardNo}`;
-    case "dealDamage":
+    case "summon": {
+      const key = effect.tokenName ?? effect.tokenCardNo ?? "";
+      const def = getCardDef(resolveTokenName(key));
+      const label = (def?.name ?? key).replace(/\s+TOKEN$/i, "");
+      return `summon ${label}`;
+    }    case "dealDamage":
       return "deal damage";
     case "damageFollowerAndLeader":
       return "deal 3 to a follower and 1 to leader";

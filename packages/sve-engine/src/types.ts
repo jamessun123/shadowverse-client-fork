@@ -69,6 +69,8 @@ export interface AbilityDefinition {
     banishCount?: number;
     buryFromField?: DeckFilter;
     buryFieldCount?: number;
+    excludeSelfFromBury?: boolean;
+    burySelf?: boolean;
   };
   quick?: boolean;
   condition?: Condition;
@@ -100,12 +102,17 @@ export type TargetSelector =
   | { type: "selfFollower"; count?: number };
 
 export type DeckFilter = {
+  /** Exact card name (gameplay identity). */
+  name?: string;
+  /** @deprecated Use `name`. Still accepted for one release. */
   cardNo?: string;
   trait?: string;
   cardClass?: string;
   maxCost?: number;
   minCost?: number;
   cardType?: CardType;
+  /** Exact match on normalized identity name (ignores Evolved/TOKEN suffixes). */
+  identityName?: string;
   /** Match cards whose normalized name contains this substring (case-insensitive). */
   identityNameContains?: string;
   /** Exclude cards whose normalized identity name equals this value. */
@@ -116,9 +123,10 @@ export type Condition =
   | { type: "always" }
   | { type: "overflow" }
   | { type: "combo"; count: number }
-  | { type: "namedFollowerOnField"; cardNo: string }
+  | { type: "namedFollowerOnField"; name: string }
   | { type: "namedFollowerOnFieldByName"; identityName: string }
   | { type: "notEnteredFromHand" }
+  | { type: "enteredFromCemetery" }
   | { type: "opponentCemeteryMin"; count: number }
   | { type: "exAreaTraitMin"; trait: string; count: number }
   | { type: "ownCemeteryTraitMin"; trait: string; count: number }
@@ -155,7 +163,8 @@ export type Effect =
     }
   | { op: "grantKeyword"; keyword: Keyword; targets: TargetSelector }
   | { op: "destroy"; targets: TargetSelector }
-  | { op: "summon"; tokenCardNo: string; count: number; zone: "field" | "exArea" }
+  /** Summon a token by name without a trailing " TOKEN" suffix (e.g. "Assembly Droid"). */
+  | { op: "summon"; tokenName: string; count: number; zone: "field" | "exArea"; tokenCardNo?: string }
   | { op: "recoverPp"; amount: number }
   | { op: "spendPp"; amount: number }
   | {
@@ -200,6 +209,7 @@ export type Effect =
     }
   | { op: "autoEvolveIf"; condition: Condition; triggerOnEvolve?: boolean }
   | { op: "banishSelf" }
+  | { op: "burySelf" }
   | { op: "summonFromEvolveDeck"; filter?: DeckFilter }
   | {
       op: "summonFromCemetery";
@@ -278,7 +288,8 @@ export interface Modifier {
 
 export interface CardInstance {
   instanceId: string;
-  cardNo: string;
+  /** Exact card name (gameplay identity). */
+  name: string;
   controller: PlayerId;
   owner: PlayerId;
   /** false = reserved (free to act); true = engaged (attacked, ward engaged, or [engage] activate) */
@@ -295,6 +306,8 @@ export interface CardInstance {
   grantedKeywords: Keyword[];
   /** Set when the follower enters the field; cleared at end of turn resolution. */
   enteredFromHand?: boolean;
+  /** True when this instance most recently entered the field from the cemetery. */
+  enteredFromCemetery?: boolean;
   /** Follower is boxed until this turn number (exclusive end at start phase). */
   boxedUntilTurn?: number;
   /** PP reduction for the rest of this turn (tutor/search EX discounts; cleared end of turn). */
@@ -388,14 +401,14 @@ export type ChoicePrompt = ChoiceSourceContext &
       type: "selectTarget";
       player: PlayerId;
       effect: Effect;
-      candidates: { instanceId: string; label: string; cardNo?: string }[];
+      candidates: { instanceId: string; label: string; name?: string }[];
     }
   | {
       type: "selectZoneCard";
       player: PlayerId;
       fromZone: "deck" | "cemetery" | "hand" | "evolveDeck";
       to: "hand" | "exArea" | "field";
-      options: { instanceId: string; label: string; cardNo: string }[];
+      options: { instanceId: string; label: string; name: string }[];
       optional?: boolean;
       playCostReduction?: number;
       reveal?: boolean;
@@ -418,12 +431,12 @@ export type ChoicePrompt = ChoiceSourceContext &
       type: "discard";
       player: PlayerId;
       count: number;
-      candidates: { instanceId: string; label: string; cardNo: string }[];
+      candidates: { instanceId: string; label: string; name: string }[];
     }
   | {
       type: "wardEngage";
       player: PlayerId;
-      candidates: { instanceId: string; label: string; cardNo: string }[];
+      candidates: { instanceId: string; label: string; name: string }[];
     }
   | {
       type: "searchDeckTop";
@@ -432,7 +445,7 @@ export type ChoicePrompt = ChoiceSourceContext &
       filter: DeckFilter;
       topInstanceIds: string[];
       optional?: boolean;
-      options: { instanceId: string; label: string; cardNo: string; eligible: boolean }[];
+      options: { instanceId: string; label: string; name: string; eligible: boolean }[];
       playCostReduction?: number;
       remainderTo?: "cemetery" | "deckBottom";
       reveal?: boolean;
@@ -443,7 +456,7 @@ export type ChoicePrompt = ChoiceSourceContext &
       fromZone: "cemetery" | "hand" | "exArea" | "field";
       count: number;
       action: "banish" | "discard" | "bury";
-      options: { instanceId: string; label: string; cardNo: string }[];
+      options: { instanceId: string; label: string; name: string }[];
       resumeActivate?: {
         sourceInstanceId: string;
         zone: "field" | "cemetery" | "exArea" | "hand";
@@ -456,7 +469,7 @@ export type ChoicePrompt = ChoiceSourceContext &
       phase: "selectCard" | "selectPosition";
       position?: "top" | "bottom";
       selectedInstanceId?: string;
-      options: { instanceId: string; label: string; cardNo: string }[];
+      options: { instanceId: string; label: string; name: string }[];
     }
   | {
       type: "selectCemeterySummon";
@@ -464,7 +477,7 @@ export type ChoicePrompt = ChoiceSourceContext &
       count: number;
       maxTotalCost: number;
       filter: DeckFilter;
-      options: { instanceId: string; label: string; cardNo: string; cost: number }[];
+      options: { instanceId: string; label: string; name: string; cost: number }[];
     }
   | {
       type: "selectDeckSummon";
@@ -473,7 +486,7 @@ export type ChoicePrompt = ChoiceSourceContext &
       filter: DeckFilter;
       topInstanceIds: string[];
       remainderTo: "cemetery" | "deckBottom";
-      options: { instanceId: string; label: string; cardNo: string; cost: number; eligible: boolean }[];
+      options: { instanceId: string; label: string; name: string; cost: number; eligible: boolean }[];
     }
   );
 
@@ -502,13 +515,13 @@ export interface ResolutionContext {
   /** Costs of followers buried by the current buryFieldFollowers effect. */
   buriedCosts?: number[];
   /** Card no. of the most recently discarded card this effect sequence. */
-  lastDiscardedCardNo?: string;
+  lastDiscardedCardName?: string;
 }
 
 export interface RevealedCardInfo {
   owner: PlayerId;
   instanceId: string;
-  cardNo: string;
+  name: string;
 }
 
 export interface GameState {

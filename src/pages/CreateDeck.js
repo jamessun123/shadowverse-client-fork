@@ -4,12 +4,12 @@ import ReplyIcon from "@mui/icons-material/Reply";
 import CloseIcon from "@mui/icons-material/Close";
 import wallpaper3 from "../../src/assets/wallpapers/3.png";
 import {
-  allCards, set17, set16, set15, set14, setUMA2, set13, set12, setSEA, set11,
+  allCards, set21, set20, set19, set18, setPCR, set17, set16, set15, set14, setUMA2, set13, set12, setSEA, set11,
   setVG, set10, set9, set8, setIDOL, setIDOL2, set7, set6, set5, set4, set3,
   setUMA, set2, set1, forest, sword, rune, dragon, abyss, haven, neutral,
 } from "../decks/AllCards";
 import {
-  allCardsEvo, set17Evo, set16Evo, set15Evo, set14Evo, setUMA2Evo, set13Evo,
+  allCardsEvo, set21Evo, set20Evo, set19Evo, set18Evo, setPCREvo, set17Evo, set16Evo, set15Evo, set14Evo, setUMA2Evo, set13Evo,
   set12Evo, set11Evo, setVGEvo, set10Evo, set9Evo, set8Evo, setIDOLEvo,
   setIDOL2Evo, set7Evo, set6Evo, set5Evo, set4Evo, set3Evo, setUMAEvo, set2Evo,
   set1Evo, forestEvo, swordEvo, runeEvo, dragonEvo, abyssEvo, havenEvo, neutralEvo,
@@ -184,6 +184,8 @@ export default function CreateDeck() {
   // ---------- set/class name lists (intersection like the original) ----------
   const getCardsFromName = (n) => {
     switch (n) {
+      case "set 21": return set21; case "set 20": return set20; case "set 19": return set19;
+      case "set 18": return set18; case "pcr": return setPCR;
       case "set 17": return set17; case "set 16": return set16; case "set 15": return set15;
       case "set 14": return set14; case "uma2": return setUMA2; case "set 13": return set13;
       case "set 12": return set12; case "sea": return setSEA; case "set 11": return set11;
@@ -192,6 +194,9 @@ export default function CreateDeck() {
       case "idol2": return setIDOL2; case "set 6": return set6; case "set 5": return set5;
       case "set 4": return set4; case "set 3": return set3; case "uma": return setUMA;
       case "set 2": return set2; case "set 1": return set1;
+      case "set 21 evo": return set21Evo; case "set 20 evo": return set20Evo;
+      case "set 19 evo": return set19Evo; case "set 18 evo": return set18Evo;
+      case "pcr evo": return setPCREvo;
       case "set 17 evo": return set17Evo; case "set 16 evo": return set16Evo;
       case "set 15 evo": return set15Evo; case "set 14 evo": return set14Evo;
       case "uma2 evo": return setUMA2Evo; case "set 13 evo": return set13Evo;

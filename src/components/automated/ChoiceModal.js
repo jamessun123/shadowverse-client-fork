@@ -32,8 +32,29 @@ import HideUiButton from "../ui/HideUiButton";
 
 
 
+function resolveChoiceCardName(name, cardNo, label) {
+  if (name) {
+    // Exact card name from engine (preferred after name-key migration).
+    if (cardImage(name)) return name;
+    const fromNo = getNameByCardNoClient(name);
+    if (fromNo && cardImage(fromNo)) return fromNo;
+  }
+  if (cardNo) {
+    const fromNo = getNameByCardNoClient(cardNo) || cardNo;
+    if (cardImage(fromNo)) return fromNo;
+  }
+  if (typeof label === "string") {
+    // Labels may include stats, e.g. "Roly-Poly Mk I (1/3)".
+    const stripped = label.replace(/\s*\([^)]*\)\s*$/, "").trim();
+    if (stripped && cardImage(stripped)) return stripped;
+    return stripped || label;
+  }
+  return label || "";
+}
+
 function CardChoiceButton({
   cardNo,
+  name: cardName,
   label,
   onClick,
   selected,
@@ -41,41 +62,24 @@ function CardChoiceButton({
   onPreviewStart,
   onPreviewEnd,
 }) {
-
-  const name = cardNo ? getNameByCardNoClient(cardNo) || label : label;
-
-  const imgSrc = cardNo ? cardImage(name) : cardImage(label);
+  const name = resolveChoiceCardName(cardName, cardNo, label);
+  const imgSrc = cardImage(name);
 
   return (
-
     <Button
-
       onClick={onClick}
-
       disabled={disabled}
-
       onMouseEnter={() => onPreviewStart?.(name)}
-
       onMouseLeave={() => onPreviewEnd?.(name)}
-
       sx={{
-
         flexDirection: "column",
-
         p: 1,
-
         minWidth: 130,
-
         textTransform: "none",
-
         outline: selected ? "3px solid #f44336" : "none",
-
         borderRadius: 2,
-
         opacity: disabled ? 0.45 : 1,
-
       }}
-
     >
 
       {imgSrc ? (
@@ -168,8 +172,7 @@ export default function ChoiceModal({ setHovering }) {
       return;
     }
     const lastId = selectedDiscardIds[selectedDiscardIds.length - 1];
-    const nameFromCardNo = (cardNo, label) =>
-      cardNo ? getNameByCardNoClient(cardNo) || label : label;
+    const choiceName = (opt) => resolveChoiceCardName(opt?.name, opt?.cardNo, opt?.label);
     let pinnedName = null;
     if (pending.type === "discard") {
       const candidates = pending.candidates?.length
@@ -180,17 +183,19 @@ export default function ChoiceModal({ setHovering }) {
             cardNo: null,
           }));
       const c = candidates.find((x) => x.instanceId === lastId);
-      if (c) pinnedName = nameFromCardNo(c.cardNo, c.label);
+      if (c) pinnedName = choiceName(c);
     } else if (
       pending.type === "selectDeckSummon" ||
-      pending.type === "selectCemeterySummon" ||
-      pending.type === "wardEngage"
+      pending.type === "selectCemeterySummon"
     ) {
       const o = pending.options?.find((x) => x.instanceId === lastId);
-      if (o) pinnedName = nameFromCardNo(o.cardNo, o.label);
+      if (o) pinnedName = choiceName(o);
+    } else if (pending.type === "wardEngage") {
+      const o = pending.candidates?.find((x) => x.instanceId === lastId);
+      if (o) pinnedName = choiceName(o);
     } else if (pending.type === "chooseMultiple") {
       const o = pending.options?.find((x) => String(x.index) === lastId);
-      if (o) pinnedName = nameFromCardNo(o.cardNo, o.label);
+      if (o) pinnedName = choiceName(o);
     }
     choicePreviewRef.current.pinned = pinnedName;
     syncChoicePreview();
@@ -464,7 +469,7 @@ export default function ChoiceModal({ setHovering }) {
 
                   key={c.instanceId}
 
-                  cardNo={c.cardNo}
+                  name={c.name} cardNo={c.cardNo}
 
                   label={c.label}
 
@@ -558,7 +563,7 @@ export default function ChoiceModal({ setHovering }) {
 
                 key={c.instanceId}
 
-                cardNo={c.cardNo}
+                name={c.name} cardNo={c.cardNo}
 
                 label={c.label}
 
@@ -588,7 +593,7 @@ export default function ChoiceModal({ setHovering }) {
 
                 key={o.instanceId}
 
-                cardNo={o.cardNo}
+                name={o.name} cardNo={o.cardNo}
 
                 label={o.label}
 
@@ -632,7 +637,7 @@ export default function ChoiceModal({ setHovering }) {
 
                         key={o.instanceId}
 
-                        cardNo={o.cardNo}
+                        name={o.name} cardNo={o.cardNo}
 
                         label={o.label}
 
@@ -674,7 +679,7 @@ export default function ChoiceModal({ setHovering }) {
 
                         key={o.instanceId}
 
-                        cardNo={o.cardNo}
+                        name={o.name} cardNo={o.cardNo}
 
                         label={o.label}
 
@@ -706,7 +711,7 @@ export default function ChoiceModal({ setHovering }) {
 
                 key={c.instanceId}
 
-                cardNo={c.cardNo}
+                name={c.name} cardNo={c.cardNo}
 
                 label={c.label}
 
@@ -732,7 +737,7 @@ export default function ChoiceModal({ setHovering }) {
 
                 key={o.instanceId}
 
-                cardNo={o.cardNo}
+                name={o.name} cardNo={o.cardNo}
 
                 label={o.label}
 
@@ -781,7 +786,7 @@ export default function ChoiceModal({ setHovering }) {
 
                   key={key}
 
-                  cardNo={o.cardNo}
+                  name={o.name} cardNo={o.cardNo}
 
                   label={
                     pending.type === "chooseMultiple"
@@ -852,7 +857,7 @@ export default function ChoiceModal({ setHovering }) {
 
                     key={o.instanceId}
 
-                    cardNo={o.cardNo}
+                    name={o.name} cardNo={o.cardNo}
 
                     label={`${o.label} (${o.cost} PP)`}
 
@@ -882,7 +887,7 @@ export default function ChoiceModal({ setHovering }) {
 
                 key={c.instanceId}
 
-                cardNo={c.cardNo}
+                name={c.name} cardNo={c.cardNo}
 
                 label={`Engage ${c.label}`}
 

@@ -9,4 +9,4 @@ export interface DeckIdentity {
 export declare const CRAFT_LEADERS: Record<Exclude<CraftClass, "neutral">, string>;
 export declare function getCardUniverseFromCardNo(cardNo: string): UniverseId | null;
 export declare function detectDeckIdentity(cardNos: string[]): DeckIdentity;
-export declare const COOL_EARRINGS_CARD_NO = "CP02-T04EN";
+export declare const COOL_EARRINGS_CARD_NO = "Cool Earrings";

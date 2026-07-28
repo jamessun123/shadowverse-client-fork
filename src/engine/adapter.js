@@ -1,10 +1,9 @@
 import {
   getCardDefClient,
-  getCardByNameClient,
   getNameByCardNoClient,
   getCardStatsClient,
 } from "./cardLookup";
-import { cardImage, getCardNoFromName } from "../decks/getCards";
+import { cardImage } from "../decks/getCards";
 import { detectDeckIdentity } from "../decks/detectDeck";
 
 /** SEP is usable once turn threshold is met (7 for first player, 6 for second). */
@@ -13,6 +12,11 @@ function canSuperEvolveNow(state, playerId) {
   if (!p || p.superEvoPoints <= 0) return false;
   const threshold = playerId === state.firstPlayer ? 7 : 6;
   return p.turnsPassed >= threshold;
+}
+
+/** Resolve instance identity (exact card name, or legacy cardNo). */
+function instanceKey(instance) {
+  return instance?.name || instance?.cardNo || "";
 }
 
 /**
@@ -40,12 +44,14 @@ export function engineViewToRedux(view, playerSlot) {
   const exPlayCostField = Array(10).fill(null);
 
   const cardName = (instance) => {
-    if (instance.cardNo === "HIDDEN") return "Hidden Card";
-    return (
-      getNameByCardNoClient(instance.cardNo) ||
-      getCardDefClient(instance.cardNo)?.name ||
-      instance.cardNo
-    );
+    const key = instanceKey(instance);
+    if (key === "HIDDEN") return "Hidden Card";
+    const resolved =
+      getNameByCardNoClient(key) ||
+      getCardDefClient(key)?.name ||
+      key;
+    // Present tokens without the data-file " TOKEN" suffix.
+    return String(resolved).replace(/\s+TOKEN$/i, "");
   };
 
   const findEvoInstance = (playerState, evolveInstanceId) => {
@@ -57,8 +63,8 @@ export function engineViewToRedux(view, playerSlot) {
     );
   };
 
-  const applyStats = (inst, idx, displayCardNo) => {
-    const stats = getCardStatsClient(displayCardNo || inst.cardNo);
+  const applyStats = (inst, idx, displayKey) => {
+    const stats = getCardStatsClient(displayKey || instanceKey(inst));
     let atk = stats.attack;
     let defVal = stats.defense;
     for (const m of inst.modifiers || []) {
@@ -82,7 +88,7 @@ export function engineViewToRedux(view, playerSlot) {
       (inst.linkedEvoInstanceId ? findEvoInstance(ps, inst.linkedEvoInstanceId) : null);
     if (evoInst) {
       evoField[i] = cardName(evoInst);
-      applyStats(inst, i, evoInst.cardNo);
+      applyStats(inst, i, instanceKey(evoInst));
     } else {
       applyStats(inst, i);
     }
@@ -93,7 +99,7 @@ export function engineViewToRedux(view, playerSlot) {
     field[idx] = cardName(inst);
     fieldInstanceIds[idx] = inst.instanceId;
     applyStats(inst, idx);
-    const printed = getCardStatsClient(inst.cardNo).cost ?? 0;
+    const printed = getCardStatsClient(instanceKey(inst)).cost ?? 0;
     const effective = view.exPlayCosts?.[inst.instanceId];
     if (effective != null && effective < printed) {
       exPlayCostField[idx] = effective;
@@ -120,8 +126,8 @@ export function engineViewToRedux(view, playerSlot) {
     if (evoInst) {
       enemyEvoField[i] = cardName(evoInst);
     }
-    const displayNo = evoInst?.cardNo || inst.cardNo;
-    const est = getCardStatsClient(displayNo);
+    const displayKey = evoInst ? instanceKey(evoInst) : instanceKey(inst);
+    const est = getCardStatsClient(displayKey);
     let atk = est.attack;
     let defVal = est.defense;
     for (const m of inst.modifiers || []) {
@@ -134,7 +140,7 @@ export function engineViewToRedux(view, playerSlot) {
     const idx = 5 + i;
     enemyField[idx] = cardName(inst);
     enemyFieldInstanceIds[idx] = inst.instanceId;
-    const est = getCardStatsClient(inst.cardNo);
+    const est = getCardStatsClient(instanceKey(inst));
     let atk = est.attack;
     let defVal = est.defense;
     for (const m of inst.modifiers || []) {
@@ -142,7 +148,7 @@ export function engineViewToRedux(view, playerSlot) {
       defVal += m.def ?? 0;
     }
     enemyCustom[idx] = { showAtk: true, atk, showDef: true, def: defVal };
-    const printed = getCardStatsClient(inst.cardNo).cost ?? 0;
+    const printed = getCardStatsClient(instanceKey(inst)).cost ?? 0;
     const effective = view.opponentExPlayCosts?.[inst.instanceId];
     if (effective != null && effective < printed) {
       enemyExPlayCostField[idx] = effective;
@@ -190,11 +196,12 @@ function buildInstanceMap(ps) {
   const map = {};
   const add = (list) => {
     for (const c of list) {
+      const key = instanceKey(c);
       const name =
-        getNameByCardNoClient(c.cardNo) ||
-        getCardDefClient(c.cardNo)?.name ||
-        c.cardNo;
-      map[name] = { instanceId: c.instanceId, cardNo: c.cardNo };
+        getNameByCardNoClient(key) ||
+        getCardDefClient(key)?.name ||
+        key;
+      map[name] = { instanceId: c.instanceId, cardNo: key, name: key };
     }
   };
   add(ps.zones.hand);
@@ -203,33 +210,29 @@ function buildInstanceMap(ps) {
   return map;
 }
 
-/** Build deck payload for server from deck names (uses MVP mapping fallback). */
-function resolveCardNo(name, evoFallback) {
-  return (
-    getCardByNameClient(name)?.cardNo ||
-    getCardNoFromName(name) ||
-    evoFallback
-  );
-}
-
+/** Build deck payload for server from deck names. Engine identity is the card name. */
 export function deckToEnginePayload(mainDeckNames, evoDeckNames) {
   const identity = detectDeckIdentity(mainDeckNames, evoDeckNames);
-  const mainDeck = mainDeckNames.map((name) => resolveCardNo(name, "MVP-012"));
-  const evolveDeck = evoDeckNames.map((name) => resolveCardNo(name, "MVP-014"));
   return {
-    mainDeck,
-    evolveDeck,
+    mainDeck: mainDeckNames.map((name) => name || "Vanilla Soldier"),
+    evolveDeck: evoDeckNames.map((name) => name || "Eager Recruit Evolved"),
     universe: identity.universe ?? undefined,
   };
 }
 
 /** Default MVP deck for rules-enforced mode when selected deck has no engine mapping. */
 export function defaultMvpDeck() {
-  const filler = Array(35).fill("MVP-012");
-  const extras = ["MVP-006", "MVP-006", "MVP-013", "MVP-013", "MVP-009"];
+  const filler = Array(35).fill("Vanilla Soldier");
+  const extras = [
+    "Fanfare Scholar",
+    "Fanfare Scholar",
+    "Eager Recruit",
+    "Eager Recruit",
+    "Fireball",
+  ];
   return {
     mainDeck: [...filler, ...extras],
-    evolveDeck: ["MVP-014", "MVP-014"],
+    evolveDeck: ["Eager Recruit Evolved", "Eager Recruit Evolved"],
   };
 }
 

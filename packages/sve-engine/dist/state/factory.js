@@ -5,6 +5,7 @@ exports.resetIdCounter = resetIdCounter;
 exports.createCardInstance = createCardInstance;
 exports.emptyPlayer = emptyPlayer;
 exports.createInitialGameState = createInitialGameState;
+const registry_1 = require("../cards/registry");
 let idCounter = 0;
 function nextId(prefix = "c") {
     idCounter += 1;
@@ -13,10 +14,16 @@ function nextId(prefix = "c") {
 function resetIdCounter() {
     idCounter = 0;
 }
-function createCardInstance(cardNo, owner, controller) {
+/**
+ * Create a card instance. Accepts an exact card name, or a legacy printing
+ * code which is resolved to the gameplay name.
+ */
+function createCardInstance(nameOrCardNo, owner, controller) {
+    const def = (0, registry_1.getCardDef)(nameOrCardNo);
+    const name = def?.name ?? nameOrCardNo;
     return {
         instanceId: nextId(),
-        cardNo,
+        name,
         owner,
         controller: controller ?? owner,
         engaged: false,
@@ -81,8 +88,10 @@ function createInitialGameState(firstPlayer = 0) {
         pendingChoices: { type: "mulligan", player: firstPlayer },
         combat: null,
         quickWindow: null,
-        eventLog: [],
+        quickWindowPlayer: null,
+        endPhaseQuickResolved: false,
         resolutionContext: null,
+        eventLog: [],
         revealedCards: [],
     };
 }

@@ -1,3 +1,4 @@
+import { getCardDef } from "../cards/registry";
 import { CardInstance, GameState, PlayerId, PlayerState } from "../types";
 
 let idCounter = 0;
@@ -10,10 +11,20 @@ export function resetIdCounter(): void {
   idCounter = 0;
 }
 
-export function createCardInstance(cardNo: string, owner: PlayerId, controller?: PlayerId): CardInstance {
+/**
+ * Create a card instance. Accepts an exact card name, or a legacy printing
+ * code which is resolved to the gameplay name.
+ */
+export function createCardInstance(
+  nameOrCardNo: string,
+  owner: PlayerId,
+  controller?: PlayerId,
+): CardInstance {
+  const def = getCardDef(nameOrCardNo);
+  const name = def?.name ?? nameOrCardNo;
   return {
     instanceId: nextId(),
-    cardNo,
+    name,
     owner,
     controller: controller ?? owner,
     engaged: false,
@@ -80,8 +91,10 @@ export function createInitialGameState(firstPlayer: PlayerId = 0): GameState {
     pendingChoices: { type: "mulligan", player: firstPlayer },
     combat: null,
     quickWindow: null,
-    eventLog: [],
+    quickWindowPlayer: null,
+    endPhaseQuickResolved: false,
     resolutionContext: null,
+    eventLog: [],
     revealedCards: [],
   };
 }

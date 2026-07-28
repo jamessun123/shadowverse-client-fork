@@ -52,6 +52,29 @@ function queueOnCardPlayed(state, playedInstanceId, player) {
                 continue;
             pushTrigger(state, fieldCard.instanceId, player, cardNo, ability, "onCardPlayed", "ocp", key);
         }
+        // Passive grantOnCardPlayed is the hand-authored form of a persistent on-play trigger.
+        for (const [idx, ability] of (def?.abilities ?? []).entries()) {
+            if (ability.timing !== "passive" || ability.effect.op !== "grantOnCardPlayed")
+                continue;
+            const granted = ability.effect;
+            if (granted.filter && !(0, conditions_1.cardMatchesFilter)(playedNo, granted.filter))
+                continue;
+            const key = `onCardPlayed:${idx}`;
+            if (!canFireOnCardPlayedTrigger(fieldCard, key, {
+                oncePerTurn: granted.oncePerTurn,
+                maxPerTurn: granted.maxPerTurn,
+            })) {
+                continue;
+            }
+            const pseudoAbility = {
+                timing: "onCardPlayed",
+                effect: granted.effect,
+                label: granted.label,
+                oncePerTurn: granted.oncePerTurn,
+                maxPerTurn: granted.maxPerTurn,
+            };
+            pushTrigger(state, fieldCard.instanceId, player, cardNo, pseudoAbility, "onCardPlayed", "ocp", key);
+        }
         for (const [gIdx, granted] of (fieldCard.grantedOnCardPlayed ?? []).entries()) {
             if (granted.filter && !(0, conditions_1.cardMatchesFilter)(playedNo, granted.filter))
                 continue;
@@ -75,7 +98,7 @@ function queueLastWords(state, instanceId, player) {
         return;
     if ((0, passives_1.isBoxed)(found.card, state))
         return;
-    const cardNo = found.card.cardNo;
+    const cardNo = found.card.name;
     const def = (0, registry_1.getCardDef)(cardNo);
     for (const ability of def?.abilities ?? []) {
         if (ability.timing === "lastWords") {
@@ -94,10 +117,10 @@ function queueFanfare(state, instanceId, player) {
     const found = (0, queries_1.findInstance)(state, instanceId);
     if (!found || (0, passives_1.isBoxed)(found.card, state))
         return;
-    const def = (0, registry_1.getCardDef)(found.card.cardNo);
+    const def = (0, registry_1.getCardDef)(found.card.name);
     for (const ability of def?.abilities ?? []) {
         if (ability.timing === "fanfare") {
-            pushTrigger(state, instanceId, player, found.card.cardNo, ability, "fanfare", "ff");
+            pushTrigger(state, instanceId, player, found.card.name, ability, "fanfare", "ff");
         }
     }
 }
@@ -109,7 +132,7 @@ function queueStartOfEndAbilities(state, player) {
         for (const ability of def?.abilities ?? []) {
             if (ability.timing !== "startOfEnd")
                 continue;
-            pushTrigger(state, card.instanceId, player, card.cardNo, ability, "startOfEnd", "soe");
+            pushTrigger(state, card.instanceId, player, card.name, ability, "startOfEnd", "soe");
         }
     }
 }
@@ -129,7 +152,7 @@ function queueAllyFollowerEnterTriggers(state, enteredInstanceId, player) {
                 continue;
             if (ability.filter && !(0, conditions_1.cardMatchesFilter)(enteredNo, ability.filter))
                 continue;
-            pushTrigger(state, fieldCard.instanceId, player, fieldCard.cardNo, ability, "onAllyFollowerEnter", "afe", `afe:${idx}`, enteredInstanceId);
+            pushTrigger(state, fieldCard.instanceId, player, fieldCard.name, ability, "onAllyFollowerEnter", "afe", `afe:${idx}`, enteredInstanceId);
         }
     }
 }
@@ -168,7 +191,7 @@ function onCardEntersExAreaTriggers(state, instanceId, player) {
         for (const ability of def?.abilities ?? []) {
             if (!(0, passives_2.matchesExAreaEntryFilter)(ability, enteredNo))
                 continue;
-            pushTrigger(state, fieldCard.instanceId, player, fieldCard.cardNo, ability, "onExAreaEntry", `ex_${instanceId}`);
+            pushTrigger(state, fieldCard.instanceId, player, fieldCard.name, ability, "onExAreaEntry", `ex_${instanceId}`);
         }
     }
 }

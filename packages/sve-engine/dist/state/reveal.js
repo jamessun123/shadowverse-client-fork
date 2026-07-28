@@ -13,12 +13,12 @@ function shouldRevealBeforeHand(to, fromZone, explicit) {
         return false;
     return true;
 }
-function revealCard(state, owner, instanceId, cardNo) {
+function revealCard(state, owner, instanceId, name) {
     const next = structuredClone(state);
     const list = next.revealedCards ?? [];
     if (!list.some((r) => r.instanceId === instanceId)) {
-        next.revealedCards = [...list, { owner, instanceId, cardNo }];
-        next.eventLog.push({ type: "reveal", player: owner, data: { instanceId, cardNo } });
+        next.revealedCards = [...list, { owner, instanceId, name }];
+        next.eventLog.push({ type: "reveal", player: owner, data: { instanceId, name } });
     }
     return next;
 }

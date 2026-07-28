@@ -61,6 +61,39 @@ export function queueOnCardPlayed(
       pushTrigger(state, fieldCard.instanceId, player, cardNo, ability, "onCardPlayed", "ocp", key);
     }
 
+    // Passive grantOnCardPlayed is the hand-authored form of a persistent on-play trigger.
+    for (const [idx, ability] of (def?.abilities ?? []).entries()) {
+      if (ability.timing !== "passive" || ability.effect.op !== "grantOnCardPlayed") continue;
+      const granted = ability.effect;
+      if (granted.filter && !cardMatchesFilter(playedNo, granted.filter)) continue;
+      const key = `onCardPlayed:${idx}`;
+      if (
+        !canFireOnCardPlayedTrigger(fieldCard, key, {
+          oncePerTurn: granted.oncePerTurn,
+          maxPerTurn: granted.maxPerTurn,
+        })
+      ) {
+        continue;
+      }
+      const pseudoAbility: AbilityDefinition = {
+        timing: "onCardPlayed",
+        effect: granted.effect,
+        label: granted.label,
+        oncePerTurn: granted.oncePerTurn,
+        maxPerTurn: granted.maxPerTurn,
+      };
+      pushTrigger(
+        state,
+        fieldCard.instanceId,
+        player,
+        cardNo,
+        pseudoAbility,
+        "onCardPlayed",
+        "ocp",
+        key,
+      );
+    }
+
     for (const [gIdx, granted] of (fieldCard.grantedOnCardPlayed ?? []).entries()) {
       if (granted.filter && !cardMatchesFilter(playedNo, granted.filter)) continue;
       const key = `grantedOnCardPlayed:${gIdx}`;
@@ -90,7 +123,7 @@ export function queueLastWords(state: GameState, instanceId: string, player: Pla
   const found = findInstance(state, instanceId);
   if (!found) return;
   if (isBoxed(found.card, state)) return;
-  const cardNo = found.card.cardNo;
+  const cardNo = found.card.name;
   const def = getCardDef(cardNo);
   for (const ability of def?.abilities ?? []) {
     if (ability.timing === "lastWords") {
@@ -117,10 +150,10 @@ export function queueLastWords(state: GameState, instanceId: string, player: Pla
 export function queueFanfare(state: GameState, instanceId: string, player: PlayerId): void {
   const found = findInstance(state, instanceId);
   if (!found || isBoxed(found.card, state)) return;
-  const def = getCardDef(found.card.cardNo);
+  const def = getCardDef(found.card.name);
   for (const ability of def?.abilities ?? []) {
     if (ability.timing === "fanfare") {
-      pushTrigger(state, instanceId, player, found.card.cardNo, ability, "fanfare", "ff");
+      pushTrigger(state, instanceId, player, found.card.name, ability, "fanfare", "ff");
     }
   }
 }
@@ -131,7 +164,7 @@ export function queueStartOfEndAbilities(state: GameState, player: PlayerId): vo
     const def = getCardDef(resolveCardNo(state, card));
     for (const ability of def?.abilities ?? []) {
       if (ability.timing !== "startOfEnd") continue;
-      pushTrigger(state, card.instanceId, player, card.cardNo, ability, "startOfEnd", "soe");
+      pushTrigger(state, card.instanceId, player, card.name, ability, "startOfEnd", "soe");
     }
   }
 }
@@ -155,7 +188,7 @@ export function queueAllyFollowerEnterTriggers(
         state,
         fieldCard.instanceId,
         player,
-        fieldCard.cardNo,
+        fieldCard.name,
         ability,
         "onAllyFollowerEnter",
         "afe",
@@ -217,7 +250,7 @@ export function onCardEntersExAreaTriggers(
         state,
         fieldCard.instanceId,
         player,
-        fieldCard.cardNo,
+        fieldCard.name,
         ability,
         "onExAreaEntry",
         `ex_${instanceId}`,

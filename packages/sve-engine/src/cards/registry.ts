@@ -2,9 +2,9 @@ import * as fs from "fs";
 import * as path from "path";
 import { CardDefinition } from "../types";
 import { MVP_CARD_DEFS } from "./mvp-cards";
-import { buildReprintMap, cardIdentityKey, mergePrintingWithGameplay } from "./reprints";
 
-let scrapedCards: Record<string, CardDefinition> = {};
+let scrapedCards: Record<string, CardDefinition & { printings?: string[]; printingType?: string }> =
+  {};
 const cardsPath = path.join(__dirname, "..", "..", "data", "cards.json");
 const cardDefsDir = path.join(__dirname, "..", "..", "data", "card-defs");
 if (fs.existsSync(cardsPath)) {
@@ -18,17 +18,27 @@ if (fs.existsSync(cardDefsDir)) {
   }
 }
 
+/** Primary registry: exact card name → definition. */
 const registry = new Map<string, CardDefinition>();
+/** Optional lookup from printing code → name (for art / legacy callers). */
+const cardNoToName = new Map<string, string>();
 
-function toCardDef(raw: Record<string, unknown>): CardDefinition {
+function toCardDef(raw: Record<string, unknown>, name: string): CardDefinition {
+  const printingType =
+    (raw.printingType as CardDefinition["printingType"]) ||
+    (raw.type as CardDefinition["printingType"]);
   return {
-    cardNo: String(raw.cardNo),
-    name: String(raw.name),
+    cardNo: String(raw.cardNo || ""),
+    name,
     class: String(raw.class || "neutral"),
     cardType: (raw.cardType as CardDefinition["cardType"]) || "follower",
-    printingType: raw.type as CardDefinition["printingType"],
+    printingType,
     specialType:
-      raw.type === "base" ? undefined : (raw.specialType as CardDefinition["specialType"]),
+      printingType === "base"
+        ? undefined
+        : printingType === "token" || printingType === "evolved"
+          ? (printingType as CardDefinition["specialType"])
+          : (raw.specialType as CardDefinition["specialType"]),
     cost: raw.cost != null ? Number(raw.cost) : 0,
     attack: raw.attack != null ? Number(raw.attack) : undefined,
     defense: raw.defense != null ? Number(raw.defense) : undefined,
@@ -41,127 +51,115 @@ function toCardDef(raw: Record<string, unknown>): CardDefinition {
   };
 }
 
-const reprintMap = buildReprintMap(scrapedCards as Record<string, CardDefinition>);
-
-/** Hand-authored DSL may live on a promo/reprint cardNo while decks use the base printing. */
-const abilitiesByIdentity = new Map<string, CardDefinition["abilities"]>();
-const abilitiesByReprintTarget = new Map<string, CardDefinition["abilities"]>();
-for (const [cardNo, overlay] of Object.entries(handAuthored)) {
-  if (!overlay.abilities?.length) continue;
-  const scraped = scrapedCards[cardNo];
-  if (scraped) {
-    const key = cardIdentityKey(scraped);
-    if (!abilitiesByIdentity.has(key)) abilitiesByIdentity.set(key, overlay.abilities);
-    const reprintOf = (scraped as CardDefinition & { reprintOf?: string }).reprintOf;
-    if (reprintOf && !abilitiesByReprintTarget.has(reprintOf)) {
-      abilitiesByReprintTarget.set(reprintOf, overlay.abilities);
-    }
+function registerCardDef(name: string, def: CardDefinition): void {
+  registry.set(name, { ...def, name });
+  if (def.cardNo) cardNoToName.set(def.cardNo, name);
+  const printings = (def as CardDefinition & { printings?: string[] }).printings;
+  if (printings) {
+    for (const no of printings) cardNoToName.set(no, name);
   }
 }
 
-function resolveHandAuthoredAbilities(
-  cardNo: string,
-  printing: CardDefinition,
-  gameplayNo: string,
-): CardDefinition["abilities"] | undefined {
-  const handForPrinting = handAuthored[cardNo]?.abilities;
-  const handForGameplay = gameplayNo !== cardNo ? handAuthored[gameplayNo]?.abilities : undefined;
-  return (
-    handForPrinting ||
-    handForGameplay ||
-    abilitiesByReprintTarget.get(cardNo) ||
-    abilitiesByIdentity.get(cardIdentityKey(printing))
-  );
-}
-
-function registerCardDef(cardNo: string, def: CardDefinition): void {
-  registry.set(cardNo, def);
-}
-
-for (const raw of Object.values(scrapedCards)) {
-  const cardNo = String((raw as CardDefinition).cardNo);
-  const printing = toCardDef(raw as unknown as Record<string, unknown>);
-  const gameplayNo = reprintMap.get(cardNo) ?? cardNo;
-  const gameplaySource =
-    gameplayNo !== cardNo && scrapedCards[gameplayNo]
-      ? toCardDef(scrapedCards[gameplayNo] as unknown as Record<string, unknown>)
-      : printing;
-  const handForPrinting = handAuthored[cardNo];
-  const handForGameplay = gameplayNo !== cardNo ? handAuthored[gameplayNo] : undefined;
-  const handOverlay = {
-    ...(handForGameplay || {}),
-    ...(handForPrinting || {}),
-    abilities: resolveHandAuthoredAbilities(cardNo, printing, gameplayNo),
-    keywords: handForPrinting?.keywords || handForGameplay?.keywords,
-    evolvesFrom: handForPrinting?.evolvesFrom || handForGameplay?.evolvesFrom,
-    evolvesTo: handForPrinting?.evolvesTo || handForGameplay?.evolvesTo,
+for (const [name, raw] of Object.entries(scrapedCards)) {
+  const printing = toCardDef(raw as unknown as Record<string, unknown>, name);
+  const overlay = handAuthored[name] || {};
+  const merged: CardDefinition = {
+    ...printing,
+    ...overlay,
+    name,
+    cardNo: printing.cardNo,
+    abilities: overlay.abilities?.length ? overlay.abilities : printing.abilities,
+    keywords: overlay.keywords?.length ? overlay.keywords : printing.keywords,
+    evolvesFrom: overlay.evolvesFrom || printing.evolvesFrom,
+    evolvesTo: overlay.evolvesTo || printing.evolvesTo,
+    evolveCost: overlay.evolveCost ?? printing.evolveCost,
   };
-  registerCardDef(
-    cardNo,
-    mergePrintingWithGameplay(printing, gameplaySource, handOverlay as Partial<CardDefinition>),
-  );
+  if (overlay.cost != null && overlay.cost > 0) merged.cost = overlay.cost;
+  if (overlay.attack != null) merged.attack = overlay.attack;
+  if (overlay.defense != null) merged.defense = overlay.defense;
+  if (overlay.printingType) merged.printingType = overlay.printingType;
+  // Preserve printings list for art lookup
+  (merged as CardDefinition & { printings?: string[] }).printings = (
+    raw as { printings?: string[] }
+  ).printings;
+  registerCardDef(name, merged);
 }
 
 for (const def of MVP_CARD_DEFS) {
-  const extra = handAuthored[def.cardNo] || {};
-  registerCardDef(def.cardNo, { ...def, ...extra, abilities: extra.abilities || def.abilities });
+  const extra = handAuthored[def.name] || {};
+  registerCardDef(def.name, {
+    ...def,
+    ...extra,
+    name: def.name,
+    abilities: extra.abilities || def.abilities,
+  });
 }
 
-for (const [cardNo, overlay] of Object.entries(handAuthored)) {
-  if (registry.has(cardNo)) continue;
-  const gameplayNo = reprintMap.get(cardNo) ?? cardNo;
-  const base = registry.get(gameplayNo);
-  if (base) {
-    registerCardDef(cardNo, mergePrintingWithGameplay({ ...base, cardNo, name: base.name }, base, overlay));
-    continue;
-  }
-  const stub = genericStub(cardNo);
-  registerCardDef(cardNo, mergePrintingWithGameplay(stub, stub, overlay as Partial<CardDefinition>));
-}
-
-const OFFICIAL_CARD_NO = /^[A-Z0-9]+-[A-Z0-9]+EN$/i;
-
-function genericStub(cardNo: string): CardDefinition {
-  const raw = scrapedCards[cardNo] as unknown as Record<string, unknown> | undefined;
-  const scrapedName = raw?.name != null ? String(raw.name) : cardNo;
-  const isEvolved =
-    scrapedName.includes("Evolved") || String(raw?.type || "") === "evolved";
-  const rawType = String(raw?.cardType || raw?.type || "");
-  const cardType: CardDefinition["cardType"] =
-    rawType === "spell" || rawType === "amulet" ? rawType : "follower";
-  return {
-    cardNo,
-    name: scrapedName,
-    class: String(raw?.class || "neutral"),
-    cardType,
-    cost: raw?.cost != null ? Number(raw.cost) : isEvolved ? 0 : 2,
-    attack: raw?.attack != null ? Number(raw.attack) : isEvolved ? 3 : 2,
-    defense: raw?.defense != null ? Number(raw.defense) : isEvolved ? 3 : 2,
-    traits: (raw?.traits as string[]) || [],
-    keywords: (raw?.keywords as CardDefinition["keywords"]) || [],
-    cardText: String(raw?.cardText || ""),
+for (const [name, overlay] of Object.entries(handAuthored)) {
+  if (registry.has(name)) continue;
+  const stub: CardDefinition = {
+    cardNo: "",
+    name,
+    class: String(overlay.class || "neutral"),
+    cardType: (overlay.cardType as CardDefinition["cardType"]) || "follower",
+    printingType: overlay.printingType,
+    cost: overlay.cost != null ? Number(overlay.cost) : 0,
+    attack: overlay.attack,
+    defense: overlay.defense,
+    traits: overlay.traits || [],
+    keywords: overlay.keywords || [],
+    cardText: overlay.cardText || "",
+    evolvesFrom: overlay.evolvesFrom,
+    evolvesTo: overlay.evolvesTo,
+    evolveCost: overlay.evolveCost,
+    abilities: overlay.abilities,
   };
+  registerCardDef(name, { ...stub, ...overlay, name, abilities: overlay.abilities || stub.abilities });
 }
 
-export function getCardDef(cardNo: string): CardDefinition | undefined {
-  const existing = registry.get(cardNo);
-  if (existing) return existing;
-
-  const gameplayNo = reprintMap.get(cardNo);
-  if (gameplayNo && gameplayNo !== cardNo) {
-    const gameplay = registry.get(gameplayNo);
-    if (gameplay) {
-      const stub = genericStub(cardNo);
-      return mergePrintingWithGameplay(stub, gameplay, handAuthored[cardNo] || handAuthored[gameplayNo]);
-    }
+/**
+ * Look up a card definition by exact card name.
+ * Also accepts a legacy printing code (BP07-069EN).
+ * Token DSL refs may omit the trailing " TOKEN" suffix (e.g. "Assembly Droid").
+ */
+export function getCardDef(nameOrCardNo: string): CardDefinition | undefined {
+  if (registry.has(nameOrCardNo)) return registry.get(nameOrCardNo);
+  const mapped = cardNoToName.get(nameOrCardNo);
+  if (mapped) return registry.get(mapped);
+  if (nameOrCardNo && !/\s+TOKEN$/i.test(nameOrCardNo)) {
+    const asToken = `${nameOrCardNo} TOKEN`;
+    if (registry.has(asToken)) return registry.get(asToken);
   }
-
-  if (OFFICIAL_CARD_NO.test(cardNo)) return genericStub(cardNo);
   return undefined;
 }
 
-export function getGameplayCardNo(cardNo: string): string {
-  return reprintMap.get(cardNo) ?? cardNo;
+/**
+ * Resolve a summon/token reference to the registry card name.
+ * Prefers the "… TOKEN" printing when both a base card and token share a name
+ * (e.g. Assault Tentacle).
+ */
+export function resolveTokenName(nameOrCardNo: string): string {
+  if (!nameOrCardNo) return nameOrCardNo;
+  const stripped = nameOrCardNo.replace(/\s+TOKEN$/i, "").trim();
+  const withToken = `${stripped} TOKEN`;
+  if (registry.has(withToken)) return withToken;
+  if (registry.has(stripped)) return stripped;
+  const mapped = cardNoToName.get(nameOrCardNo) || cardNoToName.get(stripped);
+  if (mapped) return mapped;
+  return nameOrCardNo;
+}
+
+/** Resolve a printing code to its gameplay card name. */
+export function getNameForCardNo(cardNo: string): string | undefined {
+  return cardNoToName.get(cardNo);
+}
+
+/**
+ * @deprecated Prefer comparing names directly. Kept for call sites that still
+ * pass printing codes; returns the gameplay name for both sides.
+ */
+export function getGameplayCardNo(nameOrCardNo: string): string {
+  return getCardDef(nameOrCardNo)?.name ?? nameOrCardNo;
 }
 
 export function getAllCardDefs(): CardDefinition[] {
@@ -169,9 +167,9 @@ export function getAllCardDefs(): CardDefinition[] {
 }
 
 export function registerCard(def: CardDefinition): void {
-  registerCardDef(def.cardNo, def);
+  registerCardDef(def.name, def);
 }
 
 export function getCardByName(name: string): CardDefinition | undefined {
-  return [...registry.values()].find((c) => c.name === name);
+  return registry.get(name);
 }

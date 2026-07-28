@@ -40,6 +40,11 @@ export const CLASS_COLORS = {
 
 // Human-readable set names, keyed by the filter value used in CreateDeck.
 export const SET_LABELS = {
+  "set 21": "Academy Royale",
+  "set 20": "Omens and Heirs",
+  "set 19": "Eightfold Retribution",
+  "set 18": "Neometropolis",
+  pcr: "Princess Connect! Re:Dive",
   "set 17": "Convergent Destinies",
   "set 16": "New World Genesis",
   "set 15": "Trial of the Omens",
@@ -67,7 +72,7 @@ export const SET_LABELS = {
 
 // Ordered list of sets for the dropdown (newest first, matching the old UI).
 export const SET_ORDER = [
-  "set 17", "set 16", "set 15", "set 14", "uma2", "set 13", "set 12", "sea",
+  "set 21", "set 20", "set 19", "set 18", "pcr", "set 17", "set 16", "set 15", "set 14", "uma2", "set 13", "set 12", "sea",
   "set 11", "vg", "set 10", "set 9", "set 8", "set 7", "idol", "idol2",
   "set 6", "set 5", "set 4", "set 3", "uma", "set 2", "set 1",
 ];

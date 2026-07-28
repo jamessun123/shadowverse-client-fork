@@ -27,6 +27,17 @@ const SOOT = "BP14-T01EN";
 const ASSEMBLY = "BP17-T17EN";
 const REPAIR = "BP17-T18EN";
 const DROID = "BP12-T10EN";
+const MONO_DROID = "BP07-T01EN";
+const OVERRIDES = path.join(
+  __dirname,
+  "..",
+  "..",
+  "packages",
+  "sve-engine",
+  "data",
+  "card-defs",
+  "hand-authored-overrides.json",
+);
 
 function parseEvolveCost(text) {
   const m = (text || "").match(/\[evolve\]\s*\[cost(\d+)\]/i);
@@ -617,7 +628,7 @@ function buildAbilities(cardNo, card, text) {
                 label: "Summon Mono from cemetery",
                 effect: {
                   op: "tutorFromCemetery",
-                  filter: { cardNo: "BP07-SL13EN" },
+                  filter: { cardNo: "BP07-069EN" },
                   to: "field",
                 },
               },
@@ -780,7 +791,7 @@ function buildAbilities(cardNo, card, text) {
         { timing: "evolve", effect: { op: "passiveKeywords", keywords: [] } },
       ];
 
-    case "BP07-SL13EN":
+    case "BP07-069EN":
       return [
         {
           timing: "evolve",
@@ -795,7 +806,7 @@ function buildAbilities(cardNo, card, text) {
             banishFromCemetery: { trait: "Machina" },
             banishCount: 2,
           },
-          effect: { op: "summon", tokenCardNo: DROID, count: 1, zone: "field" },
+          effect: { op: "summon", tokenCardNo: MONO_DROID, count: 1, zone: "field" },
         },
       ];
 
@@ -893,7 +904,7 @@ function buildAbilities(cardNo, card, text) {
         },
       ];
 
-    case "BP07-U05EN":
+    case "BP07-070EN":
       return [
         {
           timing: "activated",
@@ -1034,7 +1045,8 @@ function extraKeywords(cardNo, card, text) {
   }
   if (/\bWard\b/i.test(text)) kw.add("ward");
   if (/\bStrike\b/i.test(text) || /Strike\s*-/i.test(text)) kw.add("strike");
-  if (cardNo === "BP07-U05EN") kw.add("storm");
+  if (cardNo === "BP07-070EN") kw.add("storm");
+  if (cardNo === "BP07-070EN") kw.add("rush");
   if (cardNo === "BP12-082EN") kw.add("ward");
   if (cardNo === "BP17-083EN") kw.add("ward");
   if (cardNo === "BP07-037EN") kw.add("rush");
@@ -1054,9 +1066,16 @@ function main() {
   const existing = fs.existsSync(EXISTING)
     ? JSON.parse(fs.readFileSync(EXISTING, "utf8"))
     : {};
+  const overrideKeys = new Set(
+    fs.existsSync(OVERRIDES)
+      ? Object.keys(JSON.parse(fs.readFileSync(OVERRIDES, "utf8")))
+      : [],
+  );
 
   const out = {};
   for (const card of scraped) {
+    // Canonical DSL for these cards lives in hand-authored-overrides.json.
+    if (overrideKeys.has(card.cardNo)) continue;
     const text = card.cardText || "";
     const entry = statsFromScrape(card);
     entry.keywords = extraKeywords(card.cardNo, card, text);
@@ -1070,6 +1089,7 @@ function main() {
 
   // Preserve token defs not in latest scrape batch.
   for (const [cardNo, def] of Object.entries(existing)) {
+    if (overrideKeys.has(cardNo)) continue;
     if (!out[cardNo] && (cardNo.includes("-T") || cardNo.startsWith("PR-"))) {
       out[cardNo] = def;
     }
@@ -1077,6 +1097,7 @@ function main() {
 
   fs.writeFileSync(OUTPUT, JSON.stringify(out, null, 2) + "\n");
   console.log(`Wrote ${Object.keys(out).length} card defs to ${OUTPUT}`);
+  console.log(`Skipped ${overrideKeys.size} cards owned by hand-authored-overrides.json`);
 }
 
 main();

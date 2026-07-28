@@ -88,13 +88,13 @@ function enforceFieldLimits(state) {
         const p = next.players[pid];
         while (p.zones.field.length > p.fieldLimit) {
             const excess = p.zones.field.pop();
-            const dest = (0, tokens_1.destinationForDestroyedCard)(excess.cardNo);
+            const dest = (0, tokens_1.destinationForDestroyedCard)(excess.name);
             (0, card_reset_1.resetCardInstanceState)(excess);
             p.zones[dest].push(excess);
         }
         while (p.zones.exArea.length > p.exLimit) {
             const excess = p.zones.exArea.pop();
-            const dest = (0, tokens_1.destinationForDestroyedCard)(excess.cardNo);
+            const dest = (0, tokens_1.destinationForDestroyedCard)(excess.name);
             (0, card_reset_1.resetCardInstanceState)(excess);
             p.zones[dest].push(excess);
         }

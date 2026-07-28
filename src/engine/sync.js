@@ -10,6 +10,9 @@ import { engineViewToRedux } from "./adapter";
 import { getNameByCardNoClient } from "./cardLookup";
 import { store } from "../redux/store";
 
+/** Reveals already shown this game (by instanceId). Prevents re-animating on later syncs. */
+const shownRevealIds = new Set();
+
 /**
  * Apply authoritative engine payload to Redux.
  * Accepts either a room broadcast `{ 0, 1, seq }` or a single `PlayerView`.
@@ -40,6 +43,7 @@ export function applyEnginePayload(dispatch, payload, knownSlot = null) {
   const freshGame =
     view.state?.phase === "mulligan" && view.state?.turnNumber === 0 && seq === 1;
   if (freshGame) {
+    shownRevealIds.clear();
     dispatch(resetEngine());
   }
 
@@ -52,12 +56,19 @@ export function applyEnginePayload(dispatch, payload, knownSlot = null) {
   if (view.opponentLeader) dispatch(setEnemyLeader(view.opponentLeader));
 
   const self = view.self;
-  const opponentReveals = (view.state?.revealedCards ?? []).filter((r) => r.owner !== self);
-  if (opponentReveals.length > 0) {
-    const latest = opponentReveals[opponentReveals.length - 1];
-    const name = getNameByCardNoClient(latest.cardNo) || latest.cardNo;
+  const reveals = view.state?.revealedCards ?? [];
+  const opponentReveals = reveals.filter((r) => r.owner !== self);
+  const newReveal = opponentReveals.find((r) => r.instanceId && !shownRevealIds.has(r.instanceId));
+
+  if (newReveal) {
+    shownRevealIds.add(newReveal.instanceId);
+    const key = newReveal.name || newReveal.cardNo;
+    const name = (getNameByCardNoClient(key) || key || "").replace(/\s+TOKEN$/i, "");
     dispatch(setEnemyCard(name));
     dispatch(setShowEnemyCard(true));
+  } else if (opponentReveals.length === 0 && store.getState().card.showEnemyCard) {
+    // Engine cleared reveals after the action; hide if still open from a prior show.
+    // Keep visible briefly via UI auto-dismiss; do not force-close mid-animation here.
   }
 
   return true;

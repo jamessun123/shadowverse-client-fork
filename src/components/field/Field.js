@@ -647,6 +647,15 @@ export default function Field({
     dispatch(setShowEnemyCard(false));
   };
 
+  // Auto-dismiss opponent reveal after a short beat so it does not linger.
+  useEffect(() => {
+    if (!reduxShowEnemyCard) return undefined;
+    const t = setTimeout(() => {
+      dispatch(setShowEnemyCard(false));
+    }, 2200);
+    return () => clearTimeout(t);
+  }, [reduxShowEnemyCard, reduxEnemyCard, dispatch]);
+
   const cardPos = (idx) => {
     if (idx === -1) return -1;
     else if (idx < 5) return idx + 5;
@@ -1655,71 +1664,64 @@ export default function Field({
         </Box>
       </Modal>
 
-      {/* Show Enemy Card Modal */}
-
+      {/* Opponent reveal — small card docked to the side (once per reveal). */}
       <Modal
         open={enemyCardModalOpen}
         onClose={handleShowCardModalClose}
-        aria-labelledby="modal-modal-title"
-        aria-describedby="modal-modal-description"
+        aria-labelledby="reveal-card-title"
+        aria-describedby="reveal-card-description"
+        hideBackdrop
+        disableScrollLock
         sx={{
+          pointerEvents: "none",
           "& > .MuiBackdrop-root": {
-            backgroundColor: "transparent",
+            display: "none",
           },
         }}
       >
         <Box
           sx={{
-            position: "relative",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            backgroundColor: "transparent",
-            boxShadow: 24,
-            // p: 3,
-            width: 0,
-            border: "none",
+            position: "fixed",
+            right: { xs: 12, md: 28 },
+            bottom: { xs: 96, md: 120 },
+            width: "auto",
+            outline: "none",
+            pointerEvents: "auto",
           }}
         >
-          <HideUiButton
-            sx={{ position: "fixed", top: 16, left: 16, zIndex: 1400 }}
-          />
-          <CardMUI
+          <Typography
+            id="reveal-card-title"
             sx={{
-              backgroundColor: "transparent",
-              width: "100%",
-              // height: "80vh",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              border: "none",
-              overflow: "visible",
+              color: "rgba(255,255,255,0.9)",
+              fontFamily: "Noto Serif JP, serif",
+              fontSize: 14,
+              mb: 0.5,
+              textShadow: "0 1px 3px #000",
             }}
-            variant="outlined"
           >
-            <motion.div
-              initial={{ scale: 1.0, rotateY: 180 }}
-              transition={{ duration: 0.8 }}
-              animate={{ scale: 4.5, rotateY: 0 }}
-              // variants={{
-              //   start: {
-              //     scale: 4.5,
-              //     rotateY: [0, 360],
-              //     transition: {
-              //       duration: 0.8,
-              //       ease: "linear",
-              //     },
-              //   },
-              // }}
-              // animate={["start"]}
-            >
-              <img
-                className={"cardStyle"}
-                src={cardImage(reduxEnemyCard)}
-                alt={reduxEnemyCard}
-              />
-            </motion.div>
-          </CardMUI>
+            Revealed
+          </Typography>
+          <motion.div
+            key={reduxEnemyCard}
+            initial={{ opacity: 0, x: 40, scale: 0.85 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            transition={{ duration: 0.35 }}
+          >
+            <img
+              id="reveal-card-description"
+              className={"cardStyle"}
+              src={cardImage(reduxEnemyCard)}
+              alt={reduxEnemyCard}
+              style={{
+                height: 160,
+                width: "auto",
+                borderRadius: 8,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.55)",
+                cursor: "pointer",
+              }}
+              onClick={handleShowCardModalClose}
+            />
+          </motion.div>
         </Box>
       </Modal>
 

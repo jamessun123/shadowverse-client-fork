@@ -1,5 +1,5 @@
 import { getCardDef } from "../cards/registry";
-import { normalizeIdentityName } from "../cards/reprints";
+import { cardIdentityKey, normalizeIdentityName } from "../cards/reprints";
 import { Condition, DeckFilter, GameState, PlayerId } from "../types";
 import { hasNamedFollowerOnFieldByIdentity } from "./passives";
 import {
@@ -14,13 +14,24 @@ import {
 export function cardMatchesFilter(cardNo: string, filter: DeckFilter): boolean {
   const def = getCardDef(cardNo);
   if (!def) return false;
-  if (filter.cardNo && cardNo !== filter.cardNo) return false;
+  const filterName = filter.name || filter.cardNo;
+  if (filterName) {
+    // Exact name match (or legacy printing code → same identity key).
+    const filterDef = getCardDef(filterName);
+    if (!filterDef) return false;
+    if (cardIdentityKey(def) !== cardIdentityKey(filterDef)) return false;
+  }
   if (filter.trait && !def.traits?.includes(filter.trait)) return false;
   if (filter.cardClass && def.class !== filter.cardClass) return false;
   const cost = resolveCardDefCost(cardNo);
   if (filter.maxCost != null && cost > filter.maxCost) return false;
   if (filter.minCost != null && cost < filter.minCost) return false;
   if (filter.cardType && def.cardType !== filter.cardType) return false;
+  if (filter.identityName) {
+    if (normalizeIdentityName(def.name) !== normalizeIdentityName(filter.identityName)) {
+      return false;
+    }
+  }
   if (filter.identityNameContains) {
     const needle = filter.identityNameContains.toLowerCase();
     if (!normalizeIdentityName(def.name).toLowerCase().includes(needle)) return false;
@@ -52,7 +63,7 @@ export function evalCondition(state: GameState, player: PlayerId, condition: Con
     case "combo":
       return getPlayer(state, player).flags.cardsPlayedThisTurn >= condition.count;
     case "namedFollowerOnField":
-      return getPlayer(state, player).zones.field.some((c) => c.cardNo === condition.cardNo);
+      return getPlayer(state, player).zones.field.some((c) => c.name === condition.name);
     case "namedFollowerOnFieldByName":
       return hasNamedFollowerOnFieldByIdentity(state, player, condition.identityName);
     case "notEnteredFromHand": {
@@ -60,6 +71,12 @@ export function evalCondition(state: GameState, player: PlayerId, condition: Con
       if (!sourceId) return false;
       const found = findInstance(state, sourceId);
       return found?.card.enteredFromHand === false;
+    }
+    case "enteredFromCemetery": {
+      const sourceId = state.resolutionContext?.sourceInstanceId;
+      if (!sourceId) return false;
+      const found = findInstance(state, sourceId);
+      return found?.card.enteredFromCemetery === true;
     }
     case "opponentCemeteryMin": {
       const opp = opponentOf(player);
@@ -79,24 +96,30 @@ export function evalCondition(state: GameState, player: PlayerId, condition: Con
       return countTraitInZone(state, player, "cemetery", condition.trait) >= condition.count;
     case "ownDeckTraitMin":
       return countTraitInZone(state, player, "deck", condition.trait) >= condition.count;
-    case "fieldTraitMin":
-      return countTraitInZone(state, player, "field", condition.trait) >= condition.count;
+    case "fieldTraitMin": {
+      // Card text usually means followers (e.g. Mono: "5 Machina followers").
+      const count = getPlayer(state, player).zones.field.filter((c) => {
+        const def = getCardDef(resolveCardNo(state, c));
+        return def?.cardType === "follower" && def.traits?.includes(condition.trait);
+      }).length;
+      return count >= condition.count;
+    }
     case "handTraitMin":
       return countTraitInZone(state, player, "hand", condition.trait) >= condition.count;
     case "ownCemeteryClassMin":
       return getPlayer(state, player).zones.cemetery.filter(
-        (c) => getCardDef(c.cardNo)?.class === condition.cardClass,
+        (c) => getCardDef(c.name)?.class === condition.cardClass,
       ).length >= condition.count;
     case "ownDeckClassMin":
       return getPlayer(state, player).zones.deck.filter(
-        (c) => getCardDef(c.cardNo)?.class === condition.cardClass,
+        (c) => getCardDef(c.name)?.class === condition.cardClass,
       ).length >= condition.count;
     case "fieldFollowerMinCost": {
       let matches = 0;
       for (const card of getPlayer(state, player).zones.field) {
         const def = getCardDef(resolveCardNo(state, card));
         if (!def?.traits?.includes(condition.trait)) continue;
-        if (resolveCardDefCost(card.cardNo) >= condition.minCost) matches += 1;
+        if (resolveCardDefCost(card.name) >= condition.minCost) matches += 1;
       }
       return matches >= condition.count;
     }
@@ -105,7 +128,7 @@ export function evalCondition(state: GameState, player: PlayerId, condition: Con
     case "buriedAtLeastCost":
       return (state.resolutionContext?.buriedCosts ?? []).some((c) => c >= condition.cost);
     case "discardedCardType": {
-      const cardNo = state.resolutionContext?.lastDiscardedCardNo;
+      const cardNo = state.resolutionContext?.lastDiscardedCardName;
       if (!cardNo) return false;
       return getCardDef(cardNo)?.cardType === condition.cardType;
     }

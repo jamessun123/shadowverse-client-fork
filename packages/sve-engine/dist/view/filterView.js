@@ -12,16 +12,16 @@ function createPlayerView(state, self) {
     const view = structuredClone(state);
     view.players[opponent].zones.hand = view.players[opponent].zones.hand.map((c) => ({
         ...c,
-        cardNo: "HIDDEN",
+        name: "HIDDEN",
     }));
     view.players[self].zones.evolveDeck = view.players[self].zones.evolveDeck;
     view.players[opponent].zones.evolveDeck = view.players[opponent].zones.evolveDeck.map((c) => ({
         ...c,
-        cardNo: "HIDDEN",
+        name: "HIDDEN",
     }));
     view.players[opponent].zones.deck = view.players[opponent].zones.deck.map((c) => ({
         ...c,
-        cardNo: "HIDDEN",
+        name: "HIDDEN",
     }));
     const legalActions = [];
     const combatQuickWindow = state.combat?.phase === "quickWindow";
@@ -30,8 +30,8 @@ function createPlayerView(state, self) {
         const pp = state.players[self].pp;
         const p = state.players[self];
         for (const card of p.zones.hand) {
-            const cost = (0, queries_1.getEffectivePlayCost)(card, card.cardNo, state, self, "hand");
-            if (pp >= cost && (0, resolver_1.canPlayCardFromZones)(state, self, card.cardNo)) {
+            const cost = (0, queries_1.getEffectivePlayCost)(card, card.name, state, self, "hand");
+            if (pp >= cost && (0, resolver_1.canPlayCardFromZones)(state, self, card.name)) {
                 legalActions.push(`PLAY:${card.instanceId}`);
             }
             const handActivated = (0, queries_1.getActivatedAbilities)(state, card, self, "hand");
@@ -43,8 +43,8 @@ function createPlayerView(state, self) {
             }
         }
         for (const card of p.zones.exArea) {
-            const cost = (0, queries_1.getEffectivePlayCost)(card, card.cardNo, state, self, "exArea");
-            if (pp >= cost && (0, resolver_1.canPlayCardFromZones)(state, self, card.cardNo)) {
+            const cost = (0, queries_1.getEffectivePlayCost)(card, card.name, state, self, "exArea");
+            if (pp >= cost && (0, resolver_1.canPlayCardFromZones)(state, self, card.name)) {
                 legalActions.push(`PLAY:${card.instanceId}`);
             }
         }
@@ -86,7 +86,7 @@ function createPlayerView(state, self) {
                 (0, queries_1.canEvolveFollower)(state, self, card.instanceId)) {
                 const evoMatch = (0, queries_1.findMatchingEvolveCard)(state, self, card.instanceId);
                 if (evoMatch) {
-                    const cost = (0, queries_1.getEvolveCost)(evoMatch.cardNo, card.cardNo);
+                    const cost = (0, queries_1.getEvolveCost)(evoMatch.name, card.name);
                     const canSuper = (0, queries_1.canSuperEvolveNow)(state, self);
                     const ppPay = (0, queries_1.computeEvolvePayment)(cost, pp, p.evoPoints, false);
                     const epPay = (0, queries_1.computeEvolvePayment)(cost, pp, p.evoPoints, true);
@@ -116,35 +116,32 @@ function createPlayerView(state, self) {
     }
     if (state.quickWindow && state.quickWindowPlayer === self && !state.pendingChoices) {
         const pp = state.players[self].pp;
-        let hasQuickPlay = false;
         const quickZones = [
             ...state.players[self].zones.hand.map((card) => ({ card, fromZone: "hand" })),
             ...state.players[self].zones.exArea.map((card) => ({ card, fromZone: "exArea" })),
         ];
         for (const { card, fromZone } of quickZones) {
-            const def = (0, registry_1.getCardDef)(card.cardNo);
+            const def = (0, registry_1.getCardDef)(card.name);
             if (!def?.abilities?.some((a) => a.quick))
                 continue;
-            const cost = (0, queries_1.getEffectivePlayCost)(card, card.cardNo, state, self, fromZone);
-            if (pp >= cost && (0, resolver_1.canPlayCardFromZones)(state, self, card.cardNo)) {
+            const cost = (0, queries_1.getEffectivePlayCost)(card, card.name, state, self, fromZone);
+            if (pp >= cost && (0, resolver_1.canPlayCardFromZones)(state, self, card.name)) {
                 legalActions.push(`QUICK_PLAY:${card.instanceId}`);
-                hasQuickPlay = true;
             }
         }
-        if (hasQuickPlay) {
-            legalActions.push("PASS_QUICK_WINDOW");
-        }
+        // Always allow pass so the window can end after playing the last playable quick.
+        legalActions.push("PASS_QUICK_WINDOW");
     }
     if (state.pendingChoices?.player === self) {
         legalActions.push("CHOICE_REQUIRED");
     }
     const exPlayCosts = {};
     for (const card of state.players[self].zones.exArea) {
-        exPlayCosts[card.instanceId] = (0, queries_1.getEffectivePlayCost)(card, card.cardNo, state, self, "exArea");
+        exPlayCosts[card.instanceId] = (0, queries_1.getEffectivePlayCost)(card, card.name, state, self, "exArea");
     }
     const opponentExPlayCosts = {};
     for (const card of state.players[opponent].zones.exArea) {
-        opponentExPlayCosts[card.instanceId] = (0, queries_1.getEffectivePlayCost)(card, card.cardNo, state, opponent, "exArea");
+        opponentExPlayCosts[card.instanceId] = (0, queries_1.getEffectivePlayCost)(card, card.name, state, opponent, "exArea");
     }
     return {
         self,

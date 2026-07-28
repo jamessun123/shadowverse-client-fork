@@ -1,4 +1,4 @@
-import { getCardDef } from "../cards/registry";
+import { getCardDef, resolveTokenName } from "../cards/registry";
 
 import { onCardEntersExArea, onFollowerEntersField, queueLastWords } from "../rules/confirmation";
 
@@ -165,13 +165,13 @@ function resolveDamageAmount(state: GameState, player: PlayerId, amount: DamageA
     const sourceId = state.resolutionContext?.sourceInstanceId;
     return getPlayer(state, player).zones.field.filter((c) => {
       if (c.instanceId === sourceId) return false;
-      const def = getCardDef(c.cardNo);
+      const def = getCardDef(c.name);
       return def?.traits?.includes(amount.trait);
     }).length;
   }
   if (amount.op === "fieldTraitCount") {
     return getPlayer(state, player).zones.field.filter((c) => {
-      const def = getCardDef(c.cardNo);
+      const def = getCardDef(c.name);
       return def?.traits?.includes(amount.trait);
     }).length;
   }
@@ -184,7 +184,7 @@ function promptSelectZoneCards(
   fromZone: "cemetery" | "hand" | "exArea" | "field",
   count: number,
   action: "banish" | "discard" | "bury",
-  matches: { instanceId: string; cardNo: string }[],
+  matches: { instanceId: string; name: string }[],
   resumeActivate?: {
     sourceInstanceId: string;
     zone: "field" | "cemetery" | "exArea" | "hand";
@@ -229,9 +229,9 @@ function labelForInstance(state: GameState, id: string): string {
 
   if (!found) return id.slice(0, 8);
 
-  const def = getCardDef(found.card.cardNo);
+  const def = getCardDef(found.card.name);
 
-  const name = def?.name || found.card.cardNo;
+  const name = def?.name || found.card.name;
 
   const { atk, def: defense } = getEffectiveStats(found.card, state);
 
@@ -265,7 +265,7 @@ function promptSelectTarget(
       return {
         instanceId,
         label: labelForInstance(next, instanceId),
-        cardNo: found?.card.cardNo,
+        name: found?.card.name,
       };
     }),
   });
@@ -276,15 +276,15 @@ function promptSelectTarget(
 
 
 
-function zoneCardOptions(cards: { instanceId: string; cardNo: string }[]) {
+function zoneCardOptions(cards: { instanceId: string; name: string }[]) {
 
   return cards.map((c) => ({
 
     instanceId: c.instanceId,
 
-    label: getCardDef(c.cardNo)?.name || c.cardNo,
+    label: getCardDef(c.name)?.name || c.name,
 
-    cardNo: c.cardNo,
+    name: c.name,
 
   }));
 
@@ -302,7 +302,7 @@ function promptSelectZoneCard(
 
   to: "hand" | "exArea" | "field",
 
-  matches: { instanceId: string; cardNo: string }[],
+  matches: { instanceId: string; name: string }[],
 
   optional?: boolean,
 
@@ -337,7 +337,7 @@ function promptSearchDeckTop(
 
   player: PlayerId,
 
-  top: { instanceId: string; cardNo: string }[],
+  top: { instanceId: string; name: string }[],
 
   filter: DeckFilter,
 
@@ -368,9 +368,9 @@ function promptSearchDeckTop(
     reasonLabel: "Search deck",
     options: top.map((c) => ({
       instanceId: c.instanceId,
-      label: getCardDef(c.cardNo)?.name || c.cardNo,
-      cardNo: c.cardNo,
-      eligible: cardMatchesFilter(c.cardNo, filter),
+      label: getCardDef(c.name)?.name || c.name,
+      name: c.name,
+      eligible: cardMatchesFilter(c.name, filter),
     })),
   });
 
@@ -381,7 +381,7 @@ function promptSearchDeckTop(
 function promptSelectDeckSummon(
   state: GameState,
   player: PlayerId,
-  top: { instanceId: string; cardNo: string }[],
+  top: { instanceId: string; name: string }[],
   filter: DeckFilter,
   maxTotalCost: number,
   remainderTo: "cemetery" | "deckBottom",
@@ -397,10 +397,10 @@ function promptSelectDeckSummon(
     reasonLabel: "Summon followers from deck",
     options: top.map((c) => ({
       instanceId: c.instanceId,
-      label: getCardDef(c.cardNo)?.name || c.cardNo,
-      cardNo: c.cardNo,
-      cost: resolveCardDefCost(c.cardNo),
-      eligible: cardMatchesFilter(c.cardNo, filter),
+      label: getCardDef(c.name)?.name || c.name,
+      name: c.name,
+      cost: resolveCardDefCost(c.name),
+      eligible: cardMatchesFilter(c.name, filter),
     })),
   });
   return next;
@@ -474,6 +474,16 @@ export function moveZoneCardTo(
       list.push(card);
     } else {
       p.zones.field.push(card);
+      if (fromZone === "cemetery") {
+        card.enteredFromCemetery = true;
+        card.enteredFromHand = false;
+      } else if (fromZone === "hand") {
+        card.enteredFromHand = true;
+        card.enteredFromCemetery = false;
+      } else {
+        card.enteredFromHand = false;
+        card.enteredFromCemetery = false;
+      }
       onFollowerEntersField(next, card.instanceId, player);
     }
 
@@ -530,19 +540,19 @@ function canSatisfyOptionalCost(state: GameState, player: PlayerId, effect: Effe
     case "discardFromHand": {
       const need = effect.count ?? 1;
       const matches = getPlayer(state, player).zones.hand.filter((c) =>
-        cardMatchesFilter(c.cardNo, effect.filter),
+        cardMatchesFilter(c.name, effect.filter),
       );
       return matches.length >= need;
     }
     case "selectFromHand":
       return getPlayer(state, player).zones.hand.some((c) =>
-        cardMatchesFilter(c.cardNo, effect.filter),
+        cardMatchesFilter(c.name, effect.filter),
       );
     case "banishFromExArea": {
       const need = effect.count ?? 1;
       return (
         getPlayer(state, player).zones.exArea.filter((c) =>
-          cardMatchesFilter(c.cardNo, effect.filter),
+          cardMatchesFilter(c.name, effect.filter),
         ).length >= need
       );
     }
@@ -550,12 +560,18 @@ function canSatisfyOptionalCost(state: GameState, player: PlayerId, effect: Effe
       const need = effect.count ?? 1;
       return (
         getPlayer(state, player).zones.cemetery.filter((c) =>
-          cardMatchesFilter(c.cardNo, effect.filter),
+          cardMatchesFilter(c.name, effect.filter),
         ).length >= need
       );
     }
     case "spendPp":
       return getPlayer(state, player).pp >= effect.amount;
+    case "burySelf": {
+      const sourceId = state.resolutionContext?.sourceInstanceId;
+      if (!sourceId) return false;
+      const found = findInstance(state, sourceId);
+      return Boolean(found && found.zone === "field" && found.player === player);
+    }
     case "sequence":
       return effect.steps.every((step) => canSatisfyOptionalCost(state, player, step));
     default:
@@ -583,7 +599,7 @@ export function resolveEffect(
       resumeAfterChoice: next.resolutionContext?.resumeAfterChoice,
       forcedTargetId: next.resolutionContext?.forcedTargetId,
       buriedCosts: next.resolutionContext?.buriedCosts,
-      lastDiscardedCardNo: next.resolutionContext?.lastDiscardedCardNo,
+      lastDiscardedCardName: next.resolutionContext?.lastDiscardedCardName,
       deferTriggers: true,
     };
   }
@@ -717,7 +733,7 @@ export function resolveEffect(
       const sourceId = next.resolutionContext?.sourceInstanceId || "effect";
       for (const card of p.zones.field) {
         if (effect.excludeSelf && card.instanceId === sourceId) continue;
-        const def = getCardDef(card.cardNo);
+        const def = getCardDef(card.name);
         if (!def?.traits?.includes(effect.trait)) continue;
         card.modifiers.push({ atk: effect.atk ?? 0, def: effect.def ?? 0, sourceId });
         if (effect.keyword && !card.grantedKeywords.includes(effect.keyword)) {
@@ -834,9 +850,10 @@ export function resolveEffect(
       const limit = effect.zone === "exArea" ? p.exLimit : p.fieldLimit;
 
       for (let i = 0; i < effect.count && zone.length < limit; i++) {
-
-        const token = createCardInstance(effect.tokenCardNo, player, player);
-
+        const tokenKey = effect.tokenName ?? effect.tokenCardNo;
+        if (!tokenKey) break;
+        const token = createCardInstance(resolveTokenName(tokenKey), player, player);
+        if (!getCardDef(token.name)) break;
         zone.push(token);
 
         if (effect.zone === "field") {
@@ -934,7 +951,7 @@ export function resolveEffect(
         resumeAfterChoice: next.resolutionContext?.resumeAfterChoice,
         forcedTargetId: next.resolutionContext?.forcedTargetId,
         buriedCosts: next.resolutionContext?.buriedCosts,
-        lastDiscardedCardNo: next.resolutionContext?.lastDiscardedCardNo,
+        lastDiscardedCardName: next.resolutionContext?.lastDiscardedCardName,
         deferTriggers: true,
       };
       for (let i = 0; i < effect.steps.length; i++) {
@@ -959,7 +976,11 @@ export function resolveEffect(
             effect: o.effect,
             additionalPpCost: o.additionalPpCost,
           }))
-          .filter((o) => !o.additionalPpCost || next.players[player].pp >= o.additionalPpCost);
+          .filter(
+            (o) =>
+              (!o.additionalPpCost || next.players[player].pp >= o.additionalPpCost) &&
+              canEffectResolve(next, player, o.effect),
+          );
         if (affordableOptions.length === 0) break;
         next.pendingChoices = withChoiceContext(next, {
           type: "choose",
@@ -1092,7 +1113,7 @@ export function resolveEffect(
 
       const p = next.players[player];
 
-      const matches = p.zones.cemetery.filter((c) => cardMatchesFilter(c.cardNo, effect.filter));
+      const matches = p.zones.cemetery.filter((c) => cardMatchesFilter(c.name, effect.filter));
 
       if (matches.length === 0) break;
 
@@ -1159,7 +1180,7 @@ export function resolveEffect(
       });
 
       if (effect.triggerOnEvolve === true) {
-        const evoDef = getCardDef(evoFound.card.cardNo);
+        const evoDef = getCardDef(evoFound.card.name);
         for (const ability of evoDef?.abilities?.filter((a) => a.timing === "onEvolve") ?? []) {
           next.resolutionContext = contextForTriggerResolution(next, sourceId, ability.effect);
           next = resolveEffect(next, ability.effect, player);
@@ -1180,7 +1201,7 @@ export function resolveEffect(
 
       const p = next.players[player];
 
-      const matches = p.zones.deck.filter((c) => cardMatchesFilter(c.cardNo, effect.filter));
+      const matches = p.zones.deck.filter((c) => cardMatchesFilter(c.name, effect.filter));
 
       if (matches.length === 0) break;
 
@@ -1323,7 +1344,7 @@ export function resolveEffect(
 
       const p = next.players[player];
 
-      const matches = p.zones.cemetery.filter((c) => cardMatchesFilter(c.cardNo, effect.filter));
+      const matches = p.zones.cemetery.filter((c) => cardMatchesFilter(c.name, effect.filter));
 
       const toBanish = Math.min(effect.count, matches.length);
 
@@ -1337,7 +1358,7 @@ export function resolveEffect(
 
       for (let i = 0; i < toBanish; i++) {
 
-        const idx = p.zones.cemetery.findIndex((c) => cardMatchesFilter(c.cardNo, effect.filter));
+        const idx = p.zones.cemetery.findIndex((c) => cardMatchesFilter(c.name, effect.filter));
 
         if (idx < 0) break;
 
@@ -1359,7 +1380,7 @@ export function resolveEffect(
 
       for (let i = 0; i < effect.count; i++) {
 
-        const idx = p.zones.exArea.findIndex((c) => cardMatchesFilter(c.cardNo, effect.filter));
+        const idx = p.zones.exArea.findIndex((c) => cardMatchesFilter(c.name, effect.filter));
 
         if (idx < 0) break;
 
@@ -1441,7 +1462,7 @@ export function resolveEffect(
 
       const p = next.players[player];
 
-      const matches = p.zones.hand.filter((c) => cardMatchesFilter(c.cardNo, effect.filter));
+      const matches = p.zones.hand.filter((c) => cardMatchesFilter(c.name, effect.filter));
 
       if (matches.length === 0) {
 
@@ -1475,7 +1496,7 @@ export function resolveEffect(
 
       const p = next.players[player];
 
-      const matches = p.zones.hand.filter((c) => cardMatchesFilter(c.cardNo, effect.filter));
+      const matches = p.zones.hand.filter((c) => cardMatchesFilter(c.name, effect.filter));
 
       const toDiscard = Math.min(effect.count, matches.length);
 
@@ -1493,7 +1514,7 @@ export function resolveEffect(
 
         const card = p.zones.hand[i];
 
-        if (!cardMatchesFilter(card.cardNo, effect.filter)) continue;
+        if (!cardMatchesFilter(card.name, effect.filter)) continue;
 
         p.zones.hand.splice(i, 1);
 
@@ -1503,7 +1524,7 @@ export function resolveEffect(
           ...next.resolutionContext,
           sourceInstanceId: next.resolutionContext?.sourceInstanceId,
           effectStack: next.resolutionContext?.effectStack ?? [],
-          lastDiscardedCardNo: card.cardNo,
+          lastDiscardedCardName: card.name,
         };
 
         remaining--;
@@ -1574,7 +1595,15 @@ export function resolveEffect(
 
     }
 
-
+    case "burySelf": {
+      const sourceId = next.resolutionContext?.sourceInstanceId;
+      if (!sourceId) break;
+      const found = findInstance(next, sourceId);
+      if (!found || found.zone !== "field") break;
+      queueLastWords(next, sourceId, found.player);
+      next = destroyFollower(next, sourceId);
+      break;
+    }
 
     case "grantLastWords": {
 
@@ -1612,8 +1641,8 @@ export function resolveEffect(
           reasonLabel: "Put a hand card on your deck",
           options: hand.map((c) => ({
             instanceId: c.instanceId,
-            cardNo: c.cardNo,
-            label: getCardDef(c.cardNo)?.name || c.cardNo,
+            name: c.name,
+            label: getCardDef(c.name)?.name || c.name,
           })),
         });
 
@@ -1635,7 +1664,7 @@ export function resolveEffect(
 
       const filter = effect.filter ?? {};
 
-      const matches = p.zones.evolveDeck.filter((c) => cardMatchesFilter(c.cardNo, filter));
+      const matches = p.zones.evolveDeck.filter((c) => cardMatchesFilter(c.name, filter));
 
       if (matches.length === 0) break;
 
@@ -1663,7 +1692,7 @@ export function resolveEffect(
 
       const toSummon = Math.min(effect.count, slots);
 
-      const matches = p.zones.cemetery.filter((c) => cardMatchesFilter(c.cardNo, effect.filter));
+      const matches = p.zones.cemetery.filter((c) => cardMatchesFilter(c.name, effect.filter));
 
       if (matches.length === 0) break;
 
@@ -1689,11 +1718,11 @@ export function resolveEffect(
 
               instanceId: c.instanceId,
 
-              cardNo: c.cardNo,
+              name: c.name,
 
-              label: getCardDef(c.cardNo)?.name || c.cardNo,
+              label: getCardDef(c.name)?.name || c.name,
 
-              cost: resolveCardDefCost(c.cardNo),
+              cost: resolveCardDefCost(c.name),
 
             })),
 
@@ -1854,10 +1883,15 @@ export function canEffectResolve(state: GameState, player: PlayerId, effect: Eff
           (!o.additionalPpCost || state.players[player].pp >= o.additionalPpCost) &&
           canEffectResolve(state, player, o.effect),
       );
+    case "tutorFromCemetery": {
+      return getPlayer(state, player).zones.cemetery.some((c) =>
+        cardMatchesFilter(c.name, effect.filter),
+      );
+    }
     case "discardFromHand": {
       const need = effect.count ?? 1;
       const matches = getPlayer(state, player).zones.hand.filter((c) =>
-        cardMatchesFilter(c.cardNo, effect.filter),
+        cardMatchesFilter(c.name, effect.filter),
       );
       return matches.length >= need;
     }

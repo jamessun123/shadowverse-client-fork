@@ -76,7 +76,7 @@ export function contextForTriggerResolution(
     resumeAfterChoice: prev?.resumeAfterChoice,
     deferTriggers: prev?.deferTriggers,
     buriedCosts: prev?.buriedCosts,
-    lastDiscardedCardNo: prev?.lastDiscardedCardNo,
+    lastDiscardedCardName: prev?.lastDiscardedCardName,
   };
 }
 

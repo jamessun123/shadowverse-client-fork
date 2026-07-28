@@ -68,7 +68,7 @@ function buildReprintMap(cards) {
     for (const group of byIdentity.values()) {
         const canonical = pickCanonicalInGroup(group);
         for (const card of group) {
-            map.set(card.cardNo, canonical.cardNo);
+            map.set(card.name, canonical.name);
         }
     }
     for (const card of Object.values(cards)) {
@@ -77,7 +77,7 @@ function buildReprintMap(cards) {
             const sourceKind = cardIdentityKey(card).split("|")[1];
             const targetKind = cardIdentityKey(cards[explicit]).split("|")[1];
             if (sourceKind === targetKind) {
-                map.set(card.cardNo, explicit);
+                map.set(card.name, explicit);
             }
         }
     }
@@ -125,6 +125,13 @@ function mergePrintingWithGameplay(printing, gameplay, handOverlay) {
                 ? printing.keywords
                 : gameplay.keywords,
     };
+    // Always keep evolve pairing from gameplay/printing when the overlay omits it.
+    if (!merged.evolvesFrom) {
+        merged.evolvesFrom = printing.evolvesFrom || gameplay.evolvesFrom;
+    }
+    if (!merged.evolvesTo) {
+        merged.evolvesTo = printing.evolvesTo || gameplay.evolvesTo;
+    }
     if (overlay.cost != null && overlay.cost > 0)
         merged.cost = overlay.cost;
     if (overlay.attack != null)

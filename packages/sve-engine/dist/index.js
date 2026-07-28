@@ -14,13 +14,14 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resolveCardDefCost = exports.getEvolveCost = exports.getEffectivePlayCost = exports.getEffectiveStats = exports.hasKeyword = exports.getLegalAttackTargets = exports.findInstance = exports.tryAction = exports.createPlayerView = exports.resolveSpell = exports.resolveEffect = exports.runConfirmationTiming = exports.advanceCombatIfNeeded = exports.applyAction = exports.COOL_EARRINGS_CARD_NO = exports.CRAFT_LEADERS = exports.getCardUniverseFromCardNo = exports.detectDeckIdentity = exports.beginStartPhase = exports.applyMulligan = exports.loadDecks = exports.resetIdCounter = exports.createCardInstance = exports.createInitialGameState = exports.MVP_CARD_DEFS = exports.getCardByName = exports.registerCard = exports.getAllCardDefs = exports.getCardDef = void 0;
+exports.resolveCardDefCost = exports.getEvolveCost = exports.getEffectivePlayCost = exports.getEffectiveStats = exports.hasKeyword = exports.getLegalAttackTargets = exports.findInstance = exports.tryAction = exports.createPlayerView = exports.resolveSpell = exports.resolveEffect = exports.runConfirmationTiming = exports.advanceCombatIfNeeded = exports.applyAction = exports.COOL_EARRINGS_CARD_NO = exports.CRAFT_LEADERS = exports.getCardUniverseFromCardNo = exports.detectDeckIdentity = exports.beginStartPhase = exports.applyMulligan = exports.loadDecks = exports.resetIdCounter = exports.createCardInstance = exports.createInitialGameState = exports.MVP_CARD_DEFS = exports.resolveTokenName = exports.getCardByName = exports.registerCard = exports.getAllCardDefs = exports.getCardDef = void 0;
 __exportStar(require("./types"), exports);
 var registry_1 = require("./cards/registry");
 Object.defineProperty(exports, "getCardDef", { enumerable: true, get: function () { return registry_1.getCardDef; } });
 Object.defineProperty(exports, "getAllCardDefs", { enumerable: true, get: function () { return registry_1.getAllCardDefs; } });
 Object.defineProperty(exports, "registerCard", { enumerable: true, get: function () { return registry_1.registerCard; } });
 Object.defineProperty(exports, "getCardByName", { enumerable: true, get: function () { return registry_1.getCardByName; } });
+Object.defineProperty(exports, "resolveTokenName", { enumerable: true, get: function () { return registry_1.resolveTokenName; } });
 var mvp_cards_1 = require("./cards/mvp-cards");
 Object.defineProperty(exports, "MVP_CARD_DEFS", { enumerable: true, get: function () { return mvp_cards_1.MVP_CARD_DEFS; } });
 var factory_1 = require("./state/factory");

@@ -19,7 +19,7 @@ function canActivateEffectResolve(state: GameState, player: PlayerId, effect: Ef
     case "discardFromHand": {
       const need = effect.count ?? 1;
       return getPlayer(state, player).zones.hand.filter((c) =>
-        cardMatchesFilter(c.cardNo, effect.filter),
+        cardMatchesFilter(c.name, effect.filter),
       ).length >= need;
     }
     default:
@@ -88,13 +88,13 @@ export function canSuperEvolveNow(state: GameState, player: PlayerId): boolean {
 export function resolveCardNo(state: GameState | undefined, card: CardInstance): string {
   if (state && card.linkedEvoInstanceId) {
     const evo = findInstance(state, card.linkedEvoInstanceId);
-    if (evo) return evo.card.cardNo;
+    if (evo) return evo.card.name;
   }
-  const def = getCardDef(card.cardNo);
+  const def = getCardDef(card.name);
   if (def?.evolvesFrom && !def.evolvesTo) {
-    return card.cardNo;
+    return card.name;
   }
-  return getBaseCardNoForInstance(card.cardNo, card.linkedEvoInstanceId);
+  return getBaseCardNoForInstance(card.name, card.linkedEvoInstanceId);
 }
 
 export { isBoxed } from "./passives";
@@ -191,7 +191,7 @@ export function getEffectivePlayCost(
 }
 
 export function getEffectiveStats(card: CardInstance, state?: GameState) {
-  const statsNo = state ? resolveCardNo(state, card) : getBaseCardNoForInstance(card.cardNo);
+  const statsNo = state ? resolveCardNo(state, card) : getBaseCardNoForInstance(card.name);
   const cardDef = getCardDef(statsNo);
   let atk = cardDef?.attack ?? 0;
   let def = cardDef?.defense ?? 0;
@@ -256,7 +256,7 @@ export function canEvolveFollower(state: GameState, player: PlayerId, fieldInsta
   if (isBoxed(fieldFound.card, state)) return false;
   if (!findMatchingEvolveCard(state, player, fieldInstanceId)) return false;
   const baseNo = getBaseCardNoForInstance(
-    fieldFound.card.cardNo,
+    fieldFound.card.name,
     fieldFound.card.linkedEvoInstanceId,
   );
   const def = getCardDef(baseNo);
@@ -290,24 +290,26 @@ export function getActivatedAbilities(
     if (a.cost?.banishFromCemetery) {
       const need = a.cost.banishCount ?? 1;
       const have = getPlayer(state, player).zones.cemetery.filter((c) =>
-        cardMatchesFilter(c.cardNo, a.cost!.banishFromCemetery!),
+        cardMatchesFilter(c.name, a.cost!.banishFromCemetery!),
       ).length;
       if (have < need) continue;
     }
     if (a.cost?.banishFromExArea) {
       const need = a.cost.banishCount ?? 1;
       const have = getPlayer(state, player).zones.exArea.filter((c) =>
-        cardMatchesFilter(c.cardNo, a.cost!.banishFromExArea!),
+        cardMatchesFilter(c.name, a.cost!.banishFromExArea!),
       ).length;
       if (have < need) continue;
     }
     if (a.cost?.buryFromField) {
       const need = a.cost.buryFieldCount ?? 1;
-      const have = getPlayer(state, player).zones.field.filter((c) =>
-        cardMatchesFilter(c.cardNo, a.cost!.buryFromField!),
-      ).length;
+      const have = getPlayer(state, player).zones.field.filter((c) => {
+        if (a.cost?.excludeSelfFromBury && c.instanceId === card.instanceId) return false;
+        return cardMatchesFilter(c.name, a.cost!.buryFromField!);
+      }).length;
       if (have < need) continue;
     }
+    if (a.cost?.burySelf && zone !== "field") continue;
     if (zone === "field" && a.cost?.engage && card.engaged) continue;
     if (!canActivateEffectResolve(state, player, a.effect)) continue;
     results.push({ ability: a, key });
@@ -339,7 +341,7 @@ export function findMatchingEvolveCard(
   if (fieldFound.card.linkedEvoInstanceId) return null;
   return (
     state.players[player].zones.evolveDeck.find((evo) =>
-      evolveCardsMatch(fieldFound.card.cardNo, evo.cardNo),
+      evolveCardsMatch(fieldFound.card.name, evo.name),
     ) ?? null
   );
 }

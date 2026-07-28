@@ -53,7 +53,8 @@ function detectDeckIdentity(cardNos) {
         if (cardClass && isCraftClass(cardClass) && cardClass !== "neutral") {
             crafts.add(cardClass);
         }
-        const universe = getCardUniverseFromCardNo(cardNo);
+        const universe = getCardUniverseFromCardNo(cardNo) ||
+            (def?.cardNo ? getCardUniverseFromCardNo(def.cardNo) : null);
         if (universe)
             universes.add(universe);
     }
@@ -71,4 +72,4 @@ function detectDeckIdentity(cardNos) {
     }
     return { craft: "neutral", universe: null, leader: exports.CRAFT_LEADERS.dragon };
 }
-exports.COOL_EARRINGS_CARD_NO = "CP02-T04EN";
+exports.COOL_EARRINGS_CARD_NO = "Cool Earrings";

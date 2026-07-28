@@ -1,5 +1,5 @@
 {
-  "BP05-025EN": {
+  "Disciple of Usurpation": {
     "printingType": "base",
     "cost": 3,
     "attack": 3,
@@ -41,9 +41,10 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Disciple of Usurpation"
   },
-  "BP11-018EN": {
+  "Nahtnaught, Cursed Queen": {
     "printingType": "base",
     "cost": 4,
     "attack": 3,
@@ -82,9 +83,10 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Nahtnaught, Cursed Queen"
   },
-  "BP11-P07EN": {
+  "Naht's Henchman": {
     "printingType": "base",
     "cost": 1,
     "attack": 2,
@@ -101,8 +103,8 @@
       {
         "timing": "passive",
         "condition": {
-          "type": "namedFollowerOnField",
-          "cardNo": "BP11-018EN"
+          "type": "namedFollowerOnFieldByName",
+          "identityName": "Nahtnaught, Cursed Queen"
         },
         "effect": {
           "op": "exAreaPlayCostReduction",
@@ -114,8 +116,8 @@
         "effect": {
           "op": "if",
           "condition": {
-            "type": "namedFollowerOnField",
-            "cardNo": "BP11-018EN"
+            "type": "namedFollowerOnFieldByName",
+            "identityName": "Nahtnaught, Cursed Queen"
           },
           "then": {
             "op": "draw",
@@ -123,9 +125,10 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Naht's Henchman"
   },
-  "BP14-018EN": {
+  "Taketsumi, Aconite Paladin": {
     "printingType": "base",
     "cost": 2,
     "attack": 2,
@@ -155,7 +158,7 @@
             },
             {
               "op": "summon",
-              "tokenCardNo": "BP14-T02EN",
+              "tokenName": "Glittering Gold",
               "count": 1,
               "zone": "exArea"
             }
@@ -183,7 +186,7 @@
               {
                 "op": "summonFromEvolveDeck",
                 "filter": {
-                  "cardNo": "BP14-019EN"
+                  "name": "Taketsumi, Creator of Paradise"
                 }
               }
             ]
@@ -204,7 +207,7 @@
                 {
                   "op": "summonFromEvolveDeck",
                   "filter": {
-                    "cardNo": "BP14-019EN"
+                    "name": "Taketsumi, Creator of Paradise"
                   }
                 }
               ]
@@ -212,14 +215,15 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Taketsumi, Aconite Paladin"
   },
-  "BP14-022EN": {
+  "Jiemon, Thief Lord": {
     "printingType": "base",
     "cost": 4,
     "attack": 3,
     "defense": 4,
-    "evolvesTo": "BP14-023EN",
+    "evolvesTo": "Jiemon, Thief Lord Evolved",
     "evolveCost": 1,
     "keywords": [
       "fanfare",
@@ -245,14 +249,15 @@
         "timing": "fanfare",
         "effect": {
           "op": "summon",
-          "tokenCardNo": "BP14-T02EN",
+          "tokenName": "Glittering Gold",
           "count": 1,
           "zone": "exArea"
         }
       }
-    ]
+    ],
+    "name": "Jiemon, Thief Lord"
   },
-  "BP14-025EN": {
+  "Hero of the Hunt": {
     "printingType": "base",
     "cost": 3,
     "cardType": "spell",
@@ -277,7 +282,7 @@
             },
             {
               "op": "summon",
-              "tokenCardNo": "BP14-T02EN",
+              "tokenName": "Glittering Gold",
               "count": 1,
               "zone": "exArea"
             },
@@ -291,7 +296,7 @@
               "then": {
                 "op": "tutorFromDeck",
                 "filter": {
-                  "cardNo": "BP14-018EN"
+                  "name": "Taketsumi, Aconite Paladin"
                 },
                 "to": "field"
               },
@@ -305,7 +310,7 @@
                 "then": {
                   "op": "tutorFromDeck",
                   "filter": {
-                    "cardNo": "BP14-018EN"
+                    "name": "Taketsumi, Aconite Paladin"
                   },
                   "to": "field"
                 }
@@ -314,14 +319,15 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Hero of the Hunt"
   },
-  "BP14-026EN": {
+  "Masterful Musician": {
     "printingType": "base",
     "cost": 3,
     "attack": 3,
     "defense": 3,
-    "evolvesTo": "BP14-027EN",
+    "evolvesTo": "Masterful Musician Evolved",
     "evolveCost": 1,
     "keywords": [
       "fanfare",
@@ -340,7 +346,7 @@
           "steps": [
             {
               "op": "summon",
-              "tokenCardNo": "BP14-T02EN",
+              "tokenName": "Glittering Gold",
               "count": 1,
               "zone": "exArea"
             },
@@ -358,14 +364,15 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Masterful Musician"
   },
-  "BP14-030EN": {
+  "Front Desk Frog": {
     "printingType": "base",
     "cost": 2,
     "attack": 2,
     "defense": 2,
-    "evolvesTo": "BP14-031EN",
+    "evolvesTo": "Front Desk Frog Evolved",
     "evolveCost": 1,
     "keywords": [
       "fanfare",
@@ -385,7 +392,7 @@
           "steps": [
             {
               "op": "summon",
-              "tokenCardNo": "BP14-T02EN",
+              "tokenName": "Glittering Gold",
               "count": 1,
               "zone": "exArea"
             },
@@ -407,9 +414,10 @@
           "keywords": []
         }
       }
-    ]
+    ],
+    "name": "Front Desk Frog"
   },
-  "BP14-034EN": {
+  "Night on the Town": {
     "printingType": "base",
     "cost": 1,
     "cardType": "spell",
@@ -442,7 +450,7 @@
                   },
                   {
                     "op": "summon",
-                    "tokenCardNo": "BP14-T02EN",
+                    "tokenName": "Glittering Gold",
                     "count": 1,
                     "zone": "exArea"
                   }
@@ -471,9 +479,10 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Night on the Town"
   },
-  "BP14-035EN": {
+  "Haggler's Gambit": {
     "printingType": "base",
     "cost": 1,
     "cardType": "spell",
@@ -505,16 +514,17 @@
             },
             {
               "op": "summon",
-              "tokenCardNo": "BP14-T02EN",
+              "tokenName": "Glittering Gold",
               "count": 1,
               "zone": "exArea"
             }
           ]
         }
       }
-    ]
+    ],
+    "name": "Haggler's Gambit"
   },
-  "BP14-115EN": {
+  "Stay in Paradise": {
     "printingType": "base",
     "cost": 1,
     "cardType": "spell",
@@ -536,9 +546,10 @@
           "remainderTo": "deckBottom"
         }
       }
-    ]
+    ],
+    "name": "Stay in Paradise"
   },
-  "BP14-118EN": {
+  "Torchbearing Guide": {
     "printingType": "base",
     "cost": 2,
     "attack": 2,
@@ -591,9 +602,10 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Torchbearing Guide"
   },
-  "BP16-022EN": {
+  "Ginne, Bewitching Courtesan": {
     "printingType": "base",
     "cost": 2,
     "attack": 3,
@@ -648,7 +660,7 @@
                 "label": "Add 2 Glittering Gold",
                 "effect": {
                   "op": "summon",
-                  "tokenCardNo": "BP14-T02EN",
+                  "tokenName": "Glittering Gold",
                   "count": 2,
                   "zone": "exArea"
                 }
@@ -689,7 +701,7 @@
                 "label": "Add 2 Glittering Gold",
                 "effect": {
                   "op": "summon",
-                  "tokenCardNo": "BP14-T02EN",
+                  "tokenName": "Glittering Gold",
                   "count": 2,
                   "zone": "exArea"
                 }
@@ -698,14 +710,15 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Ginne, Bewitching Courtesan"
   },
-  "SDD02-006EN": {
+  "Leod, the Crescent Blade": {
     "printingType": "base",
     "cost": 2,
     "attack": 1,
     "defense": 3,
-    "evolvesTo": "SDD02-007EN",
+    "evolvesTo": "Leod, the Crescent Blade Evolved",
     "evolveCost": 2,
     "keywords": [
       "evolve"
@@ -736,9 +749,10 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Leod, the Crescent Blade"
   },
-  "BP14-019EN": {
+  "Taketsumi, Creator of Paradise": {
     "printingType": "base",
     "cost": 4,
     "attack": 5,
@@ -758,7 +772,7 @@
         "timing": "fanfare",
         "effect": {
           "op": "summon",
-          "tokenCardNo": "BP14-T01EN",
+          "tokenName": "Sootspawn",
           "count": 2,
           "zone": "field"
         }
@@ -790,13 +804,14 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Taketsumi, Creator of Paradise"
   },
-  "BP14-023EN": {
+  "Jiemon, Thief Lord Evolved": {
     "printingType": "evolved",
     "attack": 4,
     "defense": 5,
-    "evolvesFrom": "BP14-022EN",
+    "evolvesFrom": "Jiemon, Thief Lord",
     "cardType": "follower",
     "specialType": "evolved",
     "traits": [
@@ -825,7 +840,7 @@
             {
               "op": "banishFromExArea",
               "filter": {
-                "cardNo": "BP14-T02EN"
+                "name": "Glittering Gold"
               },
               "count": 2
             },
@@ -854,13 +869,14 @@
           "timing": "onEvolve"
         }
       }
-    ]
+    ],
+    "name": "Jiemon, Thief Lord Evolved"
   },
-  "BP14-027EN": {
+  "Masterful Musician Evolved": {
     "printingType": "evolved",
     "attack": 4,
     "defense": 4,
-    "evolvesFrom": "BP14-026EN",
+    "evolvesFrom": "Masterful Musician",
     "cardType": "follower",
     "specialType": "evolved",
     "traits": [
@@ -872,7 +888,7 @@
       {
         "timing": "onExAreaEntry",
         "filter": {
-          "cardNo": "BP14-T02EN"
+          "name": "Glittering Gold"
         },
         "effect": {
           "op": "damageFollowerAndLeader",
@@ -884,18 +900,19 @@
         "timing": "onEvolve",
         "effect": {
           "op": "summon",
-          "tokenCardNo": "BP14-T02EN",
+          "tokenName": "Glittering Gold",
           "count": 1,
           "zone": "exArea"
         }
       }
-    ]
+    ],
+    "name": "Masterful Musician Evolved"
   },
-  "BP14-031EN": {
+  "Front Desk Frog Evolved": {
     "printingType": "evolved",
     "attack": 3,
     "defense": 3,
-    "evolvesFrom": "BP14-030EN",
+    "evolvesFrom": "Front Desk Frog",
     "cardType": "follower",
     "specialType": "evolved",
     "traits": [
@@ -933,13 +950,14 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Front Desk Frog Evolved"
   },
-  "SDD02-007EN": {
+  "Leod, the Crescent Blade Evolved": {
     "printingType": "evolved",
     "attack": 2,
     "defense": 4,
-    "evolvesFrom": "SDD02-006EN",
+    "evolvesFrom": "Leod, the Crescent Blade",
     "cardType": "follower",
     "specialType": "evolved",
     "traits": [
@@ -999,9 +1017,10 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Leod, the Crescent Blade Evolved"
   },
-  "PR-173EN": {
+  "Aenea, Amethyst Rebel": {
     "printingType": "base",
     "cost": 4,
     "attack": 2,
@@ -1034,9 +1053,10 @@
           "amount": 2
         }
       }
-    ]
+    ],
+    "name": "Aenea, Amethyst Rebel"
   },
-  "PR-358EN": {
+  "Mechagun Wielder": {
     "printingType": "base",
     "cost": 1,
     "attack": 1,
@@ -1061,7 +1081,7 @@
               "label": "Assembly Droid token",
               "effect": {
                 "op": "summon",
-                "tokenCardNo": "BP17-T17EN",
+                "tokenName": "Assembly Droid",
                 "count": 1,
                 "zone": "exArea"
               }
@@ -1070,7 +1090,7 @@
               "label": "Repair Mode token",
               "effect": {
                 "op": "summon",
-                "tokenCardNo": "BP17-T18EN",
+                "tokenName": "Repair Mode",
                 "count": 1,
                 "zone": "exArea"
               }
@@ -1096,9 +1116,10 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Mechagun Wielder"
   },
-  "BP07-075EN": {
+  "Alpha Drive": {
     "printingType": "base",
     "cost": 1,
     "cardType": "spell",
@@ -1132,7 +1153,7 @@
               "effect": {
                 "op": "tutorFromCemetery",
                 "filter": {
-                  "cardNo": "BP07-SL13EN"
+                  "name": "Mono, Garnet Rebel"
                 },
                 "to": "field"
               }
@@ -1140,14 +1161,15 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Alpha Drive"
   },
-  "BP07-P22EN": {
+  "Nicola, Forbidden Strength": {
     "printingType": "base",
     "cost": 3,
     "attack": 3,
     "defense": 3,
-    "evolvesTo": "BP07-077EN",
+    "evolvesTo": "Nicola, Forbidden Strength Evolved",
     "evolveCost": 1,
     "keywords": [
       "fanfare",
@@ -1166,9 +1188,10 @@
           "count": 2
         }
       }
-    ]
+    ],
+    "name": "Nicola, Forbidden Strength"
   },
-  "BP11-075EN": {
+  "Dead to Rights": {
     "printingType": "base",
     "cost": 1,
     "keywords": [
@@ -1194,9 +1217,10 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Dead to Rights"
   },
-  "BP12-075EN": {
+  "Friends Forever": {
     "printingType": "base",
     "cost": 5,
     "cardType": "spell",
@@ -1219,9 +1243,10 @@
           "maxTotalCost": 5
         }
       }
-    ]
+    ],
+    "name": "Friends Forever"
   },
-  "BP12-082EN": {
+  "Roly-Poly Mk I": {
     "printingType": "base",
     "cost": 1,
     "attack": 1,
@@ -1279,14 +1304,15 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Roly-Poly Mk I"
   },
-  "BP17-077EN": {
+  "Aenea, Creative Amethyst": {
     "printingType": "base",
     "cost": 2,
     "attack": 1,
     "defense": 1,
-    "evolvesTo": "BP17-078EN",
+    "evolvesTo": "Aenea, Creative Amethyst Evolved",
     "evolveCost": 1,
     "keywords": [
       "evolve"
@@ -1296,9 +1322,10 @@
       "Machina",
       "Demon"
     ],
-    "abilities": []
+    "abilities": [],
+    "name": "Aenea, Creative Amethyst"
   },
-  "BP17-079EN": {
+  "Nicola, Enduring Steward": {
     "printingType": "base",
     "cost": 2,
     "attack": 1,
@@ -1372,9 +1399,10 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Nicola, Enduring Steward"
   },
-  "BP17-080EN": {
+  "Steeled Hopes": {
     "printingType": "base",
     "cost": 1,
     "cardType": "spell",
@@ -1442,9 +1470,10 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Steeled Hopes"
   },
-  "BP17-083EN": {
+  "Roly-Poly Mk II": {
     "printingType": "base",
     "cost": 2,
     "attack": 1,
@@ -1472,14 +1501,15 @@
           "reveal": true
         }
       }
-    ]
+    ],
+    "name": "Roly-Poly Mk II"
   },
-  "BP17-113EN": {
+  "Hoverboard Mercenary": {
     "printingType": "base",
     "cost": 2,
     "attack": 1,
     "defense": 1,
-    "evolvesTo": "BP17-114EN",
+    "evolvesTo": "Hoverboard Mercenary Evolved",
     "evolveCost": 1,
     "keywords": [
       "fanfare",
@@ -1498,13 +1528,13 @@
           "steps": [
             {
               "op": "summon",
-              "tokenCardNo": "BP17-T17EN",
+              "tokenName": "Assembly Droid",
               "count": 1,
               "zone": "field"
             },
             {
               "op": "summon",
-              "tokenCardNo": "BP17-T18EN",
+              "tokenName": "Repair Mode",
               "count": 1,
               "zone": "exArea"
             }
@@ -1518,14 +1548,15 @@
           "keywords": []
         }
       }
-    ]
+    ],
+    "name": "Hoverboard Mercenary"
   },
-  "BP07-SL13EN": {
+  "Mono, Garnet Rebel": {
     "printingType": "base",
     "cost": 2,
     "attack": 3,
     "defense": 2,
-    "evolvesTo": "BP07-U05EN",
+    "evolvesTo": "Mono, Garnet Rebel Evolved",
     "evolveCost": 1,
     "keywords": [
       "evolve"
@@ -1560,14 +1591,15 @@
         },
         "effect": {
           "op": "summon",
-          "tokenCardNo": "BP12-T10EN",
+          "tokenName": "Assembly Droid",
           "count": 1,
           "zone": "field"
         }
       }
-    ]
+    ],
+    "name": "Mono, Garnet Rebel"
   },
-  "BP12-SL22EN": {
+  "Garnet Waltz": {
     "printingType": "base",
     "cost": 1,
     "cardType": "spell",
@@ -1614,7 +1646,7 @@
                 "steps": [
                   {
                     "op": "summon",
-                    "tokenCardNo": "BP17-T17EN",
+                    "tokenName": "Assembly Droid",
                     "count": 1,
                     "zone": "field"
                   },
@@ -1626,13 +1658,13 @@
                     },
                     "then": {
                       "op": "summon",
-                      "tokenCardNo": "BP17-T17EN",
+                      "tokenName": "Assembly Droid",
                       "count": 1,
                       "zone": "field"
                     },
                     "else": {
                       "op": "summon",
-                      "tokenCardNo": "BP17-T17EN",
+                      "tokenName": "Assembly Droid",
                       "count": 1,
                       "zone": "exArea"
                     }
@@ -1643,9 +1675,10 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Garnet Waltz"
   },
-  "BP17-SL20EN": {
+  "Mono, Immortal Garnet": {
     "printingType": "base",
     "cost": 3,
     "attack": 2,
@@ -1664,7 +1697,7 @@
         "timing": "fanfare",
         "effect": {
           "op": "summon",
-          "tokenCardNo": "BP17-T17EN",
+          "tokenName": "Assembly Droid",
           "count": 1,
           "zone": "field"
         }
@@ -1715,41 +1748,14 @@
           ]
         }
       }
-    ]
-  },
-  "SDD05-012EN": {
-    "printingType": "base",
-    "cost": 1,
-    "keywords": [
-      "quick"
     ],
-    "cardType": "spell",
-    "traits": [
-      "Wasteland",
-      "Departed",
-      "Demon"
-    ],
-    "abilities": [
-      {
-        "timing": "spell",
-        "quick": true,
-        "effect": {
-          "op": "buff",
-          "atk": -2,
-          "def": -2,
-          "targets": {
-            "type": "enemyFollower",
-            "count": 1
-          }
-        }
-      }
-    ]
+    "name": "Mono, Immortal Garnet"
   },
-  "BP07-077EN": {
+  "Nicola, Forbidden Strength Evolved": {
     "printingType": "evolved",
     "attack": 4,
     "defense": 4,
-    "evolvesFrom": "BP07-P22EN",
+    "evolvesFrom": "Nicola, Forbidden Strength",
     "cardType": "follower",
     "specialType": "evolved",
     "traits": [
@@ -1771,13 +1777,14 @@
           "playCostReduction": 2
         }
       }
-    ]
+    ],
+    "name": "Nicola, Forbidden Strength Evolved"
   },
-  "BP07-U05EN": {
+  "Mono, Garnet Rebel Evolved": {
     "printingType": "evolved",
     "attack": 5,
     "defense": 4,
-    "evolvesFrom": "BP07-SL13EN",
+    "evolvesFrom": "Mono, Garnet Rebel",
     "cardType": "follower",
     "specialType": "evolved",
     "traits": [
@@ -1794,7 +1801,7 @@
         "cost": {
           "pp": 2,
           "banishFromCemetery": {
-            "cardNo": "BP07-075EN"
+            "name": "Alpha Drive"
           },
           "banishCount": 1
         },
@@ -1806,13 +1813,14 @@
           "keyword": "rush"
         }
       }
-    ]
+    ],
+    "name": "Mono, Garnet Rebel Evolved"
   },
-  "BP17-078EN": {
+  "Aenea, Creative Amethyst Evolved": {
     "printingType": "evolved",
     "attack": 2,
     "defense": 2,
-    "evolvesFrom": "BP17-077EN",
+    "evolvesFrom": "Aenea, Creative Amethyst",
     "cardType": "follower",
     "specialType": "evolved",
     "traits": [
@@ -1826,7 +1834,7 @@
         "effect": {
           "op": "tutorFromDeck",
           "filter": {
-            "cardNo": "BP17-083EN"
+            "name": "Roly-Poly Mk II"
           },
           "to": "field"
         }
@@ -1842,13 +1850,14 @@
           "playCostReduction": 3
         }
       }
-    ]
+    ],
+    "name": "Aenea, Creative Amethyst Evolved"
   },
-  "BP17-114EN": {
+  "Hoverboard Mercenary Evolved": {
     "printingType": "evolved",
     "attack": 2,
     "defense": 2,
-    "evolvesFrom": "BP17-113EN",
+    "evolvesFrom": "Hoverboard Mercenary",
     "cardType": "follower",
     "specialType": "evolved",
     "traits": [
@@ -1864,22 +1873,23 @@
           "steps": [
             {
               "op": "summon",
-              "tokenCardNo": "BP17-T17EN",
+              "tokenName": "Assembly Droid",
               "count": 1,
               "zone": "field"
             },
             {
               "op": "summon",
-              "tokenCardNo": "BP17-T18EN",
+              "tokenName": "Repair Mode",
               "count": 1,
               "zone": "exArea"
             }
           ]
         }
       }
-    ]
+    ],
+    "name": "Hoverboard Mercenary Evolved"
   },
-  "BP14-T01EN": {
+  "Sootspawn TOKEN": {
     "printingType": "token",
     "cost": 2,
     "attack": 2,
@@ -1904,9 +1914,10 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Sootspawn TOKEN"
   },
-  "BP14-T02EN": {
+  "Glittering Gold TOKEN": {
     "printingType": "token",
     "cost": 0,
     "cardType": "spell",
@@ -1931,7 +1942,7 @@
         "cost": {
           "pp": 1,
           "banishFromExArea": {
-            "cardNo": "BP14-T02EN"
+            "name": "Glittering Gold"
           },
           "banishCount": 3
         },
@@ -1949,9 +1960,10 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Glittering Gold TOKEN"
   },
-  "BP12-T10EN": {
+  "Assembly Droid TOKEN": {
     "printingType": "token",
     "cost": 1,
     "attack": 1,
@@ -1982,21 +1994,10 @@
           }
         }
       }
-    ]
-  },
-  "BP17-T17EN": {
-    "printingType": "token",
-    "cost": 1,
-    "attack": 1,
-    "defense": 1,
-    "cardType": "follower",
-    "specialType": "token",
-    "traits": [
-      "Machina"
     ],
-    "keywords": []
+    "name": "Assembly Droid TOKEN"
   },
-  "BP17-T18EN": {
+  "Repair Mode TOKEN": {
     "printingType": "token",
     "cost": 1,
     "keywords": [
@@ -2016,62 +2017,10 @@
           "amount": 1
         }
       }
-    ]
-  },
-  "PR-170EN": {
-    "keywords": [],
-    "cardType": "follower",
-    "specialType": "token",
-    "cost": 1,
-    "attack": 1,
-    "defense": 1,
-    "traits": [
-      "Machina"
     ],
-    "abilities": [
-      {
-        "timing": "activated",
-        "cost": {
-          "pp": 0,
-          "engage": true,
-          "buryFromField": {
-            "trait": "Machina"
-          },
-          "buryFieldCount": 3
-        },
-        "effect": {
-          "op": "dealDamage",
-          "amount": 5,
-          "targets": {
-            "type": "enemyFollower",
-            "count": 1
-          }
-        }
-      }
-    ]
+    "name": "Repair Mode TOKEN"
   },
-  "PR-171EN": {
-    "keywords": [
-      "quick"
-    ],
-    "cardType": "spell",
-    "specialType": "token",
-    "cost": 1,
-    "traits": [
-      "Machina"
-    ],
-    "abilities": [
-      {
-        "timing": "spell",
-        "quick": true,
-        "effect": {
-          "op": "healLeader",
-          "amount": 1
-        }
-      }
-    ]
-  },
-  "BP07-047EN": {
+  "Prototype Warrior": {
     "printingType": "base",
     "cost": 1,
     "attack": 2,
@@ -2096,7 +2045,7 @@
               "label": "Assembly Droid token",
               "effect": {
                 "op": "summon",
-                "tokenCardNo": "BP17-T17EN",
+                "tokenName": "Assembly Droid",
                 "count": 1,
                 "zone": "exArea"
               }
@@ -2135,9 +2084,10 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Prototype Warrior"
   },
-  "BP07-103EN": {
+  "Technolord": {
     "printingType": "base",
     "cost": 6,
     "attack": 6,
@@ -2204,9 +2154,10 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Technolord"
   },
-  "BP12-048EN": {
+  "Device Diviner": {
     "printingType": "base",
     "cost": 2,
     "attack": 2,
@@ -2231,7 +2182,7 @@
               "label": "Assembly Droid token",
               "effect": {
                 "op": "summon",
-                "tokenCardNo": "BP17-T17EN",
+                "tokenName": "Assembly Droid",
                 "count": 1,
                 "zone": "exArea"
               }
@@ -2240,7 +2191,7 @@
               "label": "Repair Mode token",
               "effect": {
                 "op": "summon",
-                "tokenCardNo": "BP17-T18EN",
+                "tokenName": "Repair Mode",
                 "count": 1,
                 "zone": "exArea"
               }
@@ -2259,9 +2210,10 @@
           "amount": 1
         }
       }
-    ]
+    ],
+    "name": "Device Diviner"
   },
-  "BP12-049EN": {
+  "Mechabook Sorcerer": {
     "printingType": "base",
     "cost": 2,
     "attack": 2,
@@ -2297,13 +2249,13 @@
             },
             {
               "op": "summon",
-              "tokenCardNo": "BP17-T17EN",
+              "tokenName": "Assembly Droid",
               "count": 1,
               "zone": "exArea"
             },
             {
               "op": "summon",
-              "tokenCardNo": "BP17-T18EN",
+              "tokenName": "Repair Mode",
               "count": 1,
               "zone": "exArea"
             },
@@ -2322,14 +2274,15 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Mechabook Sorcerer"
   },
-  "BP17-049EN": {
+  "Awakened Robot": {
     "printingType": "base",
     "cost": 2,
     "attack": 2,
     "defense": 2,
-    "evolvesTo": "BP17-050EN",
+    "evolvesTo": "Awakened Robot Evolved",
     "evolveCost": 1,
     "keywords": [
       "evolve"
@@ -2345,18 +2298,19 @@
         "timing": "lastWords",
         "effect": {
           "op": "summon",
-          "tokenCardNo": "BP17-T18EN",
+          "tokenName": "Repair Mode",
           "count": 1,
           "zone": "exArea"
         }
       }
-    ]
+    ],
+    "name": "Awakened Robot"
   },
-  "BP17-050EN": {
+  "Awakened Robot Evolved": {
     "printingType": "evolved",
     "attack": 3,
     "defense": 3,
-    "evolvesFrom": "BP17-049EN",
+    "evolvesFrom": "Awakened Robot",
     "cardType": "follower",
     "specialType": "evolved",
     "traits": [
@@ -2381,14 +2335,15 @@
         "timing": "lastWords",
         "effect": {
           "op": "summon",
-          "tokenCardNo": "BP17-T18EN",
+          "tokenName": "Repair Mode",
           "count": 1,
           "zone": "exArea"
         }
       }
-    ]
+    ],
+    "name": "Awakened Robot Evolved"
   },
-  "BP17-033EN": {
+  "Stone Merchant": {
     "printingType": "base",
     "cost": 2,
     "attack": 2,
@@ -2430,14 +2385,15 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Stone Merchant"
   },
-  "BP17-041EN": {
+  "Tetra, Serene Sapphire": {
     "printingType": "base",
     "cost": 2,
     "attack": 2,
     "defense": 2,
-    "evolvesTo": "BP17-042EN",
+    "evolvesTo": "Tetra, Serene Sapphire Evolved",
     "evolveCost": 1,
     "keywords": [
       "fanfare",
@@ -2453,18 +2409,19 @@
         "timing": "fanfare",
         "effect": {
           "op": "summon",
-          "tokenCardNo": "BP17-T18EN",
+          "tokenName": "Repair Mode",
           "count": 1,
           "zone": "exArea"
         }
       }
-    ]
+    ],
+    "name": "Tetra, Serene Sapphire"
   },
-  "BP17-042EN": {
+  "Tetra, Serene Sapphire Evolved": {
     "printingType": "evolved",
     "attack": 3,
     "defense": 3,
-    "evolvesFrom": "BP17-041EN",
+    "evolvesFrom": "Tetra, Serene Sapphire",
     "cardType": "follower",
     "specialType": "evolved",
     "traits": [
@@ -2492,7 +2449,7 @@
             {
               "op": "searchDeckChoose",
               "filter": {
-                "cardNo": "BP07-041EN"
+                "name": "Delta Cannon"
               },
               "lookAt": 4,
               "to": "hand",
@@ -2518,14 +2475,15 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Tetra, Serene Sapphire Evolved"
   },
-  "BP07-035EN": {
+  "Tetra, Sapphire Rebel": {
     "printingType": "base",
     "cost": 3,
     "attack": 3,
     "defense": 3,
-    "evolvesTo": "BP07-036EN",
+    "evolvesTo": "Tetra, Sapphire Rebel Evolved",
     "evolveCost": 1,
     "keywords": [
       "fanfare",
@@ -2541,18 +2499,19 @@
         "timing": "fanfare",
         "effect": {
           "op": "summon",
-          "tokenCardNo": "BP17-T18EN",
+          "tokenName": "Repair Mode",
           "count": 1,
           "zone": "exArea"
         }
       }
-    ]
+    ],
+    "name": "Tetra, Sapphire Rebel"
   },
-  "BP07-036EN": {
+  "Tetra, Sapphire Rebel Evolved": {
     "printingType": "evolved",
     "attack": 4,
     "defense": 4,
-    "evolvesFrom": "BP07-035EN",
+    "evolvesFrom": "Tetra, Sapphire Rebel",
     "cardType": "follower",
     "specialType": "evolved",
     "traits": [
@@ -2586,9 +2545,10 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Tetra, Sapphire Rebel Evolved"
   },
-  "BP07-037EN": {
+  "Belphomet, Lord of Aiolon": {
     "printingType": "base",
     "cost": 7,
     "attack": 5,
@@ -2627,14 +2587,15 @@
           "excludeSelf": true
         }
       }
-    ]
+    ],
+    "name": "Belphomet, Lord of Aiolon"
   },
-  "BP12-035EN": {
+  "Belphomet, Worldreaver": {
     "printingType": "base",
     "cost": 6,
     "attack": 5,
     "defense": 5,
-    "evolvesTo": "BP12-036EN",
+    "evolvesTo": "Belphomet, Worldreaver Evolved",
     "evolveCost": 1,
     "keywords": [
       "fanfare",
@@ -2650,7 +2611,7 @@
         "timing": "fanfare",
         "effect": {
           "op": "summon",
-          "tokenCardNo": "BP12-T03EN",
+          "tokenName": "Armored Tentacle",
           "count": 1,
           "zone": "field"
         }
@@ -2680,7 +2641,7 @@
                   "label": "Armored Tentacle",
                   "effect": {
                     "op": "summon",
-                    "tokenCardNo": "BP12-T03EN",
+                    "tokenName": "Armored Tentacle",
                     "count": 1,
                     "zone": "field"
                   }
@@ -2689,7 +2650,7 @@
                   "label": "Assault Tentacle",
                   "effect": {
                     "op": "summon",
-                    "tokenCardNo": "BP12-T04EN",
+                    "tokenName": "Assault Tentacle",
                     "count": 1,
                     "zone": "field"
                   }
@@ -2699,13 +2660,14 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Belphomet, Worldreaver"
   },
-  "BP12-036EN": {
+  "Belphomet, Worldreaver Evolved": {
     "printingType": "evolved",
     "attack": 6,
     "defense": 6,
-    "evolvesFrom": "BP12-035EN",
+    "evolvesFrom": "Belphomet, Worldreaver",
     "cardType": "follower",
     "specialType": "evolved",
     "traits": [
@@ -2728,7 +2690,7 @@
           },
           "then": {
             "op": "summon",
-            "tokenCardNo": "BP12-T04EN",
+            "tokenName": "Assault Tentacle",
             "count": 1,
             "zone": "field"
           }
@@ -2746,14 +2708,15 @@
         },
         "effect": {
           "op": "summon",
-          "tokenCardNo": "BP12-T04EN",
+          "tokenName": "Assault Tentacle",
           "count": 1,
           "zone": "field"
         }
       }
-    ]
+    ],
+    "name": "Belphomet, Worldreaver Evolved"
   },
-  "BP17-040EN": {
+  "Belphomet, Ultimate Creator": {
     "printingType": "base",
     "cost": 5,
     "attack": 5,
@@ -2801,7 +2764,7 @@
               },
               "then": {
                 "op": "summon",
-                "tokenCardNo": "BP12-T04EN",
+                "tokenName": "Assault Tentacle",
                 "count": 1,
                 "zone": "field"
               }
@@ -2833,9 +2796,10 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Belphomet, Ultimate Creator"
   },
-  "BP17-048EN": {
+  "Fruits of Wisdom": {
     "printingType": "base",
     "cost": 1,
     "cardType": "spell",
@@ -2862,16 +2826,17 @@
             },
             {
               "op": "summon",
-              "tokenCardNo": "BP17-T17EN",
+              "tokenName": "Assembly Droid",
               "count": 1,
               "zone": "exArea"
             }
           ]
         }
       }
-    ]
+    ],
+    "name": "Fruits of Wisdom"
   },
-  "BP07-041EN": {
+  "Delta Cannon": {
     "printingType": "base",
     "cost": 1,
     "keywords": [
@@ -2915,9 +2880,10 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Delta Cannon"
   },
-  "BP17-044EN": {
+  "Nefarious Invasion": {
     "printingType": "base",
     "cost": 3,
     "cardType": "spell",
@@ -2955,7 +2921,7 @@
                   },
                   {
                     "op": "summon",
-                    "tokenCardNo": "BP12-T03EN",
+                    "tokenName": "Armored Tentacle",
                     "count": 1,
                     "zone": "field"
                   }
@@ -2979,13 +2945,13 @@
                   },
                   {
                     "op": "summon",
-                    "tokenCardNo": "BP12-T03EN",
+                    "tokenName": "Armored Tentacle",
                     "count": 1,
                     "zone": "field"
                   },
                   {
                     "op": "summon",
-                    "tokenCardNo": "BP12-T04EN",
+                    "tokenName": "Assault Tentacle",
                     "count": 1,
                     "zone": "field"
                   }
@@ -2995,9 +2961,10 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Nefarious Invasion"
   },
-  "BP12-041EN": {
+  "Sorcery in Solidarity": {
     "printingType": "base",
     "cost": 3,
     "cardType": "spell",
@@ -3038,9 +3005,10 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Sorcery in Solidarity"
   },
-  "BP17-119EN": {
+  "Aiolon's Remains": {
     "printingType": "base",
     "cost": 2,
     "cardType": "amulet",
@@ -3127,9 +3095,10 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Aiolon's Remains"
   },
-  "BP12-T03EN": {
+  "Armored Tentacle": {
     "printingType": "token",
     "cost": 3,
     "attack": 2,
@@ -3150,9 +3119,10 @@
           "amount": 4
         }
       }
-    ]
+    ],
+    "name": "Armored Tentacle"
   },
-  "CP02-T04EN": {
+  "Cool Earrings TOKEN": {
     "printingType": "token",
     "cost": 4,
     "cardType": "spell",
@@ -3180,9 +3150,10 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Cool Earrings TOKEN"
   },
-  "BP12-T04EN": {
+  "Assault Tentacle": {
     "printingType": "token",
     "cost": 3,
     "attack": 4,
@@ -3207,14 +3178,15 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Assault Tentacle"
   },
-  "ECP02-001EN": {
+  "Anastasia [Seize the Light]": {
     "printingType": "base",
     "cost": 2,
     "attack": 1,
     "defense": 1,
-    "evolvesTo": "ECP02-002EN",
+    "evolvesTo": "Anastasia [Seize the Light] Evolved",
     "evolveCost": 1,
     "keywords": [
       "fanfare",
@@ -3260,13 +3232,14 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Anastasia [Seize the Light]"
   },
-  "ECP02-002EN": {
+  "Anastasia [Seize the Light] Evolved": {
     "printingType": "evolved",
     "attack": 2,
     "defense": 2,
-    "evolvesFrom": "ECP02-001EN",
+    "evolvesFrom": "Anastasia [Seize the Light]",
     "cardType": "follower",
     "specialType": "evolved",
     "traits": [
@@ -3325,9 +3298,10 @@
           "excludeSelf": true
         }
       }
-    ]
+    ],
+    "name": "Anastasia [Seize the Light] Evolved"
   },
-  "ECP02-003EN": {
+  "Hajime Fujiwara [Pink Blossom Dream]": {
     "printingType": "base",
     "cost": 2,
     "attack": 2,
@@ -3374,9 +3348,10 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Hajime Fujiwara [Pink Blossom Dream]"
   },
-  "ECP02-012EN": {
+  "Rin Shibuya [Cinderella Girl]": {
     "printingType": "base",
     "cost": 2,
     "attack": 2,
@@ -3416,9 +3391,10 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Rin Shibuya [Cinderella Girl]"
   },
-  "ECP02-016EN": {
+  "Karen Hojo [Cinderella Girl]": {
     "printingType": "base",
     "cost": 1,
     "attack": 1,
@@ -3449,14 +3425,15 @@
         "timing": "lastWords",
         "effect": {
           "op": "summon",
-          "tokenCardNo": "CP02-T04EN",
+          "tokenName": "Cool Earrings",
           "count": 1,
           "zone": "exArea"
         }
       }
-    ]
+    ],
+    "name": "Karen Hojo [Cinderella Girl]"
   },
-  "ECP02-026EN": {
+  "Syuko Shiomi [Cinderella Girl]": {
     "printingType": "base",
     "cost": 1,
     "attack": 2,
@@ -3505,7 +3482,7 @@
             {
               "op": "buryFieldFollowers",
               "filter": {
-                "cardNo": "ECP02-026EN"
+                "name": "Syuko Shiomi [Cinderella Girl]"
               }
             },
             {
@@ -3519,14 +3496,15 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Syuko Shiomi [Cinderella Girl]"
   },
-  "ECP02-037EN": {
+  "Fumika Sagisawa [Cinderella Girl]": {
     "printingType": "base",
     "cost": 2,
     "attack": 2,
     "defense": 2,
-    "evolvesTo": "ECP02-038EN",
+    "evolvesTo": "Fumika Sagisawa [Cinderella Girl] Evolved",
     "evolveCost": 1,
     "keywords": [
       "fanfare",
@@ -3554,13 +3532,14 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Fumika Sagisawa [Cinderella Girl]"
   },
-  "ECP02-038EN": {
+  "Fumika Sagisawa [Cinderella Girl] Evolved": {
     "printingType": "evolved",
     "attack": 3,
     "defense": 3,
-    "evolvesFrom": "ECP02-037EN",
+    "evolvesFrom": "Fumika Sagisawa [Cinderella Girl]",
     "cardType": "follower",
     "specialType": "evolved",
     "traits": [
@@ -3611,9 +3590,10 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Fumika Sagisawa [Cinderella Girl] Evolved"
   },
-  "ECP02-047EN": {
+  "Ranko Kanzaki [Cinderella Girl]": {
     "printingType": "base",
     "cost": 5,
     "attack": 5,
@@ -3688,14 +3668,15 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Ranko Kanzaki [Cinderella Girl]"
   },
-  "ECP02-050EN": {
+  "Nono Morikubo [individuals]": {
     "printingType": "base",
     "cost": 2,
     "attack": 1,
     "defense": 1,
-    "evolvesTo": "ECP02-051EN",
+    "evolvesTo": "Nono Morikubo [individuals] Evolved",
     "evolveCost": 1,
     "keywords": [
       "evolve"
@@ -3738,13 +3719,14 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Nono Morikubo [individuals]"
   },
-  "ECP02-051EN": {
+  "Nono Morikubo [individuals] Evolved": {
     "printingType": "evolved",
     "attack": 2,
     "defense": 2,
-    "evolvesFrom": "ECP02-050EN",
+    "evolvesFrom": "Nono Morikubo [individuals]",
     "cardType": "follower",
     "specialType": "evolved",
     "traits": [
@@ -3799,9 +3781,10 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Nono Morikubo [individuals] Evolved"
   },
-  "ECP02-052EN": {
+  "Asuka Ninomiya [Sweet & Charming]": {
     "printingType": "base",
     "cost": 2,
     "attack": 3,
@@ -3861,9 +3844,10 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Asuka Ninomiya [Sweet & Charming]"
   },
-  "ECP02-058EN": {
+  "Koume Shirasaka [Haunted Gown]": {
     "printingType": "base",
     "cost": 3,
     "attack": 2,
@@ -3917,21 +3901,22 @@
           "then": {
             "op": "tutorFromDeck",
             "filter": {
-              "cardNo": "CP02-085EN"
+              "name": "Last Daylight"
             },
             "to": "exArea",
             "playCostReduction": 2
           }
         }
       }
-    ]
+    ],
+    "name": "Koume Shirasaka [Haunted Gown]"
   },
-  "ECP02-065EN": {
+  "Kako Takafuji [Lady Luck]": {
     "printingType": "base",
     "cost": 3,
     "attack": 3,
     "defense": 3,
-    "evolvesTo": "ECP02-066EN",
+    "evolvesTo": "Kako Takafuji [Lady Luck] Evolved",
     "evolveCost": 1,
     "keywords": [
       "evolve"
@@ -3941,13 +3926,14 @@
       "iM@S CG",
       "Cool"
     ],
-    "abilities": []
+    "abilities": [],
+    "name": "Kako Takafuji [Lady Luck]"
   },
-  "ECP02-066EN": {
+  "Kako Takafuji [Lady Luck] Evolved": {
     "printingType": "evolved",
     "attack": 4,
     "defense": 4,
-    "evolvesFrom": "ECP02-065EN",
+    "evolvesFrom": "Kako Takafuji [Lady Luck]",
     "cardType": "follower",
     "specialType": "evolved",
     "traits": [
@@ -4001,9 +3987,10 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Kako Takafuji [Lady Luck] Evolved"
   },
-  "CSD02b-001EN": {
+  "Rin Shibuya [Triad Primus]": {
     "printingType": "base",
     "cost": 3,
     "attack": 3,
@@ -4072,9 +4059,10 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Rin Shibuya [Triad Primus]"
   },
-  "CSD02b-002EN": {
+  "Nao Kamiya [Over the Rainbow]": {
     "printingType": "base",
     "cost": 5,
     "attack": 3,
@@ -4101,9 +4089,10 @@
           "remainderTo": "deckBottom"
         }
       }
-    ]
+    ],
+    "name": "Nao Kamiya [Over the Rainbow]"
   },
-  "CSD02b-003EN": {
+  "Karen Hojo [Song for Life]": {
     "printingType": "base",
     "cost": 1,
     "attack": 3,
@@ -4165,9 +4154,10 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Karen Hojo [Song for Life]"
   },
-  "CSD02b-004EN": {
+  "Yasuha Okazaki": {
     "printingType": "base",
     "cost": 4,
     "attack": 4,
@@ -4193,14 +4183,15 @@
           "to": "field"
         }
       }
-    ]
+    ],
+    "name": "Yasuha Okazaki"
   },
-  "CSD02b-007EN": {
+  "Kako Takafuji": {
     "printingType": "base",
     "cost": 1,
     "attack": 2,
     "defense": 2,
-    "evolvesTo": "CSD02b-008EN",
+    "evolvesTo": "Kako Takafuji Evolved",
     "evolveCost": 2,
     "keywords": [
       "evolve"
@@ -4210,13 +4201,14 @@
       "iM@S CG",
       "Cool"
     ],
-    "abilities": []
+    "abilities": [],
+    "name": "Kako Takafuji"
   },
-  "CSD02b-008EN": {
+  "Kako Takafuji Evolved": {
     "printingType": "evolved",
     "attack": 3,
     "defense": 3,
-    "evolvesFrom": "CSD02b-007EN",
+    "evolvesFrom": "Kako Takafuji",
     "cardType": "follower",
     "specialType": "evolved",
     "traits": [
@@ -4243,9 +4235,10 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Kako Takafuji Evolved"
   },
-  "CP02-055EN": {
+  "Fumika Sagisawa": {
     "printingType": "base",
     "cost": 7,
     "attack": 4,
@@ -4298,14 +4291,15 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Fumika Sagisawa"
   },
-  "CP02-069EN": {
+  "Ranko Kanzaki": {
     "printingType": "base",
     "cost": 4,
     "attack": 3,
     "defense": 3,
-    "evolvesTo": "CP02-070EN",
+    "evolvesTo": "Ranko Kanzaki Evolved",
     "evolveCost": 1,
     "keywords": [
       "fanfare",
@@ -4375,13 +4369,14 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Ranko Kanzaki"
   },
-  "CP02-070EN": {
+  "Ranko Kanzaki Evolved": {
     "printingType": "evolved",
     "attack": 4,
     "defense": 4,
-    "evolvesFrom": "CP02-069EN",
+    "evolvesFrom": "Ranko Kanzaki",
     "cardType": "follower",
     "specialType": "evolved",
     "traits": [
@@ -4450,9 +4445,10 @@
           }
         }
       }
-    ]
+    ],
+    "name": "Ranko Kanzaki Evolved"
   },
-  "CP02-085EN": {
+  "Last Daylight": {
     "printingType": "base",
     "cost": 2,
     "cardType": "spell",
@@ -4484,6 +4480,7 @@
           ]
         }
       }
-    ]
+    ],
+    "name": "Last Daylight"
   }
 }

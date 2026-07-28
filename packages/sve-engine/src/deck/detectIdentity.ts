@@ -71,7 +71,9 @@ export function detectDeckIdentity(cardNos: string[]): DeckIdentity {
     if (cardClass && isCraftClass(cardClass) && cardClass !== "neutral") {
       crafts.add(cardClass);
     }
-    const universe = getCardUniverseFromCardNo(cardNo);
+    const universe =
+      getCardUniverseFromCardNo(cardNo) ||
+      (def?.cardNo ? getCardUniverseFromCardNo(def.cardNo) : null);
     if (universe) universes.add(universe);
   }
 
@@ -93,4 +95,4 @@ export function detectDeckIdentity(cardNos: string[]): DeckIdentity {
   return { craft: "neutral", universe: null, leader: CRAFT_LEADERS.dragon };
 }
 
-export const COOL_EARRINGS_CARD_NO = "CP02-T04EN";
+export const COOL_EARRINGS_CARD_NO = "Cool Earrings";

@@ -3,7 +3,7 @@ import { GameState, PlayerId } from "../types";
 export interface RevealedCard {
   owner: PlayerId;
   instanceId: string;
-  cardNo: string;
+  name: string;
 }
 
 /** Deck searches to hand reveal by default; cemetery returns do not. */
@@ -22,13 +22,13 @@ export function revealCard(
   state: GameState,
   owner: PlayerId,
   instanceId: string,
-  cardNo: string,
+  name: string,
 ): GameState {
   const next = structuredClone(state);
   const list = next.revealedCards ?? [];
   if (!list.some((r) => r.instanceId === instanceId)) {
-    next.revealedCards = [...list, { owner, instanceId, cardNo }];
-    next.eventLog.push({ type: "reveal", player: owner, data: { instanceId, cardNo } });
+    next.revealedCards = [...list, { owner, instanceId, name }];
+    next.eventLog.push({ type: "reveal", player: owner, data: { instanceId, name } });
   }
   return next;
 }
