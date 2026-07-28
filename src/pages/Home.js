@@ -73,7 +73,6 @@ export default function Home() {
   const [leaderNum, setLeaderNum] = useState(0);
   const [openSnack, setOpenSnack] = useState(false);
   const [deckIdx, setDeckIdx] = useState(0);
-  const [rulesEnforced, setRulesEnforced] = useState(false);
 
   const reduxDecks = useSelector((state) => state.deck.decks);
   const reduxActiveUsers = useSelector((state) => state.card.activeUsers);
@@ -110,11 +109,7 @@ export default function Home() {
   ];
 
   useEffect(() => {
-    const savedMode = sessionStorage.getItem("sve_game_mode");
-    if (savedMode === "automated" || savedMode === "manual") {
-      dispatch(setGameMode(savedMode));
-      if (savedMode === "automated") setRulesEnforced(true);
-    }
+    dispatch(setGameMode("automated"));
 
     const onStartGame = () => handleNavigateToGame();
 
@@ -124,12 +119,10 @@ export default function Home() {
       handleNavigateToGame();
     };
 
-    const onJoined = ({ slot, automated }) => {
-      if (automated) {
-        dispatch(setPlayerSlot(slot));
-        dispatch(setGameMode("automated"));
-        socket.emit("request_engine_state");
-      }
+    const onJoined = ({ slot }) => {
+      dispatch(setPlayerSlot(slot));
+      dispatch(setGameMode("automated"));
+      socket.emit("request_engine_state");
     };
 
     socket.on("start_game", onStartGame);
@@ -185,20 +178,14 @@ export default function Home() {
   const joinRoomWithMode = (room) => {
     dispatch(setRoom(room));
     saveRoom(room);
-    if (rulesEnforced) {
-      dispatch(resetEngine());
-      dispatch(setGameMode("automated"));
-      socket.emit("join_room", {
-        room,
-        playerId,
-        automated: true,
-        deck: buildEngineDeck(),
-      });
-    } else {
-      dispatch(setGameMode("manual"));
-      socket.emit("join_room", room);
-      socket.emit("create_room", room);
-    }
+    dispatch(resetEngine());
+    dispatch(setGameMode("automated"));
+    socket.emit("join_room", {
+      room,
+      playerId,
+      automated: true,
+      deck: buildEngineDeck(),
+    });
   };
 
   const handleCreateRoom = () => {
@@ -538,17 +525,6 @@ export default function Home() {
                 PLAY
               </div>
             </Button>
-            <Chip
-              label={rulesEnforced ? "Rules Enforced" : "Manual Mode"}
-              color={rulesEnforced ? "success" : "default"}
-              title={
-                rulesEnforced
-                  ? "Requires npm run server in a separate terminal (localhost:5000)"
-                  : "Free-form manual play (no rules engine)"
-              }
-              onClick={() => setRulesEnforced((v) => !v)}
-              sx={{ alignSelf: "center", cursor: "pointer" }}
-            />
             <Button
               onClick={handleJoinRoom}
               sx={{

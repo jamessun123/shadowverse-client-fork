@@ -187,6 +187,7 @@ export function engineViewToRedux(view, playerSlot) {
     handInstanceIds: ps.zones.hand.map((c) => c.instanceId),
     enemyHand: Array(view.opponentHandCount).fill("Hidden Card"),
     deck: ps.zones.deck.map((c) => cardName(c)),
+    enemyDeckSize: view.opponentDeckCount ?? es.zones.deck.length,
     field,
     fieldInstanceIds,
     evoField,
@@ -205,6 +206,13 @@ export function engineViewToRedux(view, playerSlot) {
     cemetery: ps.zones.cemetery.map((c) => cardName(c)),
     cemeteryInstanceIds: ps.zones.cemetery.map((c) => c.instanceId),
     enemyCemetery: es.zones.cemetery.map((c) => cardName(c)),
+    evoDeck: ps.zones.evolveDeck.map((c) => ({
+      card: cardName(c),
+      status: false,
+    })),
+    enemyEvoDeck: Array(view.opponentEvoDeckCount ?? es.zones.evolveDeck.length)
+      .fill(null)
+      .map(() => ({ card: "Hidden Card", status: false })),
     playPoints: { available: ps.pp, max: ps.maxPp },
     enemyPlayPoints: { available: es.pp, max: es.maxPp },
     evoPoints: ps.evoPoints,

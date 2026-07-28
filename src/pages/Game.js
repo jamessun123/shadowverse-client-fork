@@ -1,10 +1,9 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import "../css/Game.css";
 import Selection from "../components/ui/Selection";
 import PlayerUI from "../components/ui/PlayerUI";
 import EnemyUI from "../components/ui/EnemyUI";
 import ChatUI from "../components/ui/ChatUI";
-import PlayPoints from "../components/ui/PlayPoints";
 import Hand from "../components/hand/Hand";
 import Field from "../components/field/Field";
 import { motion } from "framer-motion";
@@ -28,7 +27,28 @@ export default function Game(callback) {
   const constraintsRef = useRef(null);
   const [ready, setReady] = useState(false);
   // const [dragging, setDragging] = useState(false);
-  const [hovering, setHovering] = useState(false);
+  const [hovering, setHoveringState] = useState(false);
+  const hoverHideTimer = useRef(null);
+  const setHovering = useCallback((show) => {
+    if (hoverHideTimer.current) {
+      clearTimeout(hoverHideTimer.current);
+      hoverHideTimer.current = null;
+    }
+    if (show) {
+      setHoveringState(true);
+      return;
+    }
+    // Brief delay so the cursor can move onto the ZoomedCard effect text.
+    hoverHideTimer.current = setTimeout(() => {
+      setHoveringState(false);
+      hoverHideTimer.current = null;
+    }, 200);
+  }, []);
+  useEffect(() => {
+    return () => {
+      if (hoverHideTimer.current) clearTimeout(hoverHideTimer.current);
+    };
+  }, []);
   const [readyToPlaceOnFieldFromHand, setReadyToPlaceOnFieldFromHand] =
     useState(false);
   const reduxCurrentCard = useSelector((state) => state.card.currentCard);
@@ -45,7 +65,7 @@ export default function Game(callback) {
   };
   const rightScaleStyle = {
     transform: `scale(${sideScale})`,
-    transformOrigin: "center right",
+    transformOrigin: "center left",
   };
 
   return (
@@ -68,6 +88,7 @@ export default function Game(callback) {
         name={reduxCurrentCard}
         hovering={hovering}
         scale={sideScale}
+        setHovering={setHovering}
       />
       {!uiChromeHidden && (
         <Selection
@@ -75,13 +96,13 @@ export default function Game(callback) {
           // setWallpaper={setWallpaper}
         />
       )}
-      {/* Left side  */}
+      {/* Left side */}
       {!uiChromeHidden && (
-      <div className={"leftSideCanvas"}>
-        <div style={leftScaleStyle}>
-          <PlayPoints name={selectedOption} />
+        <div className={"leftSideCanvas"}>
+          <div style={{ ...leftScaleStyle, width: "100%", display: "flex", justifyContent: "center" }}>
+            <ChatUI setHovering={setHovering} />
+          </div>
         </div>
-      </div>
       )}
 
       {/* Center Field */}
@@ -152,9 +173,6 @@ export default function Game(callback) {
 
         <div style={rightScaleStyle}>
           <PlayerUI name={selectedOption} />
-        </div>
-        <div style={rightScaleStyle}>
-          <ChatUI scale={sideScale} />
         </div>
       </div>
       )}

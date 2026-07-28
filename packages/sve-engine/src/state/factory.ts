@@ -95,6 +95,7 @@ export function createInitialGameState(firstPlayer: PlayerId = 0): GameState {
     endPhaseQuickResolved: false,
     resolutionContext: null,
     eventLog: [],
+    actionLog: [],
     revealedCards: [],
   };
 }

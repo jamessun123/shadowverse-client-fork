@@ -21,7 +21,7 @@ function formatEffectText(text) {
   return String(text).replace(/\s*-{3,}\s*/g, "\n\n").trim();
 }
 
-export default function ZoomedCard({ hovering, name, scale = 1 }) {
+export default function ZoomedCard({ hovering, name, scale = 1, setHovering }) {
   const effectText = hovering ? formatEffectText(resolveEffectText(name)) : "";
 
   return (
@@ -38,7 +38,9 @@ export default function ZoomedCard({ hovering, name, scale = 1 }) {
             flexDirection: "column",
             alignItems: "center",
             gap: 8,
-            zIndex: 100,
+            zIndex: 2000,
+            // Keep the shell non-interactive so it cannot steal hover from the
+            // action-log thumbnail underneath (which would dismiss the preview).
             pointerEvents: "none",
             transform: `scale(${scale})`,
             transformOrigin: "top left",
@@ -59,6 +61,8 @@ export default function ZoomedCard({ hovering, name, scale = 1 }) {
           />
           {effectText ? (
             <div
+              onMouseEnter={() => setHovering?.(true)}
+              onMouseLeave={() => setHovering?.(false)}
               style={{
                 width: "100%",
                 maxHeight: "28vh",

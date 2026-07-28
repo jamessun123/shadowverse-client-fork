@@ -13,6 +13,7 @@ const conditions_1 = require("../state/conditions");
 const card_reset_1 = require("../state/card-reset");
 const queries_1 = require("../state/queries");
 const zones_1 = require("../state/zones");
+const actionLog_1 = require("./actionLog");
 function fail(state, error) {
     return { ok: false, state, error };
 }
@@ -1207,6 +1208,9 @@ function resolveActivate(state, player, sourceInstanceId, zone, useEvoPoint) {
     return ok(next);
 }
 function applyAction(state, player, action) {
+    return (0, actionLog_1.appendActionLog)(state, player, action, applyActionUnlogged(state, player, action));
+}
+function applyActionUnlogged(state, player, action) {
     if (state.phase === "gameOver")
         return fail(state, "Game is over");
     let workingState = (0, reveal_1.clearRevealedCards)(state);

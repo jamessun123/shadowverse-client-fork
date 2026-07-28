@@ -1,24 +1,34 @@
-/* default styles — one fixed size at every resolution; the side-panel scale
-   transform handles responsiveness (previously this jumped 350→300→350px
-   across width breakpoints). */
-.LeaderImageActive {
-  min-width: 300px;
-  width: 50%;
-  position: absolute;
-  z-index: 1;
-}
-.LeaderImageInactive {
-  min-width: 300px;
-  margin-top: 5vh;
-  width: 50%;
-  position: absolute;
-  z-index: 1;
-  filter: brightness(30%);
-}
+/* Large leader portraits for the right-side panels.
+   Contained height keeps both characters fully on-screen; sideScale handles
+   responsiveness. */
 .LeaderContainer {
-  bottom: 30%;
-  right: 20%;
   position: relative;
+  width: min(380px, 18vw);
+  height: min(400px, 38vh);
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.LeaderImageActive,
+.LeaderImageInactive {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  max-width: 380px;
+  max-height: 400px;
+  object-fit: contain;
+  object-position: bottom center;
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+}
+
+.LeaderImageInactive {
+  filter: brightness(30%);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -27,13 +37,11 @@
   }
 }
 
-/* animations */
 @keyframes slidein {
   from {
-    margin-top: 10vh;
+    transform: translateX(-50%) translateY(0);
   }
-
   to {
-    margin-top: 15vh;
+    transform: translateX(-50%) translateY(-12px);
   }
 }

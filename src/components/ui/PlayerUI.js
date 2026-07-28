@@ -1,10 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
-import AddIcon from "@mui/icons-material/Add";
-import RemoveIcon from "@mui/icons-material/Remove";
-import { IconButton } from "@mui/material/";
+import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  setHealth,
   setEvoPoints,
   setSuperEvoActive,
   setDice,
@@ -33,7 +29,6 @@ import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import FiberManualRecordOutlinedIcon from "@mui/icons-material/FiberManualRecordOutlined";
 import sepOn from "../../assets/logo/sep_on.png";
 import sepOff from "../../assets/logo/sep_off.png";
-import HideUiButton from "./HideUiButton";
 
 const StyledRating = styled(Rating)({
   "& .MuiRating-iconFilled": {
@@ -49,11 +44,6 @@ export default function PlayerUI({ name }) {
   const dispatch = useDispatch();
   const [ep, setEP] = useState(0);
   const [superEvo, setSEP] = useState(false);
-  const [playerHealth, setPlayerHealth] = useState(20);
-  // Guard so we don't push the local default (20) into shared state on mount —
-  // that would clobber a health value just restored from a saved/recovered game
-  // (reload or reconnect). Only health the user changes after mount propagates.
-  const healthDidMount = useRef(false);
   const reduxCurrentSuperEvo = useSelector(
     (state) => state.card.superEvoActive,
   );
@@ -78,28 +68,8 @@ export default function PlayerUI({ name }) {
   }, [automated, reduxCurrentSuperEvo]);
 
   useEffect(() => {
-    if (!healthDidMount.current) {
-      healthDidMount.current = true;
-      return;
-    }
-    dispatch(setHealth(playerHealth));
-  }, [playerHealth]);
-
-  useEffect(() => {
-    setPlayerHealth(reduxCurrentHealth);
-  }, [reduxCurrentHealth]);
-
-  useEffect(() => {
     setEP(reduxCurrentEP);
   }, [reduxCurrentEP]);
-
-  const incrementPlayerPoints = () => {
-    setPlayerHealth(playerHealth + 1);
-  };
-
-  const decrementPlayerPoints = () => {
-    playerHealth > 0 ? setPlayerHealth(playerHealth - 1) : setPlayerHealth(0);
-  };
 
   const handleEP = (newValue) => {
     setEP(newValue);
@@ -244,206 +214,144 @@ export default function PlayerUI({ name }) {
       style={{
         position: "relative",
         display: "flex",
+        flexDirection: "row",
         alignItems: "center",
-        justifyContent: "center",
-        width: "20vw",
-        height: "150px",
-        gap: "1em",
+        justifyContent: "flex-start",
+        gap: "0.85em",
+        boxSizing: "border-box",
       }}
     >
-      <HideUiButton sx={{ position: "absolute", top: 0, right: 0 }} />
-      <div style={{ height: "60px", width: "60px" }}>
-        {reduxShowDice && (
-          <motion.div>
-            <Dice
-              size={60}
-              faceBg={"transparent"}
-              onRoll={(value) => handleDiceRoll(value)}
-            />
-          </motion.div>
-        )}
-      </div>
       <Leader name={name} active={reduxLeaderActive} />
 
-      {reduxSelfOnlineStatus ? (
-        <div className={"onlineStatus"} title={"Connected"}>
-          <WifiIcon sx={{ height: 40, width: 40 }} />
-        </div>
-      ) : (
-        <div className={"offlineStatus"} title={"Disconnected — reconnecting…"}>
-          <WifiOffIcon sx={{ height: 40, width: 40 }} />
-        </div>
-      )}
-
-      <div style={{ opacity: 0.75 }}>
-        <img height={70} width={70} src={getClassFromLeader(name)} alt={name} />
-      </div>
       <div
         style={{
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
           flexDirection: "column",
-          gap: "1em",
+          alignItems: "flex-start",
+          gap: "0.65em",
+          flexShrink: 0,
         }}
       >
         <div
           style={{
-            position: "relative",
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            flexDirection: "column",
-            gap: "1em",
+            gap: "0.5em",
+          }}
+        >
+          <div style={{ height: "48px", width: "48px" }}>
+            {reduxShowDice && (
+              <motion.div>
+                <Dice
+                  size={48}
+                  faceBg={"transparent"}
+                  onRoll={(value) => handleDiceRoll(value)}
+                />
+              </motion.div>
+            )}
+          </div>
+          {reduxSelfOnlineStatus ? (
+            <div className={"onlineStatus"} title={"Connected"}>
+              <WifiIcon sx={{ height: 34, width: 34 }} />
+            </div>
+          ) : (
+            <div className={"offlineStatus"} title={"Disconnected — reconnecting…"}>
+              <WifiOffIcon sx={{ height: 34, width: 34 }} />
+            </div>
+          )}
+          <div style={{ opacity: 0.75 }}>
+            <img height={52} width={52} src={getClassFromLeader(name)} alt={name} />
+          </div>
+        </div>
+        <div
+          style={{
+            fontFamily: "Noto Serif JP, serif",
+            background: getColorFromLeader(name),
+            outline: "7px ridge rgba(0, 0, 0, 1.0)",
+            userSelect: "none",
+            height: "78px",
+            width: "190px",
+            display: "flex",
+            justifyContent: "space-evenly",
+            alignItems: "center",
+            fontSize: "56px",
+            zIndex: 1,
+            color: "white",
+          }}
+        >
+          {reduxCurrentHealth}
+        </div>
+        <div
+          style={{
+            height: "54px",
+            width: "190px",
+            display: "flex",
+            justifyContent: "space-evenly",
+            alignItems: "center",
+            background:
+              "linear-gradient(to right, rgb(5, 117, 230), rgb(2, 27, 121))",
+            fontFamily: "Noto Serif JP, serif",
+            fontSize: "38px",
+            outline: "7px ridge rgba(0, 0, 0, 1.0)",
+            color: "white",
+            zIndex: 1,
+          }}
+        >
+          {reduxCurrentPlayPoints} / {reduxMaxPlayPoints}
+        </div>
+        <div
+          style={{
+            height: "42px",
+            width: "190px",
+            display: "flex",
+            justifyContent: "space-evenly",
+            alignItems: "center",
+            background:
+              "linear-gradient(to right, rgb(5, 117, 230), rgb(2, 27, 121))",
+            fontFamily: "Noto Serif JP, serif",
+            fontSize: "30px",
+            outline: "3px ridge rgba(0, 0, 0, 1.0)",
+            color: "white",
+            zIndex: 1,
           }}
         >
           <div
             style={{
               fontFamily: "Noto Serif JP, serif",
-              background: getColorFromLeader(name),
-              outline: "7px ridge rgba(0, 0, 0, 1.0)",
-              userSelect: "none",
-              height: "60px",
-              width: "150px",
-              display: "flex",
-              justifyContent: "space-evenly",
-              alignItems: "center",
-              fontSize: "45px",
-              zIndex: 1,
+              fontSize: "20px",
             }}
           >
-            <IconButton
-              size="large"
-              className="decButton"
-              onClick={() => decrementPlayerPoints()}
-            >
-              <RemoveIcon
-                sx={{ color: "white", width: "30px", height: "50px" }}
-              />
-            </IconButton>
-            <div
-              style={{
-                color: "white",
-                // color: playerHealth > 19 ? "white" : "red"
-              }}
-            >
-              {playerHealth}
+            EP
+          </div>
+          <StyledRating
+            name="customized-color"
+            value={ep}
+            max={3}
+            onChange={(event, newValue) => {
+              handleEP(newValue);
+            }}
+            icon={<FiberManualRecordIcon fontSize="inherit" />}
+            emptyIcon={<FiberManualRecordOutlinedIcon fontSize="inherit" />}
+          />
+        </div>
+        <div
+          style={{
+            cursor: automated ? "default" : "pointer",
+            height: "58px",
+            width: "116px",
+            zIndex: 1,
+          }}
+          onClick={automated ? undefined : () => handleSuperEvo()}
+        >
+          {sepLit ? (
+            <div>
+              <img height={58} width={116} src={sepOn} alt={"sep"} />
             </div>
-            <IconButton size="large" onClick={() => incrementPlayerPoints()}>
-              <AddIcon
-                sx={{ color: "white", width: "30px", height: "50px" }}
-                className="incButton"
-              />
-            </IconButton>
-          </div>
-          <div
-            style={{
-              height: "40px",
-              width: "150px",
-              display: "flex",
-              justifyContent: "space-evenly",
-              alignItems: "center",
-              background:
-                "linear-gradient(to right, rgb(5, 117, 230), rgb(2, 27, 121))",
-              fontFamily: "Noto Serif JP, serif",
-              fontSize: "30px",
-              outline: "7px ridge rgba(0, 0, 0, 1.0)",
-              color: "white",
-              zIndex: 1,
-            }}
-          >
-            {reduxCurrentPlayPoints} / {reduxMaxPlayPoints}
-            {/* <div>
-              <Badge color="info" size="small" badgeContent={ep}>
-                <div
-                  style={{
-                    fontFamily: "Noto Serif JP, serif",
-                    fontSize: "17px",
-                  }}
-                >
-                  EP
-                </div>
-
-                <input
-                  value={ep}
-                  onChange={handleEP}
-                  type="number"
-                  min={0}
-                  style={{
-                    position: "absolute",
-                    zIndex: 10,
-                    top: "0px",
-                    left: "30px",
-                    width: "15px",
-                    fontSize: "20px",
-                    fontFamily: "Noto Serif JP, serif",
-                    textAlign: "center",
-                    backgroundColor: "transparent",
-                    color: "transparent",
-                    border: "none",
-                    outline: "none",
-                    transform: "rotateY(180deg)",
-                  }}
-                />
-              </Badge>
-            </div> */}
-          </div>
-          <div
-            style={{
-              height: "30px",
-              width: "150px",
-              display: "flex",
-              justifyContent: "space-evenly",
-              alignItems: "center",
-              background:
-                "linear-gradient(to right, rgb(5, 117, 230), rgb(2, 27, 121))",
-              fontFamily: "Noto Serif JP, serif",
-              fontSize: "30px",
-              outline: "3px ridge rgba(0, 0, 0, 1.0)",
-              color: "white",
-              zIndex: 1,
-            }}
-          >
-            <div
-              style={{
-                fontFamily: "Noto Serif JP, serif",
-                fontSize: "17px",
-              }}
-            >
-              EP
+          ) : (
+            <div>
+              <img height={58} width={116} src={sepOff} alt={"sep"} />
             </div>
-            <StyledRating
-              name="customized-color"
-              value={ep}
-              // precision={1}
-              max={3}
-              // onChange={(event) => handleEP(event)}
-              onChange={(event, newValue) => {
-                handleEP(newValue);
-              }}
-              icon={<FiberManualRecordIcon fontSize="inherit" />}
-              emptyIcon={<FiberManualRecordOutlinedIcon fontSize="inherit" />}
-            />
-          </div>
-          <div
-            style={{
-              cursor: automated ? "default" : "pointer",
-              height: "50px",
-              width: "100px",
-              zIndex: 1,
-            }}
-            onClick={automated ? undefined : () => handleSuperEvo()}
-          >
-            {sepLit ? (
-              <div>
-                <img height={50} width={100} src={sepOn} alt={"sep"} />
-              </div>
-            ) : (
-              <div>
-                <img height={50} width={100} src={sepOff} alt={"sep"} />
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </div>

@@ -163,7 +163,7 @@ export default function ChoiceModal({ setHovering }) {
     choicePreviewRef.current = { hover: null, pinned: null };
     setHovering?.(false);
 
-  }, [pending?.type, pending?.count, pending?.player, pending?.action, setHovering]);
+  }, [pending?.type, pending?.count, pending?.player, pending?.action]);
 
   useEffect(() => {
     if (!pending || !selectedDiscardIds.length) {

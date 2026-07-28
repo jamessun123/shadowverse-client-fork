@@ -50,6 +50,7 @@ import {
 } from "../state/queries";
 import { destroyFollower, drawCard, moveCard } from "../state/zones";
 import { ActionResult, Effect, GameAction, GameState, PlayerId } from "../types";
+import { appendActionLog } from "./actionLog";
 
 function fail(state: GameState, error: string): ActionResult {
   return { ok: false, state, error };
@@ -1349,6 +1350,14 @@ function resolveActivate(
 }
 
 export function applyAction(
+  state: GameState,
+  player: PlayerId,
+  action: GameAction,
+): ActionResult {
+  return appendActionLog(state, player, action, applyActionUnlogged(state, player, action));
+}
+
+function applyActionUnlogged(
   state: GameState,
   player: PlayerId,
   action: GameAction,

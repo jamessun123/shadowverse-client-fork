@@ -7,9 +7,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { useEngineSync } from "../hooks/useEngineSync";
 
 import { setSelectedAttackerId } from "../../redux/GameStateSlice";
-import HideUiButton from "../ui/HideUiButton";
-
-
 
 export default function AutomatedControls() {
 
@@ -87,7 +84,6 @@ export default function AutomatedControls() {
 
     <Stack direction="row" spacing={1} sx={{ position: "fixed", bottom: 120, left: 16, zIndex: 1000 }}>
 
-      <HideUiButton />
       <Chip label={`Phase: ${phase || "—"}`} color="primary" size="small" />
 
       {phase === "gameOver" && winner != null && (

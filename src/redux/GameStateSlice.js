@@ -3,7 +3,7 @@ import { createSlice } from "@reduxjs/toolkit";
 export const GameStateSlice = createSlice({
   name: "gameState",
   initialState: {
-    gameMode: "manual",
+    gameMode: "automated",
     engineView: null,
     playerSlot: null,
     pendingChoices: null,

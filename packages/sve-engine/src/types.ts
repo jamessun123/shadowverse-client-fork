@@ -545,6 +545,19 @@ export interface GameEvent {
   data?: Record<string, unknown>;
 }
 
+/** One player action taken during a match (authoritative action history). */
+export interface ActionLogEntry {
+  seq: number;
+  turnNumber: number;
+  phase: Phase;
+  player: PlayerId;
+  actionType: string;
+  /** Human-readable summary, e.g. "played Zealot of Destruction". */
+  text: string;
+  /** Optional card name for art in the UI. */
+  cardName?: string;
+}
+
 export interface ResolutionContext {
   sourceInstanceId?: string;
   effectStack: Effect[];
@@ -580,6 +593,8 @@ export interface GameState {
   /** Player who may cast quick spells during the current quick window. */
   quickWindowPlayer?: PlayerId | null;
   eventLog: GameEvent[];
+  /** Every successful player GameAction this match, in order. */
+  actionLog: ActionLogEntry[];
   resolutionContext: ResolutionContext | null;
   /** Cards revealed to both players during the current effect resolution. */
   revealedCards?: RevealedCardInfo[];

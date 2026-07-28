@@ -17,10 +17,7 @@ export function useEngineSync() {
   );
 
   useEffect(() => {
-    const savedMode = sessionStorage.getItem("sve_game_mode");
-    if (savedMode === "automated" || savedMode === "manual") {
-      dispatch(setGameMode(savedMode));
-    }
+    dispatch(setGameMode("automated"));
   }, [dispatch]);
 
   useEffect(() => {
@@ -28,8 +25,7 @@ export function useEngineSync() {
 
     const onBroadcast = (views) => applyView(views);
     const onPlayerView = (view) => applyView(view);
-    const onJoined = ({ slot, automated, serverMode }) => {
-      if (!automated) return;
+    const onJoined = ({ serverMode }) => {
       if (serverMode !== "authoritative") {
         console.warn(
           "Connected server does not support Rules Enforced mode. Run: npm run server",

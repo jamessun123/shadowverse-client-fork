@@ -112,9 +112,6 @@ import HideUiButton, { ModalHideUiRow } from "../ui/HideUiButton";
 import { setSelectedAttackerId } from "../../redux/GameStateSlice";
 import { getNameByCardNoClient } from "../../engine/cardLookup";
 
-import Token from "./Token";
-import ShowDice from "./ShowDice";
-
 import defaultCardBack from "../../assets/cardbacks/default.png";
 import aeneaCardBack from "../../assets/cardbacks/aenea.png";
 import dionneCardBack from "../../assets/cardbacks/dionne.png";
@@ -1664,7 +1661,7 @@ export default function Field({
         </Box>
       </Modal>
 
-      {/* Opponent reveal — small card docked to the side (once per reveal). */}
+      {/* Opponent reveal — centered, large enough to read, not full-viewport. */}
       <Modal
         open={enemyCardModalOpen}
         onClose={handleShowCardModalClose}
@@ -1682,29 +1679,33 @@ export default function Field({
         <Box
           sx={{
             position: "fixed",
-            right: { xs: 12, md: 28 },
-            bottom: { xs: 96, md: 120 },
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
             width: "auto",
             outline: "none",
             pointerEvents: "auto",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
           }}
         >
           <Typography
             id="reveal-card-title"
             sx={{
-              color: "rgba(255,255,255,0.9)",
+              color: "rgba(255,255,255,0.95)",
               fontFamily: "Noto Serif JP, serif",
-              fontSize: 14,
-              mb: 0.5,
-              textShadow: "0 1px 3px #000",
+              fontSize: 18,
+              mb: 1,
+              textShadow: "0 1px 4px #000",
             }}
           >
             Revealed
           </Typography>
           <motion.div
             key={reduxEnemyCard}
-            initial={{ opacity: 0, x: 40, scale: 0.85 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
+            initial={{ opacity: 0, y: 24, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.35 }}
           >
             <img
@@ -1713,10 +1714,10 @@ export default function Field({
               src={cardImage(reduxEnemyCard)}
               alt={reduxEnemyCard}
               style={{
-                height: 160,
+                height: "min(42vh, 420px)",
                 width: "auto",
-                borderRadius: 8,
-                boxShadow: "0 8px 24px rgba(0,0,0,0.55)",
+                borderRadius: 10,
+                boxShadow: "0 12px 36px rgba(0,0,0,0.6)",
                 cursor: "pointer",
               }}
               onClick={handleShowCardModalClose}
@@ -2022,23 +2023,6 @@ export default function Field({
             setHovering={setHovering}
             ready={ready}
           />
-          <ShowDice />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-evenly",
-              flexDirection: "row",
-              width: "100%",
-            }}
-          >
-            <Token
-              setReady={setReady}
-              setHovering={setHovering}
-              ready={ready}
-              setTokenReady={setTokenReady}
-            />
-            {/* <Lesson /> */}
-          </div>
         </div>
         {/* Player Field (1-5) & Ex Area (6-10) */}
         <div

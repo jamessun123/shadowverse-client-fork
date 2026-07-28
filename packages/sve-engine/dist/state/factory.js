@@ -92,6 +92,7 @@ function createInitialGameState(firstPlayer = 0) {
         endPhaseQuickResolved: false,
         resolutionContext: null,
         eventLog: [],
+        actionLog: [],
         revealedCards: [],
     };
 }

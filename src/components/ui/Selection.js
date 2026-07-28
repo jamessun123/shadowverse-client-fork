@@ -92,11 +92,12 @@ import {
   exitGame,
   setRematchStatus,
 } from "../../redux/CardSlice";
-import HideUiButton from "./HideUiButton";
 
 export default function Selection({ setSelectedOption }) {
   // redux state
   const reduxChatLog = useSelector((state) => state.card.gameLog);
+  const playerSlot = useSelector((state) => state.gameState.playerSlot);
+  const actionLog = useSelector((state) => state.gameState.engineView?.state?.actionLog) || [];
   const reduxEnemyRematchStatus = useSelector(
     (state) => state.card.enemyRematchStatus,
   );
@@ -467,7 +468,52 @@ export default function Selection({ setSelectedOption }) {
             ref={descriptionElementRef}
             tabIndex={-1}
           >
-            {reduxChatLog.map((x) =>
+            {gameMode === "automated"
+              ? [...actionLog].reverse().map((entry) => {
+                  const mine = playerSlot != null && entry.player === playerSlot;
+                  const who =
+                    playerSlot == null
+                      ? `P${entry.player}`
+                      : mine
+                        ? "You"
+                        : "Opponent";
+                  return (
+                    <div
+                      key={entry.seq}
+                      style={{
+                        borderRadius: "15px",
+                        padding: "1em",
+                        margin: "1em",
+                        minHeight: entry.cardName ? "120px" : "50px",
+                        background: mine ? "#E5F8FE" : "#FFEEEF",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: entry.cardName ? "start" : "center",
+                        gap: "1em",
+                      }}
+                    >
+                      {entry.cardName && cardImage(entry.cardName) && (
+                        <div>
+                          <img
+                            style={{ height: "100px" }}
+                            src={cardImage(entry.cardName)}
+                            alt={entry.cardName}
+                          />
+                        </div>
+                      )}
+                      <Typography
+                        variant="body1"
+                        style={{
+                          fontWeight: "bold",
+                          whiteSpace: "pre-line",
+                        }}
+                      >
+                        {`Turn ${entry.turnNumber} · ${who} ${entry.text}`}
+                      </Typography>
+                    </div>
+                  );
+                })
+              : reduxChatLog.map((x) =>
               x.text[9] === "M" ? (
                 // Player 1 Log UI
                 <>
@@ -544,42 +590,9 @@ export default function Selection({ setSelectedOption }) {
                     </Typography>
                   </div>
                 </>
-                // <>
-                //   <div
-                //     style={{
-                //       borderRadius: "15px",
-                //       padding: "1em",
-                //       margin: "1em",
-                //       height: "200px",
-                //       background: "#FFEEEF",
-                //       display: "flex",
-                //       alignItems: "center",
-                //       justifyContent: "start",
-                //       gap: "1em",
-                //     }}
-                //   >
-                //     <div>
-                //       <img
-                //         style={{
-                //           height: "160px",
-                //         }}
-                //         src={cardImage(x.card)}
-                //         alt={x.card}
-                //       />
-                //     </div>
-                //     <Typography
-                //       variant="body1"
-                //       style={{
-                //         fontWeight: "bold",
-                //         whiteSpace: "pre-line",
-                //       }}
-                //     >
-                //       {x.text}
-                //     </Typography>
-                //   </div>
-                // </>
-              ),
-            )}
+              )
+            )
+          }
           </DialogContentText>
         </DialogContent>
         <DialogActions>
@@ -598,7 +611,6 @@ export default function Selection({ setSelectedOption }) {
           zIndex: 1000,
         }}
       >
-        <HideUiButton size="medium" />
         <IconButton
           onClick={handleDrawerOpen}
           sx={{

@@ -25,7 +25,6 @@ import WifiIcon from "@mui/icons-material/Wifi";
 import sepOn from "../../assets/logo/sep_on.png";
 import sepOff from "../../assets/logo/sep_off.png";
 import "../../css/EnemyUI.css";
-import HideUiButton from "./HideUiButton";
 
 const StyledRating = styled(Rating)({
   "& .MuiRating-iconFilled": {
@@ -201,19 +200,7 @@ export default function EnemyUI() {
   };
 
   return (
-    <div
-      style={{
-        position: "relative",
-        paddingTop: "3em",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "150px",
-        width: "20vw",
-        gap: "1em",
-      }}
-    >
-      <HideUiButton sx={{ position: "absolute", top: 0, right: 0 }} />
+    <div style={{ position: "relative" }}>
       <Snackbar
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
         open={reduxEnemyViewingDeck}
@@ -341,149 +328,155 @@ export default function EnemyUI() {
         />
       </Snackbar>
 
-      <div style={{ height: "60px", width: "60px" }}>
-        {reduxEnemyDice.show && (
-          <motion.div
-            id="dice"
-            initial={{ opacity: 1.0 }}
-            transition={{ delay: 1, duration: 1 }}
-            animate={{ opacity: 0.0 }}
-          >
-            <Dice
-              defaultValue={reduxEnemyDice.roll}
-              size={60}
-              faceBg={"transparent"}
-            />
-          </motion.div>
-        )}
-      </div>
-      <Leader name={reduxEnemyLeader} active={reduxEnemyLeaderActive} />
-
-      {reduxEnemyOnlineStatus ? (
-        <div className={"onlineStatus"}>
-          <WifiIcon sx={{ height: 40, width: 40 }} />
-        </div>
-      ) : (
-        <div className={"offlineStatus"}>
-          <WifiOffIcon sx={{ height: 40, width: 40 }} />
-        </div>
-      )}
-
-      <div style={{ opacity: 0.75 }}>
-        <img
-          height={70}
-          width={70}
-          src={getClassFromLeader(reduxEnemyLeader)}
-          alt={reduxEnemyLeader}
-        />
-      </div>
       <div
         style={{
           display: "flex",
+          flexDirection: "row",
           alignItems: "center",
-          justifyContent: "center",
-          flexDirection: "column",
-          gap: "1em",
+          justifyContent: "flex-start",
+          gap: "0.85em",
+          boxSizing: "border-box",
         }}
       >
+        <Leader name={reduxEnemyLeader} active={reduxEnemyLeaderActive} />
+
         <div
           style={{
-            fontFamily: "Noto Serif JP, serif",
-            background: getColorFromLeader(reduxEnemyLeader),
-            outline: "7px ridge rgba(0, 0, 0, 1.0)",
-            userSelect: "none",
-            height: "60px",
-            width: "150px",
             display: "flex",
-            justifyContent: "space-evenly",
-            alignItems: "center",
-            fontSize: "45px",
-            color: "white",
-            zIndex: 1,
-          }}
-        >
-          {reduxEnemyHealth}
-        </div>
-        <div
-          style={{
-            height: "50px",
-            width: "150px",
-            display: "flex",
-            justifyContent: "space-evenly",
-            alignItems: "center",
-            background:
-              "linear-gradient(to right, rgb(5, 117, 230), rgb(2, 27, 121))",
-            fontFamily: "Noto Serif JP, serif",
-            fontSize: "30px",
-            outline: "7px ridge rgba(0, 0, 0, 1.0)",
-            color: "white",
-            zIndex: 1,
-          }}
-        >
-          {reduxCurrentEnemyPlayPoints} / {reduxMaxEnemyPlayPoints}
-          {/* <div>
-            <Badge color="info" size="small" badgeContent={reduxEnemyEvoPoints}>
-              <div
-                style={{
-                  fontFamily: "Noto Serif JP, serif",
-                  fontSize: "17px",
-                }}
-              >
-                EP
-              </div>
-            </Badge>
-          </div> */}
-        </div>
-        <div
-          style={{
-            height: "30px",
-            width: "150px",
-            display: "flex",
-            justifyContent: "space-evenly",
-            alignItems: "center",
-            background:
-              "linear-gradient(to right, rgb(5, 117, 230), rgb(2, 27, 121))",
-            fontFamily: "Noto Serif JP, serif",
-            fontSize: "30px",
-            outline: "3px ridge rgba(0, 0, 0, 1.0)",
-            color: "white",
-            zIndex: 1,
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: "0.65em",
+            flexShrink: 0,
           }}
         >
           <div
             style={{
-              fontFamily: "Noto Serif JP, serif",
-              fontSize: "17px",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5em",
             }}
           >
-            EP
+            <div style={{ height: "48px", width: "48px" }}>
+              {reduxEnemyDice.show && (
+                <motion.div
+                  id="dice"
+                  initial={{ opacity: 1.0 }}
+                  transition={{ delay: 1, duration: 1 }}
+                  animate={{ opacity: 0.0 }}
+                >
+                  <Dice
+                    defaultValue={reduxEnemyDice.roll}
+                    size={48}
+                    faceBg={"transparent"}
+                  />
+                </motion.div>
+              )}
+            </div>
+            {reduxEnemyOnlineStatus ? (
+              <div className={"onlineStatus"}>
+                <WifiIcon sx={{ height: 34, width: 34 }} />
+              </div>
+            ) : (
+              <div className={"offlineStatus"}>
+                <WifiOffIcon sx={{ height: 34, width: 34 }} />
+              </div>
+            )}
+            <div style={{ opacity: 0.75 }}>
+              <img
+                height={52}
+                width={52}
+                src={getClassFromLeader(reduxEnemyLeader)}
+                alt={reduxEnemyLeader}
+              />
+            </div>
           </div>
-          <StyledRating
-            name="customized-color"
-            value={reduxEnemyEvoPoints}
-            readOnly={true}
-            max={3}
-            icon={<FiberManualRecordIcon fontSize="inherit" />}
-            emptyIcon={<FiberManualRecordOutlinedIcon fontSize="inherit" />}
-          />
-        </div>
-        <div
-          style={{
-            height: "50px",
-            width: "100px",
-            zIndex: 1,
-          }}
-        >
-          {reduxEnemySuperEvo && (
-            <div>
-              <img height={50} width={100} src={sepOn} alt="sep" />
+          <div
+            style={{
+              fontFamily: "Noto Serif JP, serif",
+              background: getColorFromLeader(reduxEnemyLeader),
+              outline: "7px ridge rgba(0, 0, 0, 1.0)",
+              userSelect: "none",
+              height: "78px",
+              width: "190px",
+              display: "flex",
+              justifyContent: "space-evenly",
+              alignItems: "center",
+              fontSize: "56px",
+              color: "white",
+              zIndex: 1,
+            }}
+          >
+            {reduxEnemyHealth}
+          </div>
+          <div
+            style={{
+              height: "54px",
+              width: "190px",
+              display: "flex",
+              justifyContent: "space-evenly",
+              alignItems: "center",
+              background:
+                "linear-gradient(to right, rgb(5, 117, 230), rgb(2, 27, 121))",
+              fontFamily: "Noto Serif JP, serif",
+              fontSize: "38px",
+              outline: "7px ridge rgba(0, 0, 0, 1.0)",
+              color: "white",
+              zIndex: 1,
+            }}
+          >
+            {reduxCurrentEnemyPlayPoints} / {reduxMaxEnemyPlayPoints}
+          </div>
+          <div
+            style={{
+              height: "42px",
+              width: "190px",
+              display: "flex",
+              justifyContent: "space-evenly",
+              alignItems: "center",
+              background:
+                "linear-gradient(to right, rgb(5, 117, 230), rgb(2, 27, 121))",
+              fontFamily: "Noto Serif JP, serif",
+              fontSize: "30px",
+              outline: "3px ridge rgba(0, 0, 0, 1.0)",
+              color: "white",
+              zIndex: 1,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: "Noto Serif JP, serif",
+                fontSize: "20px",
+              }}
+            >
+              EP
             </div>
-          )}
-          {!reduxEnemySuperEvo && (
-            <div>
-              <img height={50} width={100} src={sepOff} alt="sep" />
-            </div>
-          )}
+            <StyledRating
+              name="customized-color"
+              value={reduxEnemyEvoPoints}
+              readOnly={true}
+              max={3}
+              icon={<FiberManualRecordIcon fontSize="inherit" />}
+              emptyIcon={<FiberManualRecordOutlinedIcon fontSize="inherit" />}
+            />
+          </div>
+          <div
+            style={{
+              height: "58px",
+              width: "116px",
+              zIndex: 1,
+            }}
+          >
+            {reduxEnemySuperEvo && (
+              <div>
+                <img height={58} width={116} src={sepOn} alt="sep" />
+              </div>
+            )}
+            {!reduxEnemySuperEvo && (
+              <div>
+                <img height={58} width={116} src={sepOff} alt="sep" />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

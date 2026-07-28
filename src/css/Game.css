@@ -9,7 +9,8 @@
   width: 100vw;
   display: flex;
   flex-direction: row;
-  justify-content: space-around;
+  justify-content: flex-start;
+  align-items: stretch;
 }
 .centerCanvas {
   display: flex;
@@ -22,6 +23,7 @@
      shrink on laptops/iPad instead of forcing horizontal overflow. */
   min-width: 0;
   max-width: 1100px;
+  flex: 0 1 50vw;
   flex-direction: column;
   align-items: center;
   /* The board lives in a flex:1 area that fills the space above the hand and
@@ -31,32 +33,33 @@
   /* overflow: hidden; */
 }
 .rightSideCanvas {
-  /* width: 20vw; */
-  /* width: 350px; */
-  /* background-color: yellow; */
-  width: 20vw;
-
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
   height: 100vh;
   display: flex;
   flex-direction: column;
-  /* small min-gap only; space-between handles the spread. A large gap here
-     overflowed the column on shorter screens and pushed the chat button
-     (the last item) off the bottom of the viewport. */
   gap: 1em;
-  align-items: end;
-  justify-content: space-between;
+  /* Center portrait+counters so the gap to the board matches the gap to the
+     right screen edge. */
+  align-items: center;
+  justify-content: space-evenly;
   box-sizing: border-box;
   padding: 1em 0;
+  overflow: hidden;
 }
 
 .leftSideCanvas {
   /* width: 20vw; */
   /* width: 350px; */
   /* background-color: red; */
-  width: 20vw;
+  width: 18vw;
+  flex: 0 0 18vw;
 
   height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
+  padding: 1em 0;
 }

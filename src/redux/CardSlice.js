@@ -2481,6 +2481,7 @@ export const CardSlice = createSlice({
       if (s.cemetery !== undefined) state.cemetery = s.cemetery;
       if (s.cemeteryInstanceIds !== undefined) state.cemeteryInstanceIds = s.cemeteryInstanceIds;
       if (s.deck !== undefined) state.deck = s.deck;
+      if (s.evoDeck !== undefined) state.evoDeck = s.evoDeck;
       if (s.playPoints !== undefined) state.playPoints = s.playPoints;
       if (s.evoPoints !== undefined) state.evoPoints = s.evoPoints;
       if (s.playerHealth !== undefined) state.playerHealth = s.playerHealth;
@@ -2490,11 +2491,13 @@ export const CardSlice = createSlice({
         state.enemySuperEvoActive = s.enemySuperEvoActive;
       }
       if (s.enemyHand !== undefined) state.enemyHand = s.enemyHand;
+      if (s.enemyDeckSize !== undefined) state.enemyDeckSize = s.enemyDeckSize;
       if (s.enemyField !== undefined) state.enemyField = s.enemyField;
       if (s.enemyEvoField !== undefined) state.enemyEvoField = s.enemyEvoField;
       if (s.enemyEngagedField !== undefined) state.enemyEngagedField = s.enemyEngagedField;
       if (s.enemyCustomValues !== undefined) state.enemyCustomValues = s.enemyCustomValues;
       if (s.enemyCemetery !== undefined) state.enemyCemetery = s.enemyCemetery;
+      if (s.enemyEvoDeck !== undefined) state.enemyEvoDeck = s.enemyEvoDeck;
       if (s.enemyPlayPoints !== undefined) state.enemyPlayPoints = s.enemyPlayPoints;
       if (s.enemyEvoPoints !== undefined) state.enemyEvoPoints = s.enemyEvoPoints;
       if (s.enemyHealth !== undefined) state.enemyHealth = s.enemyHealth;

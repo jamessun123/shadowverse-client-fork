@@ -36,12 +36,12 @@ function normalizeRoomId(room) {
   return String(room).trim();
 }
 
-function getOrCreateRoom(roomId, automated = false) {
+function getOrCreateRoom(roomId) {
   const id = normalizeRoomId(roomId);
   if (!id) return null;
   if (!rooms.has(id)) {
-    rooms.set(id, new GameRoom(id, Boolean(automated)));
-  } else if (automated && !rooms.get(id).automated) {
+    rooms.set(id, new GameRoom(id, true));
+  } else if (!rooms.get(id).automated) {
     rooms.get(id).automated = true;
   }
   return rooms.get(id);
@@ -49,28 +49,27 @@ function getOrCreateRoom(roomId, automated = false) {
 
 function parseJoinPayload(raw) {
   if (typeof raw === "string" || typeof raw === "number") {
-    return { room: normalizeRoomId(raw), playerId: null, automated: false, deck: null };
+    return { room: normalizeRoomId(raw), playerId: null, deck: null };
   }
   if (raw && typeof raw === "object") {
     return {
       room: normalizeRoomId(raw.room),
       playerId: raw.playerId ?? null,
-      automated: Boolean(raw.automated),
       deck: raw.deck ?? null,
     };
   }
-  return { room: null, playerId: null, automated: false, deck: null };
+  return { room: null, playerId: null, deck: null };
 }
 
 io.on("connection", (socket) => {
   socket.on("join_room", (payload) => {
-    const { room, playerId, automated, deck } = parseJoinPayload(payload);
+    const { room, playerId, deck } = parseJoinPayload(payload);
     if (!room) {
       socket.emit("join_error", { error: "Invalid room" });
       return;
     }
 
-    const gameRoom = getOrCreateRoom(room, automated);
+    const gameRoom = getOrCreateRoom(room);
     const slot = gameRoom.addPlayer(socket.id, playerId);
     if (slot == null) {
       socket.emit("join_error", { error: "Room is full" });
@@ -81,16 +80,16 @@ io.on("connection", (socket) => {
     socket.data.room = room;
     socket.data.playerId = playerId;
     socket.data.slot = slot;
-    socket.data.automated = automated;
+    socket.data.automated = true;
 
     socket.emit("joined", {
       room,
       slot,
-      automated,
+      automated: true,
       serverMode: "authoritative",
     });
 
-    if (automated && deck) {
+    if (deck) {
       gameRoom.pendingDecks = gameRoom.pendingDecks || {};
       gameRoom.pendingDecks[slot] = deck;
       if (gameRoom.pendingDecks[0] && gameRoom.pendingDecks[1]) {
@@ -103,15 +102,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Legacy manual mode: host creates room
-  socket.on("create_room", (roomId) => {
-    const room = normalizeRoomId(roomId);
-    if (!room) return;
-    getOrCreateRoom(room, false);
-    socket.join(room);
-    socket.data.room = room;
-  });
-
   socket.on("engine_action", ({ actionId, action }) => {
     const room = socket.data.room;
     if (!room) {
@@ -119,10 +109,10 @@ io.on("connection", (socket) => {
       return;
     }
     const gameRoom = rooms.get(room);
-    if (!gameRoom?.automated) {
+    if (!gameRoom) {
       socket.emit("engine_error", {
         actionId,
-        error: "Room not in Rules Enforced mode. Use npm run server on localhost.",
+        error: "Room not found",
       });
       return;
     }
@@ -162,7 +152,7 @@ io.on("connection", (socket) => {
     socket.emit("joined", {
       room,
       slot,
-      automated: gameRoom.automated,
+      automated: true,
       serverMode: "authoritative",
     });
 
