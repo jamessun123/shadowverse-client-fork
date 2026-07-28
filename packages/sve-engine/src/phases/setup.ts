@@ -14,7 +14,9 @@ const FALLBACK_EVO = "Eager Recruit Evolved";
 function resolveDeckCardName(nameOrCardNo: string, fallback: string): string {
   if (!nameOrCardNo) return fallback;
   const def = getCardDef(nameOrCardNo);
-  return def?.name ?? fallback;
+  if (def?.name) return def.name;
+  console.warn(`[sve-engine] Unknown deck card "${nameOrCardNo}" — using ${fallback}`);
+  return fallback;
 }
 
 function clearTurnScopedCardState(card: CardInstance): void {

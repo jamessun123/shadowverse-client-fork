@@ -43,14 +43,29 @@ exports.getCardByName = getCardByName;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const mvp_cards_1 = require("./mvp-cards");
+function resolveDataPath(...parts) {
+    const candidates = [
+        path.join(__dirname, "..", "..", "data", ...parts),
+        path.join(__dirname, "..", "data", ...parts),
+        path.join(process.cwd(), "packages", "sve-engine", "data", ...parts),
+        path.join(process.cwd(), "data", ...parts),
+    ];
+    return candidates.find((p) => fs.existsSync(p)) ?? null;
+}
 let scrapedCards = {};
-const cardsPath = path.join(__dirname, "..", "..", "data", "cards.json");
-const cardDefsDir = path.join(__dirname, "..", "..", "data", "card-defs");
-if (fs.existsSync(cardsPath)) {
+const cardsPath = resolveDataPath("cards.json");
+const cardDefsDir = resolveDataPath("card-defs");
+if (cardsPath) {
     scrapedCards = JSON.parse(fs.readFileSync(cardsPath, "utf8"));
 }
+else {
+    console.warn("[sve-engine] cards.json not found — only MVP stubs will load. Checked:", [
+        path.join(__dirname, "..", "..", "data", "cards.json"),
+        path.join(process.cwd(), "packages", "sve-engine", "data", "cards.json"),
+    ].join(", "));
+}
 const handAuthored = {};
-if (fs.existsSync(cardDefsDir)) {
+if (cardDefsDir) {
     for (const file of fs.readdirSync(cardDefsDir).filter((f) => f.endsWith(".json"))) {
         const chunk = JSON.parse(fs.readFileSync(path.join(cardDefsDir, file), "utf8"));
         Object.assign(handAuthored, chunk);

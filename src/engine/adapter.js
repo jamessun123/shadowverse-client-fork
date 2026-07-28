@@ -244,23 +244,30 @@ const ENGINE_CARD_NAMES = new Set([
 ]);
 
 /**
- * Map a deck-builder name to an engine identity. Unknown cards fall back to a
- * playable MVP filler so Rules Enforced never softlocks with zero legal plays.
+ * Map a deck-builder name to an engine identity when we can normalize it.
+ * Unknown names are passed through — the server registry is the source of truth.
+ * Never silently rewrite a whole deck to Vanilla Soldier (that breaks deploys
+ * when the client card-stats set is incomplete).
  */
 function resolveEngineCardName(name, fallback) {
   if (!name) return fallback;
   if (ENGINE_CARD_NAMES.has(name)) return name;
+  const stripped = String(name).replace(/\s+TOKEN$/i, "").trim();
+  const asToken = `${stripped} TOKEN`;
+  if (ENGINE_CARD_NAMES.has(asToken)) return asToken;
+  if (stripped !== name && ENGINE_CARD_NAMES.has(stripped)) return stripped;
+
   const cardNo =
     getCardByNameClient(name)?.cardNo ||
     getCardDefClient(name)?.cardNo ||
     getCardNoFromName(name);
   if (cardNo) {
     const fromStats = cardStats[cardNo]?.name;
-    if (fromStats && ENGINE_CARD_NAMES.has(fromStats)) return fromStats;
+    if (fromStats) return fromStats;
     const fromMvp = mvpCards.find((c) => c.cardNo === cardNo)?.name;
     if (fromMvp) return fromMvp;
   }
-  return fallback;
+  return name;
 }
 
 /** Build deck payload for server from deck names. Engine identity is the card name. */

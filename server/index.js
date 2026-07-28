@@ -8,6 +8,11 @@ const { GameRoom } = require("./gameRoom");
 const PORT = process.env.PORT || 5000;
 const SERVER_VERSION = "0.2.1";
 const CARD_DEF_COUNT = getAllCardDefs().length;
+if (CARD_DEF_COUNT < 100) {
+  console.warn(
+    `[shadowverse-server] Only ${CARD_DEF_COUNT} card defs loaded — packages/sve-engine/data/cards.json may be missing from the deploy.`,
+  );
+}
 const app = express();
 app.use(cors());
 app.get("/", (_req, res) =>

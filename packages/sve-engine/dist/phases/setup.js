@@ -17,7 +17,10 @@ function resolveDeckCardName(nameOrCardNo, fallback) {
     if (!nameOrCardNo)
         return fallback;
     const def = (0, registry_1.getCardDef)(nameOrCardNo);
-    return def?.name ?? fallback;
+    if (def?.name)
+        return def.name;
+    console.warn(`[sve-engine] Unknown deck card "${nameOrCardNo}" — using ${fallback}`);
+    return fallback;
 }
 function clearTurnScopedCardState(card) {
     card.abilitiesActivatedThisTurn = [];
