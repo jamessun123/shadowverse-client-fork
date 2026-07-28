@@ -5998,7 +5998,7 @@ function cardImageExact(cardName) {
       return "../textures/BP19-004EN.png";
     case "Verdant Lieutenant":
       return "../textures/BP19-005EN.png";
-    case "Verdant Lieutenant":
+    case "Verdant Lieutenant Evolved":
       return "../textures/BP19-006EN.png";
     case "Warden of Balms":
       return "../textures/BP19-007EN.png";
@@ -6152,7 +6152,7 @@ function cardImageExact(cardName) {
       return "../textures/BP19-081EN.png";
     case "Underworld Lieutenant":
       return "../textures/BP19-082EN.png";
-    case "Underworld Lieutenant":
+    case "Underworld Lieutenant Evolved":
       return "../textures/BP19-083EN.png";
     case "Warden of Corpses":
       return "../textures/BP19-084EN.png";
@@ -6278,7 +6278,7 @@ function cardImageExact(cardName) {
       return "../textures/BP20-022EN.png";
     case "Congregant of Usurpation":
       return "../textures/BP20-023EN.png";
-    case "Congregant of Usurpation":
+    case "Congregant of Usurpation Evolved":
       return "../textures/BP20-024EN.png";
     case "Fearful Fighter":
       return "../textures/BP20-025EN.png";
@@ -6880,7 +6880,7 @@ function cardImageExact(cardName) {
       return "../textures/CP04-094EN.png";
     case "Yui":
       return "../textures/CP04-095EN.png";
-    case "Yui":
+    case "Yui Evolved":
       return "../textures/CP04-096EN.png";
     case "Quria":
       return "../textures/CP04-097EN.png";
@@ -6966,20 +6966,6 @@ function cardImageExact(cardName) {
       return "../textures/CP04-PR06EN.png";
     case "Yui [Princess Form]":
       return "../textures/CP04-PR07EN.png";
-    case "Kokkoro [Princess Form]":
-      return "../textures/CP04-PR08EN.png";
-    case "Pecorine [Princess Form]":
-      return "../textures/CP04-PR09EN.png";
-    case "Karyl [Princess Form]":
-      return "../textures/CP04-PR10EN.png";
-    case "Sheffy [Princess Form]":
-      return "../textures/CP04-PR11EN.png";
-    case "Hiyori [Princess Form]":
-      return "../textures/CP04-PR12EN.png";
-    case "Rei [Princess Form]":
-      return "../textures/CP04-PR13EN.png";
-    case "Yui [Princess Form]":
-      return "../textures/CP04-PR14EN.png";
     case "Yuni, Chloe & Chieru":
       return "../textures/CP04-U06EN.png";
     case "Ranpha & Misora":
