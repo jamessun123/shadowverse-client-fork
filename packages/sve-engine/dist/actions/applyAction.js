@@ -258,12 +258,7 @@ function handleChoiceResponse(state, player, payload) {
         const trigger = next.pendingTriggers.find((t) => t.id === triggerId);
         if (!trigger)
             return fail(state, "Invalid trigger");
-        next.pendingTriggers = next.pendingTriggers.filter((t) => t.id !== triggerId);
-        next.resolutionContext = (0, effect_utils_1.contextForTriggerResolution)(next, trigger.sourceInstanceId, trigger.ability.effect);
-        next = (0, resolver_1.resolveEffect)(next, trigger.ability.effect, trigger.controller);
-        if ((0, effect_utils_1.shouldClearResolutionContext)(next)) {
-            next.resolutionContext = null;
-        }
+        next = (0, confirmation_1.resolveOneTrigger)(next, trigger);
         next = finishChoiceResolution(next, player);
         next = maybeContinueEndPhase(next);
         return ok(next);

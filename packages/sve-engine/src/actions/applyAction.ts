@@ -10,6 +10,7 @@ import { applyMulligan, beginStartPhase } from "../phases/setup";
 import {
   onCardEntersExArea,
   onFollowerEntersField,
+  resolveOneTrigger,
   runConfirmationTiming,
 } from "../rules/confirmation";
 import {
@@ -326,16 +327,7 @@ function handleChoiceResponse(state: GameState, player: PlayerId, payload: Recor
     const triggerId = String(payload.triggerId);
     const trigger = next.pendingTriggers.find((t) => t.id === triggerId);
     if (!trigger) return fail(state, "Invalid trigger");
-    next.pendingTriggers = next.pendingTriggers.filter((t) => t.id !== triggerId);
-    next.resolutionContext = contextForTriggerResolution(
-      next,
-      trigger.sourceInstanceId,
-      trigger.ability.effect,
-    );
-    next = resolveEffect(next, trigger.ability.effect, trigger.controller);
-    if (shouldClearResolutionContext(next)) {
-      next.resolutionContext = null;
-    }
+    next = resolveOneTrigger(next, trigger);
     next = finishChoiceResolution(next, player);
     next = maybeContinueEndPhase(next);
     return ok(next);

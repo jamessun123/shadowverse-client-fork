@@ -17,7 +17,7 @@ import {
 } from "./trigger-queue";
 import { findInstance, getPlayer, getEffectiveStats, hasKeyword, resolveCardNo } from "../state/queries";
 import { destroyFollower, drawCard, removeFromField } from "../state/zones";
-import { GameState, PendingTrigger, PlayerId } from "../types";
+import { GameState, PendingTrigger, PlayerId, TriggerTiming } from "../types";
 
 function checkLosses(state: GameState): GameState {
   let next = structuredClone(state);
@@ -153,7 +153,14 @@ export function onCardEntersExArea(
 
 function markTriggerAbilityUsed(state: GameState, trigger: PendingTrigger): void {
   if (!trigger.abilityKey) return;
-  if (trigger.timing !== "onCardPlayed" && trigger.timing !== "onAllyFollowerEnter" && trigger.timing !== "onOpponentDeckToCemetery") return;
+  const markableTimings: TriggerTiming[] = [
+    "onCardPlayed",
+    "onCardPlayedOrFused",
+    "onCardFused",
+    "onAllyFollowerEnter",
+    "onOpponentDeckToCemetery",
+  ];
+  if (!markableTimings.includes(trigger.timing)) return;
   const found = findInstance(state, trigger.sourceInstanceId);
   if (!found) return;
   const { ability, abilityKey } = trigger;
@@ -165,7 +172,7 @@ function markTriggerAbilityUsed(state: GameState, trigger: PendingTrigger): void
   }
 }
 
-function resolveOneTrigger(state: GameState, trigger: PendingTrigger): GameState {
+export function resolveOneTrigger(state: GameState, trigger: PendingTrigger): GameState {
   let next = structuredClone(state);
   next.pendingTriggers = next.pendingTriggers.filter((t) => t.id !== trigger.id);
   next.resolutionContext = {

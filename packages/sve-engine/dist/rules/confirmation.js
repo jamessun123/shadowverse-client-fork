@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.queueFanfare = exports.queueLastWords = void 0;
 exports.onFollowerEntersField = onFollowerEntersField;
 exports.onCardEntersExArea = onCardEntersExArea;
+exports.resolveOneTrigger = resolveOneTrigger;
 exports.runConfirmationTiming = runConfirmationTiming;
 const tokens_1 = require("../cards/tokens");
 const card_reset_1 = require("../state/card-reset");
@@ -137,7 +138,14 @@ function onCardEntersExArea(state, instanceId, player) {
 function markTriggerAbilityUsed(state, trigger) {
     if (!trigger.abilityKey)
         return;
-    if (trigger.timing !== "onCardPlayed" && trigger.timing !== "onAllyFollowerEnter" && trigger.timing !== "onOpponentDeckToCemetery")
+    const markableTimings = [
+        "onCardPlayed",
+        "onCardPlayedOrFused",
+        "onCardFused",
+        "onAllyFollowerEnter",
+        "onOpponentDeckToCemetery",
+    ];
+    if (!markableTimings.includes(trigger.timing))
         return;
     const found = (0, queries_1.findInstance)(state, trigger.sourceInstanceId);
     if (!found)

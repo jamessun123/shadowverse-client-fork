@@ -174,6 +174,37 @@ io.on("connection", (socket) => {
     leaveWaitingRoom(socket);
   });
 
+  socket.on("request_rematch", () => {
+    const roomId = socket.data.room;
+    if (!roomId) return;
+    const gameRoom = rooms.get(roomId);
+    if (!gameRoom?.state) return;
+    const decks = gameRoom.pendingDecks;
+    if (!decks?.[0] || !decks?.[1]) return;
+
+    const slot = gameRoom.getSlot(socket.id);
+    if (slot == null) return;
+
+    if (!gameRoom.rematchVotes) gameRoom.rematchVotes = new Set();
+    gameRoom.rematchVotes.add(slot);
+
+    if (gameRoom.rematchVotes.size < 2) return;
+
+    const firstPlayer = Math.random() < 0.5 ? 0 : 1;
+    const views = gameRoom.startAutomatedGame([decks[0], decks[1]], firstPlayer);
+    io.to(roomId).emit("engine_state", views);
+  });
+
+  socket.on("cancel_rematch", () => {
+    const roomId = socket.data.room;
+    if (!roomId) return;
+    const gameRoom = rooms.get(roomId);
+    if (!gameRoom) return;
+    const slot = gameRoom.getSlot(socket.id);
+    if (slot == null) return;
+    gameRoom.rematchVotes?.delete(slot);
+  });
+
   socket.on("engine_action", ({ actionId, action }) => {
     const room = socket.data.room;
     if (!room) {

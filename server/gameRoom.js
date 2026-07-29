@@ -18,6 +18,8 @@ class GameRoom {
     this.createdAt = Date.now();
     /** Deck name shown in the open-rooms lobby for the host. */
     this.hostDeckName = null;
+    /** Slots that have voted for a rematch (cleared when a new game starts). */
+    this.rematchVotes = new Set();
   }
 
   addPlayer(socketId, playerId) {
@@ -60,6 +62,7 @@ class GameRoom {
     state = loadDecks(state, preparedDecks);
     this.state = state;
     this.seq += 1;
+    this.rematchVotes = new Set();
     return this.broadcastViews();
   }
 

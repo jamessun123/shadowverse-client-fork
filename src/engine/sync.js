@@ -41,7 +41,7 @@ export function applyEnginePayload(dispatch, payload, knownSlot = null) {
   }
 
   const freshGame =
-    view.state?.phase === "mulligan" && view.state?.turnNumber === 0 && seq === 1;
+    view.state?.phase === "mulligan" && view.state?.turnNumber === 0;
   if (freshGame) {
     shownRevealIds.clear();
     dispatch(resetEngine());

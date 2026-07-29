@@ -92,6 +92,7 @@ import {
   exitGame,
   setRematchStatus,
 } from "../../redux/CardSlice";
+import { resetEngine } from "../../redux/GameStateSlice";
 
 export default function Selection({ setSelectedOption }) {
   // redux state
@@ -146,9 +147,14 @@ export default function Selection({ setSelectedOption }) {
 
   const handleRematch = () => {
     if (acceptRematch && reduxEnemyRematchStatus) {
+      if (gameMode === "automated") {
+        socket.emit("request_rematch");
+        dispatch(resetEngine());
+        clearSavedState(reduxRoom?.toString?.() || String(reduxRoom || ""));
+      }
       dispatch(reset());
       setAcceptRematch(false);
-      // setRematchNotify(true);
+      setRematchOpenDialog(false);
     }
   };
 
@@ -173,6 +179,9 @@ export default function Selection({ setSelectedOption }) {
     setAcceptRematch(false);
     handleCloseRematchDialog();
     dispatch(setRematchStatus(false));
+    if (gameMode === "automated") {
+      socket.emit("cancel_rematch");
+    }
   };
 
   const handleOpenDialog = () => {
