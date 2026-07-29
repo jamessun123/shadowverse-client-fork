@@ -4,7 +4,7 @@ import { cardMatchesFilter } from "../state/conditions";
 import { isBoxed } from "../state/passives";
 import { findInstance, getPlayer, resolveCardNo } from "../state/queries";
 import { matchesExAreaEntryFilter } from "../state/passives";
-import { AbilityDefinition, GameState, PlayerId, TriggerTiming } from "../types";
+import { AbilityDefinition, CardInstance, GameState, PlayerId, TriggerTiming } from "../types";
 
 function pushTrigger(
   state: GameState,
@@ -39,29 +39,30 @@ function canFireLimitedTrigger(
   return true;
 }
 
-export function queueOnCardPlayed(
+function queueOnCardPlayedForCard(
   state: GameState,
-  playedInstanceId: string,
+  playedNo: string,
   player: PlayerId,
+  fieldCard: CardInstance,
+  idPrefix: string,
+  matchTimings: ReadonlyArray<AbilityDefinition["timing"]> = ["onCardPlayed", "onCardPlayedOrFused"],
+  queuedTiming: TriggerTiming = "onCardPlayed",
 ): void {
-  const played = findInstance(state, playedInstanceId);
-  if (!played) return;
-  const playedNo = resolveCardNo(state, played.card);
+  if (isBoxed(fieldCard, state)) return;
+  const cardNo = resolveCardNo(state, fieldCard);
+  const def = getCardDef(cardNo);
 
-  for (const fieldCard of getPlayer(state, player).zones.field) {
-    if (isBoxed(fieldCard, state)) continue;
-    const cardNo = resolveCardNo(state, fieldCard);
-    const def = getCardDef(cardNo);
+  for (const [idx, ability] of (def?.abilities ?? []).entries()) {
+    if (!matchTimings.includes(ability.timing)) continue;
+    if (ability.filter && !cardMatchesFilter(playedNo, ability.filter)) continue;
+    const key = `${queuedTiming}:${idx}`;
+    if (!canFireLimitedTrigger(fieldCard, key, ability)) continue;
+    pushTrigger(state, fieldCard.instanceId, player, cardNo, ability, queuedTiming, idPrefix, key);
+  }
 
-    for (const [idx, ability] of (def?.abilities ?? []).entries()) {
-      if (ability.timing !== "onCardPlayed") continue;
-      if (ability.filter && !cardMatchesFilter(playedNo, ability.filter)) continue;
-      const key = `onCardPlayed:${idx}`;
-      if (!canFireLimitedTrigger(fieldCard, key, ability)) continue;
-      pushTrigger(state, fieldCard.instanceId, player, cardNo, ability, "onCardPlayed", "ocp", key);
-    }
-
-    // Passive grantOnCardPlayed is the hand-authored form of a persistent on-play trigger.
+  // Passive grantOnCardPlayed is the hand-authored form of a persistent on-play trigger.
+  // Fuse does not consume/fire these grants — only actual plays do.
+  if (queuedTiming === "onCardPlayed") {
     for (const [idx, ability] of (def?.abilities ?? []).entries()) {
       if (ability.timing !== "passive" || ability.effect.op !== "grantOnCardPlayed") continue;
       const granted = ability.effect;
@@ -89,12 +90,14 @@ export function queueOnCardPlayed(
         cardNo,
         pseudoAbility,
         "onCardPlayed",
-        "ocp",
+        idPrefix,
         key,
       );
     }
 
     for (const [gIdx, granted] of (fieldCard.grantedOnCardPlayed ?? []).entries()) {
+      // playCostReduction grants discount the play cost up front and are consumed on play.
+      if (granted.effect.op === "playCostReduction") continue;
       if (granted.filter && !cardMatchesFilter(playedNo, granted.filter)) continue;
       const key = `grantedOnCardPlayed:${gIdx}`;
       if (!canFireLimitedTrigger(fieldCard, key, granted)) continue;
@@ -112,10 +115,69 @@ export function queueOnCardPlayed(
         cardNo,
         pseudoAbility,
         "onCardPlayed",
-        "gocp",
+        `g${idPrefix}`,
         key,
       );
     }
+  }
+}
+
+export function queueOnCardPlayed(
+  state: GameState,
+  playedInstanceId: string,
+  player: PlayerId,
+): void {
+  const played = findInstance(state, playedInstanceId);
+  if (!played) return;
+  const playedNo = resolveCardNo(state, played.card);
+  const zones = getPlayer(state, player).zones;
+
+  for (const fieldCard of zones.field) {
+    queueOnCardPlayedForCard(state, playedNo, player, fieldCard, "ocp");
+  }
+  // Crests live in EX and can watch plays; amulets/spells waiting in EX do not.
+  for (const exCard of zones.exArea) {
+    const def = getCardDef(resolveCardNo(state, exCard));
+    if (def?.cardType !== "crest") continue;
+    queueOnCardPlayedForCard(state, playedNo, player, exCard, "ocpx");
+  }
+}
+
+/** Queue watchers for a card that was fused into the EX area. */
+export function queueOnCardFused(
+  state: GameState,
+  fusedInstanceId: string,
+  player: PlayerId,
+): void {
+  const fused = findInstance(state, fusedInstanceId);
+  if (!fused) return;
+  const fusedNo = resolveCardNo(state, fused.card);
+  const zones = getPlayer(state, player).zones;
+
+  for (const fieldCard of zones.field) {
+    queueOnCardPlayedForCard(
+      state,
+      fusedNo,
+      player,
+      fieldCard,
+      "ocf",
+      ["onCardFused", "onCardPlayedOrFused"],
+      "onCardFused",
+    );
+  }
+  for (const exCard of zones.exArea) {
+    if (exCard.instanceId === fusedInstanceId) continue;
+    const def = getCardDef(resolveCardNo(state, exCard));
+    if (def?.cardType !== "crest") continue;
+    queueOnCardPlayedForCard(
+      state,
+      fusedNo,
+      player,
+      exCard,
+      "ocfx",
+      ["onCardFused", "onCardPlayedOrFused"],
+      "onCardFused",
+    );
   }
 }
 
@@ -170,12 +232,48 @@ export function queueStartOfEndAbilities(state: GameState, player: PlayerId): vo
 }
 
 export function queueStartOfMainAbilities(state: GameState, player: PlayerId): void {
-  for (const card of [...getPlayer(state, player).zones.field]) {
+  const zones = getPlayer(state, player).zones;
+  for (const card of zones.field) {
     if (isBoxed(card, state)) continue;
     const def = getCardDef(resolveCardNo(state, card));
     for (const ability of def?.abilities ?? []) {
       if (ability.timing !== "startOfMain") continue;
       pushTrigger(state, card.instanceId, player, card.name, ability, "startOfMain", "som");
+    }
+  }
+  // Only Crests trigger from EX. Amulets like Destruction in Black/White sit in EX
+  // until played onto the field and must not fire start-of-main there.
+  for (const card of zones.exArea) {
+    if (isBoxed(card, state)) continue;
+    const def = getCardDef(resolveCardNo(state, card));
+    if (def?.cardType !== "crest") continue;
+    for (const ability of def?.abilities ?? []) {
+      if (ability.timing !== "startOfMain") continue;
+      pushTrigger(state, card.instanceId, player, card.name, ability, "startOfMain", "som");
+    }
+  }
+}
+
+/** During the active player's turn, when a card leaves an opponent's deck into cemetery. */
+export function queueOnOpponentDeckToCemetery(state: GameState): void {
+  const player = state.activePlayer;
+  for (const fieldCard of getPlayer(state, player).zones.field) {
+    if (isBoxed(fieldCard, state)) continue;
+    const def = getCardDef(resolveCardNo(state, fieldCard));
+    for (const [idx, ability] of (def?.abilities ?? []).entries()) {
+      if (ability.timing !== "onOpponentDeckToCemetery") continue;
+      const key = `onOpponentDeckToCemetery:${idx}`;
+      if (!canFireLimitedTrigger(fieldCard, key, ability)) continue;
+      pushTrigger(
+        state,
+        fieldCard.instanceId,
+        player,
+        fieldCard.name,
+        ability,
+        "onOpponentDeckToCemetery",
+        "odc",
+        key,
+      );
     }
   }
 }

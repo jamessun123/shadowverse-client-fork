@@ -571,7 +571,7 @@
       "Mistolina & Bayleon"
     ],
     "imgSrc": "/wordpress/wp-content/images/cardlist/BP17/BP17-021EN.png",
-    "evolvesFrom": "Brothers United",
+    "evolvesFrom": "Mistolina & Bayleon",
     "printings": [
       "BP17-021EN",
       "BP17-SL07EN"
@@ -2632,7 +2632,7 @@
       "Eschamali Constable TOKEN"
     ],
     "imgSrc": "/wordpress/wp-content/images/cardlist/BP17/BP17-097EN.png",
-    "evolvesFrom": "Mark Unleashed",
+    "evolvesFrom": "Marlone, Peace Advocate",
     "printings": [
       "BP17-097EN",
       "BP17-P23EN"
@@ -6912,7 +6912,7 @@
       "Nicola, Forbidden Strength"
     ],
     "imgSrc": "/wordpress/wp-content/images/cardlist/BP07/BP07-077EN.png",
-    "evolvesFrom": "Forbidden Art",
+    "evolvesFrom": "Nicola, Forbidden Strength",
     "printings": [
       "BP07-077EN",
       "BP07-P23EN"
@@ -7266,7 +7266,7 @@
       "Naterran Great Tree TOKEN"
     ],
     "imgSrc": "/wordpress/wp-content/images/cardlist/BP07/BP07-002EN.png",
-    "evolvesFrom": "Send 'Em Packing",
+    "evolvesFrom": "Ladica, the Stoneclaw",
     "printings": [
       "BP07-002EN",
       "BP07-SL02EN",
@@ -7730,7 +7730,7 @@
       "Naterran Great Tree TOKEN"
     ],
     "imgSrc": "/wordpress/wp-content/images/cardlist/BP07/BP07-019EN.png",
-    "evolvesFrom": "King's Might",
+    "evolvesFrom": "Bayleon, Sovereign Light",
     "printings": [
       "BP07-019EN",
       "BP07-SL05EN"
@@ -8247,7 +8247,7 @@
       "Splendid Conjury"
     ],
     "imgSrc": "/wordpress/wp-content/images/cardlist/BP07/BP07-040EN.png",
-    "evolvesFrom": "Splendid Conjury",
+    "evolvesFrom": "Eleanor, Cosmic Flower",
     "printings": [
       "BP07-040EN"
     ],
@@ -8601,7 +8601,7 @@
       "Shadow's Corrosion"
     ],
     "imgSrc": "/wordpress/wp-content/images/cardlist/BP07/BP07-053EN.png",
-    "evolvesFrom": "Shadow's Corrosion",
+    "evolvesFrom": "Valdain, Cursed Shadow",
     "printings": [
       "BP07-053EN",
       "BP07-SL11EN",
@@ -9942,7 +9942,7 @@
       "Maisha, Hero of Purgation"
     ],
     "imgSrc": "/wordpress/wp-content/images/cardlist/BP07/BP07-109EN.png",
-    "evolvesFrom": "Purgation's Blade",
+    "evolvesFrom": "Maisha, Hero of Purgation",
     "printings": [
       "BP07-109EN"
     ],
@@ -14814,8 +14814,6 @@
     "cardType": "follower",
     "printingType": "base",
     "cost": 2,
-    "attack": 2,
-    "defense": 2,
     "traits": [
       "Omen"
     ],
@@ -14823,10 +14821,12 @@
       "evolve"
     ],
     "cardText": "[evolve] [cost01]: Evolve this. While your leader's defense is 10 or less, this has Drain.",
-    "evolvesTo": "Gilnelise, Ravenous Craving Evolved",
     "printings": [
       "BP15-SP02EN"
-    ]
+    ],
+    "attack": 2,
+    "defense": 2,
+    "evolvesTo": "Gilnelise, Ravenous Craving Evolved"
   },
   "Gilnelise, Ravenous Craving Evolved": {
     "cardNo": "BP15-U07EN",
@@ -14834,10 +14834,7 @@
     "class": "neutral",
     "cardType": "follower",
     "printingType": "evolved",
-    "specialType": "evolved",
     "cost": 0,
-    "attack": 3,
-    "defense": 3,
     "traits": [
       "Omen"
     ],
@@ -14845,10 +14842,13 @@
       "onEvolve"
     ],
     "cardText": "While your leader's defense is 10 or less, this has Drain. On Evolve - Choose 1. (1) Select another follower on the field and give it [attack]+2/[defense]-2. (2) Put a Ravenous Sweetness token into your EX area.",
-    "evolvesFrom": "Gilnelise, Ravenous Craving",
     "printings": [
       "BP15-U07EN"
-    ]
+    ],
+    "specialType": "evolved",
+    "attack": 3,
+    "defense": 3,
+    "evolvesFrom": "Gilnelise, Ravenous Craving"
   },
   "Lishenna, Melody Manifest": {
     "cardNo": "BP20-037EN",
@@ -15140,10 +15140,7 @@
     "class": "neutral",
     "cardType": "spell",
     "printingType": "token",
-    "specialType": "token",
     "cost": 5,
-    "attack": null,
-    "defense": null,
     "traits": [
       "Omen"
     ],
@@ -15151,7 +15148,8 @@
     "cardText": "Deal 2 damage to each enemy leader. Give your leader [defense]+2. Draw 2 cards. Each opponent discards 2 random cards.",
     "printings": [
       "BP15-PR18EN"
-    ]
+    ],
+    "specialType": "token"
   },
   "White Psalm, New Revelation TOKEN": {
     "cardNo": "BP20-T03EN",
@@ -15256,5 +15254,482 @@
     "printings": [
       "BP05-T02EN"
     ]
+  },
+  "Deep-Sea Scout": {
+    "cardNo": "BP19-030EN",
+    "name": "Deep-Sea Scout",
+    "class": "sword",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 1,
+    "traits": [
+      "Condemned",
+      "Thief"
+    ],
+    "keywords": [
+      "fanfare"
+    ],
+    "cardText": "Fanfare Put a Dread Pirate's Flag token into your EX area.",
+    "printings": [
+      "BP19-030EN"
+    ],
+    "attack": 2,
+    "defense": 2
+  },
+  "Servant of Usurpation": {
+    "cardNo": "BP05-029EN",
+    "name": "Servant of Usurpation",
+    "class": "sword",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 1,
+    "traits": [
+      "Omen",
+      "Thief"
+    ],
+    "keywords": [
+      "fanfare"
+    ],
+    "cardText": "[fanfare] Each opponent puts the top card of their deck into their cemetery. During your turn, whenever a card is put from an opponent's deck into the cemetery, give this follower [attack]+1.",
+    "printings": [
+      "BP05-029EN"
+    ],
+    "attack": 1,
+    "defense": 2
+  },
+  "Avaritia": {
+    "cardNo": "BP05-034EN",
+    "name": "Avaritia",
+    "class": "sword",
+    "cardType": "spell",
+    "printingType": "base",
+    "cost": 1,
+    "traits": [
+      "Omen",
+      "Thief"
+    ],
+    "keywords": [],
+    "cardText": "Look at the top 4 cards of your deck. You may reveal a Thief card from among them and add it to your hand. Put the remaining cards on the bottom of your deck in any order. If you revealed an Octrice, Omen of Usurpation, return this card to its owner's hand.",
+    "printings": [
+      "BP05-034EN"
+    ]
+  },
+  "Ultimate Hollow": {
+    "cardNo": "BP15-026EN",
+    "name": "Ultimate Hollow",
+    "class": "sword",
+    "cardType": "spell",
+    "printingType": "base",
+    "cost": 1,
+    "traits": [
+      "Omen",
+      "Thief",
+      "Loot"
+    ],
+    "keywords": [
+      "quick"
+    ],
+    "cardText": "[quick] Select an enemy follower on the field. Deal it 2 damage and put a Gilded Goblet token into your EX area.",
+    "printings": [
+      "BP15-026EN"
+    ]
+  },
+  "Chivalrous Bandit": {
+    "cardNo": "BP15-035EN",
+    "name": "Chivalrous Bandit",
+    "class": "sword",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 2,
+    "traits": [
+      "Officer",
+      "Thief"
+    ],
+    "keywords": [
+      "fanfare",
+      "rush",
+      "assail"
+    ],
+    "cardText": "Rush. While there are at least 10 cards in opponents' cemeteries, this has Assail. [fanfare] Put a Gilded Blade token into your EX area. Each opponent buries the top card of their deck.",
+    "printings": [
+      "BP15-035EN"
+    ],
+    "attack": 3,
+    "defense": 1
+  },
+  "Storm-Wracked First Mate": {
+    "cardNo": "BP19-028EN",
+    "name": "Storm-Wracked First Mate",
+    "class": "sword",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 2,
+    "traits": [
+      "Condemned",
+      "Thief"
+    ],
+    "keywords": [
+      "fanfare"
+    ],
+    "cardText": "Evolve (1): Evolve this.\nFanfare Put a Dread Pirate's Flag token into your EX area.",
+    "printings": [
+      "BP19-028EN"
+    ],
+    "attack": 2,
+    "defense": 2,
+    "evolvesTo": "Storm-Wracked First Mate Evolved"
+  },
+  "Storm-Wracked First Mate Evolved": {
+    "cardNo": "BP19-029EN",
+    "name": "Storm-Wracked First Mate Evolved",
+    "class": "sword",
+    "cardType": "follower",
+    "printingType": "evolved",
+    "cost": 0,
+    "traits": [
+      "Condemned",
+      "Thief"
+    ],
+    "keywords": [
+      "evolve",
+      "onEvolve"
+    ],
+    "cardText": "On Evolve - Search your deck for a follower with both the Condemned and Thief traits, reveal it, add it to your hand, then shuffle.",
+    "printings": [
+      "BP19-029EN"
+    ],
+    "specialType": "evolved",
+    "attack": 3,
+    "defense": 3,
+    "evolvesFrom": "Storm-Wracked First Mate"
+  },
+  "Octrice, Hollowness Manifest": {
+    "cardNo": "BP20-019EN",
+    "name": "Octrice, Hollowness Manifest",
+    "class": "sword",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 2,
+    "traits": [
+      "Omen",
+      "Thief"
+    ],
+    "keywords": [
+      "fanfare",
+      "storm"
+    ],
+    "cardText": "Whenever you play or fuse a Loot card, give this Storm.\nFanfare Choose one. (1) Put a Crest: Octrice, Hollowness Manifest token into your EX area. (2) Search your deck for a Returning Slash, reveal it, add it to your hand, then shuffle.",
+    "printings": [
+      "BP20-019EN"
+    ],
+    "attack": 2,
+    "defense": 3
+  },
+  "Adherent of Hollowness": {
+    "cardNo": "BP15-028EN",
+    "name": "Adherent of Hollowness",
+    "class": "sword",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 2,
+    "traits": [
+      "Omen",
+      "Thief"
+    ],
+    "keywords": [
+      "fanfare",
+      "evolve"
+    ],
+    "cardText": "[evolve] [cost01]: Evolve this. [fanfare] If there are at least 10 cards in opponents' cemeteries, evolve this.",
+    "printings": [
+      "BP15-028EN"
+    ],
+    "attack": 2,
+    "defense": 2,
+    "evolvesTo": "Adherent of Hollowness Evolved"
+  },
+  "Adherent of Hollowness Evolved": {
+    "cardNo": "BP15-029EN",
+    "name": "Adherent of Hollowness Evolved",
+    "class": "sword",
+    "cardType": "follower",
+    "printingType": "evolved",
+    "cost": 0,
+    "traits": [
+      "Omen",
+      "Thief"
+    ],
+    "keywords": [
+      "evolve",
+      "onEvolve"
+    ],
+    "cardText": "On Evolve - Put a Gilded Blade token into your EX area. Once per turn, when you play a Loot card, put a Gilded Boots token into your EX area.",
+    "printings": [
+      "BP15-029EN"
+    ],
+    "specialType": "evolved",
+    "attack": 3,
+    "defense": 3,
+    "evolvesFrom": "Adherent of Hollowness"
+  },
+  "Octrice, Omen of Usurpation": {
+    "cardNo": "BP05-018EN",
+    "name": "Octrice, Omen of Usurpation",
+    "class": "sword",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 2,
+    "traits": [
+      "Omen",
+      "Thief"
+    ],
+    "keywords": [
+      "fanfare",
+      "evolve"
+    ],
+    "cardText": "[evolve] [cost02]: Evolve this follower. [evolve] [cost00]: Evolve this follower. This ability can be activated if there are at least 10 cards in opponents' cemeteries. [fanfare] Each opponent puts the top 2 cards of their deck into their cemetery. [act] [cost08]: Select a card in an opponent's cemetery and play it for 0 play points.",
+    "printings": [
+      "BP05-018EN"
+    ],
+    "attack": 2,
+    "defense": 2,
+    "evolvesTo": "Octrice, Omen of Usurpation Evolved"
+  },
+  "Octrice, Omen of Usurpation Evolved": {
+    "cardNo": "BP05-019EN",
+    "name": "Octrice, Omen of Usurpation Evolved",
+    "class": "sword",
+    "cardType": "follower",
+    "printingType": "evolved",
+    "cost": 0,
+    "traits": [
+      "Omen",
+      "Thief"
+    ],
+    "keywords": [
+      "evolve",
+      "onEvolve"
+    ],
+    "cardText": "On Evolve: Select a card in an opponent's cemetery and put it into your EX area. [act] [cost08]: Select a card in an opponent's cemetery and play it for 0 play points. If there are at least 10 cards in opponents' cemeteries, any card you play from the EX area costs 2 less.",
+    "printings": [
+      "BP05-019EN"
+    ],
+    "specialType": "evolved",
+    "attack": 4,
+    "defense": 4,
+    "evolvesFrom": "Octrice, Omen of Usurpation"
+  },
+  "Tidal Gunner": {
+    "cardNo": "BP19-026EN",
+    "name": "Tidal Gunner",
+    "class": "sword",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 2,
+    "traits": [
+      "Condemned",
+      "Thief"
+    ],
+    "keywords": [
+      "fanfare"
+    ],
+    "cardText": "Whenever you play a Dread Pirate's Flag, select an enemy leader or enemy follower on the field and deal it 1 damage.\nFanfare Put a Dread Pirate's Flag token into your EX area.",
+    "printings": [
+      "BP19-026EN"
+    ],
+    "attack": 2,
+    "defense": 3
+  },
+  "Returning Slash": {
+    "cardNo": "BP20-026EN",
+    "name": "Returning Slash",
+    "class": "sword",
+    "cardType": "spell",
+    "printingType": "base",
+    "cost": 2,
+    "traits": [
+      "Omen",
+      "Thief",
+      "Loot"
+    ],
+    "keywords": [],
+    "cardText": "Select an enemy follower on the field and deal it 4 damage. If there's a follower with \"Octrice\" in its name on your field, put a Gilded Blade token into your EX area.\nActivate, Fuse 1 Loot card that costs at least 1: Give this \"This costs 1 less to play.\"",
+    "printings": [
+      "BP20-026EN"
+    ]
+  },
+  "Barbaros, Briny Convict": {
+    "cardNo": "BP19-019EN",
+    "name": "Barbaros, Briny Convict",
+    "class": "sword",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 4,
+    "traits": [
+      "Condemned",
+      "Thief"
+    ],
+    "keywords": [
+      "fanfare"
+    ],
+    "cardText": "Evolve (1): Evolve this.\nLoot cards in your EX area cost 1 less to play.\nFanfare Put a Dread Pirate's Flag token into your EX area.",
+    "printings": [
+      "BP19-019EN"
+    ],
+    "attack": 3,
+    "defense": 3,
+    "evolvesTo": "Barbaros, Briny Convict Evolved"
+  },
+  "Barbaros, Briny Convict Evolved": {
+    "cardNo": "BP19-020EN",
+    "name": "Barbaros, Briny Convict Evolved",
+    "class": "sword",
+    "cardType": "follower",
+    "printingType": "evolved",
+    "cost": 0,
+    "traits": [
+      "Condemned",
+      "Thief"
+    ],
+    "keywords": [],
+    "cardText": "Loot cards in your EX area cost 1 less to play.\nWhenever you play a Loot card during your turn, choose 1 that you haven't already chosen this turn. (1) Select an enemy follower on the field and destroy it. (2) Each opponent buries the top 2 cards of their deck. (3) Recover 2 play points.",
+    "printings": [
+      "BP19-020EN"
+    ],
+    "specialType": "evolved",
+    "attack": 4,
+    "defense": 4,
+    "evolvesFrom": "Barbaros, Briny Convict"
+  },
+  "Octrice, Hollow Usurpation": {
+    "cardNo": "BP15-020EN",
+    "name": "Octrice, Hollow Usurpation",
+    "class": "sword",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 3,
+    "traits": [
+      "Omen",
+      "Thief"
+    ],
+    "keywords": [
+      "fanfare"
+    ],
+    "cardText": "[fanfare] Put a Remnant of Hollowness token into your EX area. [act] [cost00]: The next Loot card you play this turn costs 2 less. Activate only twice per turn. [act] Banish an Octrice, Omen of Usurpation from your cemetery: Put a Gilded Blade, Gilded Goblet, or Gilded Boots token into your EX area.",
+    "printings": [
+      "BP15-020EN"
+    ],
+    "attack": 3,
+    "defense": 3
+  },
+  "Dread Pirate's Flag TOKEN": {
+    "cardNo": "BP19-T01EN",
+    "name": "Dread Pirate's Flag TOKEN",
+    "class": "sword",
+    "cardType": "spell",
+    "printingType": "token",
+    "cost": 1,
+    "traits": [
+      "Condemned",
+      "Thief",
+      "Loot"
+    ],
+    "keywords": [],
+    "cardText": "Select a Thief follower on your field and give it 🗡️+1. If it has both the Condemned and Thief traits, deal 1 damage to each enemy leader.",
+    "printings": [
+      "BP19-T01EN"
+    ],
+    "specialType": "token"
+  },
+  "Gilded Goblet TOKEN": {
+    "cardNo": "BP15-T02EN",
+    "name": "Gilded Goblet TOKEN",
+    "class": "sword",
+    "cardType": "spell",
+    "printingType": "token",
+    "cost": 2,
+    "traits": [
+      "Loot"
+    ],
+    "keywords": [],
+    "cardText": "Give your leader [defense]+1. If there are at least 10 cards in opponents' cemeteries, give [defense]+2 instead.",
+    "printings": [
+      "BP15-T02EN"
+    ],
+    "specialType": "token"
+  },
+  "Gilded Boots TOKEN": {
+    "cardNo": "BP15-T03EN",
+    "name": "Gilded Boots TOKEN",
+    "class": "sword",
+    "cardType": "spell",
+    "printingType": "token",
+    "cost": 2,
+    "traits": [
+      "Loot"
+    ],
+    "keywords": [
+      "rush",
+      "storm"
+    ],
+    "cardText": "Select a Thief follower on your field and give it Rush. If there are at least 10 cards in opponents' cemeteries, give Storm instead.",
+    "printings": [
+      "BP15-T03EN"
+    ],
+    "specialType": "token"
+  },
+  "Gilded Blade TOKEN": {
+    "cardNo": "BP15-T01EN",
+    "name": "Gilded Blade TOKEN",
+    "class": "sword",
+    "cardType": "spell",
+    "printingType": "token",
+    "cost": 2,
+    "traits": [
+      "Loot"
+    ],
+    "keywords": [],
+    "cardText": "Select an enemy follower on the field. Deal it 2 damage and, if there are at least 10 cards in opponents' cemeteries, deal 2 damage to its leader.",
+    "printings": [
+      "BP15-T01EN"
+    ],
+    "specialType": "token"
+  },
+  "Crest: Octrice, Hollowness Manifest TOKEN": {
+    "cardNo": "BP20-T02EN",
+    "name": "Crest: Octrice, Hollowness Manifest TOKEN",
+    "class": "sword",
+    "cardType": "crest",
+    "printingType": "token",
+    "cost": 0,
+    "traits": [
+      "Omen",
+      "Thief"
+    ],
+    "keywords": [],
+    "cardText": "At the start of your main phase or whenever you play or fuse a Loot card, put a reversal counter on this. If this has at least 8 reversal counters, banish this, search your deck for a Thief card, reveal it, add it to your hand, then shuffle.",
+    "printings": [
+      "BP20-T02EN"
+    ],
+    "specialType": "token"
+  },
+  "Remnant of Hollowness TOKEN": {
+    "cardNo": "BP15-PR10EN",
+    "name": "Remnant of Hollowness TOKEN",
+    "class": "sword",
+    "cardType": "spell",
+    "printingType": "token",
+    "cost": 2,
+    "traits": [
+      "Omen",
+      "Thief",
+      "Loot"
+    ],
+    "keywords": [],
+    "cardText": "Choose 1. If there are at least 10 cards in opponents' cemeteries, choose up to 2 instead. (1) Select an enemy follower on the field and deal it 3 damage. If there are at least 10 cards in opponents' cemeteries, deal 8 damage instead. (2) Look at the top 3 cards of your deck. You may reveal a Thief card from among them and add it to your hand. Put the rest on the bottom of your deck in any order.",
+    "printings": [
+      "BP15-PR10EN"
+    ],
+    "specialType": "token"
   }
 }

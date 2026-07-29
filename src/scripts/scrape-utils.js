@@ -119,6 +119,8 @@ function normalizeCardType(raw) {
   const ct = (raw || "").toLowerCase();
   if (ct.includes("leader")) return "leader";
   if (ct.includes("spell")) return "spell";
+  // Crests are their own type (leader-area / EX), not amulets or followers.
+  if (ct.includes("crest")) return "crest";
   if (ct.includes("amulet")) return "amulet";
   if (ct.includes("follower")) return "follower";
   return "follower";

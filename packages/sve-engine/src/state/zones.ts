@@ -69,13 +69,17 @@ export function destroyFollower(state: GameState, instanceId: string): GameState
     if (evoIdx >= 0) {
       const [evoCard] = next.players[removed.player].zones.resolutionZone.splice(evoIdx, 1);
       resetCardInstanceState(evoCard);
+      evoCard.evolveUsed = true;
       next.players[removed.player].zones.evolveDeck.push(evoCard);
     } else {
       next = moveCard(next, link.evolveInstanceId, "evolveDeck", removed.player);
       const evoInDeck = next.players[removed.player].zones.evolveDeck.find(
         (c) => c.instanceId === link.evolveInstanceId,
       );
-      if (evoInDeck) resetCardInstanceState(evoInDeck);
+      if (evoInDeck) {
+        resetCardInstanceState(evoInDeck);
+        evoInDeck.evolveUsed = true;
+      }
     }
     next.players[removed.player].zones.evolveZone = next.players[
       removed.player

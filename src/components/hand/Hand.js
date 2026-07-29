@@ -24,6 +24,7 @@ export default function Hand({
   const leaderActive = useSelector((state) => state.card.leaderActive);
   const gameMode = useSelector((state) => state.gameState.gameMode);
   const legalActions = useSelector((state) => state.gameState.legalActions);
+  const activateOptions = useSelector((state) => state.gameState.activateOptions) ?? [];
   const pendingChoices = useSelector((state) => state.gameState.pendingChoices);
   const automated = gameMode === "automated";
   const [items, setItems] = useState(reduxHand);
@@ -88,11 +89,42 @@ export default function Hand({
     return null;
   };
 
-  const canActivateHand = (index) => {
+  const getHandActivateOptions = (index) => {
     const instanceId = handInstanceIds[index];
-    if (!automated || !leaderActive || pendingChoices || !instanceId) return false;
-    return legalActions.includes(`ACTIVATE_HAND:${instanceId}`);
+    if (!automated || !leaderActive || pendingChoices || !instanceId) return [];
+    const fromView = activateOptions.filter(
+      (o) => o.instanceId === instanceId && o.zone === "hand",
+    );
+    if (fromView.length > 0) return fromView;
+
+    const opts = [];
+    const keyed = [];
+    const keyedEp = [];
+    for (const action of legalActions) {
+      if (action.startsWith(`ACTIVATE_HAND_EP:${instanceId}:`)) {
+        keyedEp.push(action.slice(`ACTIVATE_HAND_EP:${instanceId}:`.length));
+      } else if (action.startsWith(`ACTIVATE_HAND:${instanceId}:`)) {
+        keyed.push(action.slice(`ACTIVATE_HAND:${instanceId}:`.length));
+      }
+    }
+    if (keyed.length > 0) {
+      for (const abilityKey of keyed) {
+        opts.push({ abilityKey, useEvoPoint: false, label: "Activate" });
+      }
+    } else if (legalActions.includes(`ACTIVATE_HAND:${instanceId}`)) {
+      opts.push({ useEvoPoint: false, label: "Activate" });
+    }
+    if (keyedEp.length > 0) {
+      for (const abilityKey of keyedEp) {
+        opts.push({ abilityKey, useEvoPoint: true, label: "Activate (use EP)" });
+      }
+    } else if (legalActions.includes(`ACTIVATE_HAND_EP:${instanceId}`)) {
+      opts.push({ useEvoPoint: true, label: "Activate (use EP)" });
+    }
+    return opts;
   };
+
+  const canActivateHand = (index) => getHandActivateOptions(index).length > 0;
 
   const handleAutomatedPlay = (index) => {
     const instanceId = handInstanceIds[index];
@@ -105,10 +137,17 @@ export default function Hand({
     }
   };
 
-  const handleAutomatedActivateHand = (index) => {
+  const handleAutomatedActivateHand = (index, opt) => {
     const instanceId = handInstanceIds[index ?? cardIndex];
-    if (!instanceId || !canActivateHand(index ?? cardIndex)) return;
-    sendAction({ type: "ACTIVATE_HAND", handInstanceId: instanceId });
+    const options = getHandActivateOptions(index ?? cardIndex);
+    const chosen = opt || (options.length === 1 ? options[0] : null);
+    if (!instanceId || !chosen) return;
+    sendAction({
+      type: "ACTIVATE_HAND",
+      handInstanceId: instanceId,
+      abilityKey: chosen.abilityKey,
+      useEvoPoint: Boolean(chosen.useEvoPoint),
+    });
     handleClose();
   };
 
@@ -118,8 +157,9 @@ export default function Hand({
       handleAutomatedPlay(index);
       return;
     }
-    if (canActivateHand(index)) {
-      handleAutomatedActivateHand(index);
+    const opts = getHandActivateOptions(index);
+    if (opts.length === 1) {
+      handleAutomatedActivateHand(index, opts[0]);
     }
   };
 
@@ -138,9 +178,11 @@ export default function Hand({
 
   const getAutomatedHandTitle = (index) => {
     const playMode = getPlayMode(index);
-    const activate = canActivateHand(index);
+    const activateOpts = getHandActivateOptions(index);
+    const activate = activateOpts.length > 0;
     if (playMode && activate) return "Click to play; right-click for Activate";
     if (playMode) return "Click to play";
+    if (activateOpts.length > 1) return "Right-click to choose Activate";
     if (activate) return "Click to activate";
     return undefined;
   };
@@ -198,11 +240,14 @@ export default function Hand({
                   Play
                 </MenuItem>
               )}
-            {canActivateHand(cardIndex) && (
-              <MenuItem onClick={() => handleAutomatedActivateHand(cardIndex)}>
-                Activate
+            {getHandActivateOptions(cardIndex).map((opt) => (
+              <MenuItem
+                key={`hand-act-${opt.abilityKey}-${opt.useEvoPoint ? "ep" : "pp"}`}
+                onClick={() => handleAutomatedActivateHand(cardIndex, opt)}
+              >
+                {opt.label}
               </MenuItem>
-            )}
+            ))}
           </>
         ) : (
           <>

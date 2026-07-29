@@ -68,6 +68,44 @@ function evalCondition(state, player, condition) {
             return (0, queries_1.getPlayer)(state, player).zones.field.some((c) => c.name === condition.name);
         case "namedFollowerOnFieldByName":
             return (0, passives_1.hasNamedFollowerOnFieldByIdentity)(state, player, condition.identityName);
+        case "namedFollowerOnFieldContains": {
+            const needle = condition.identityNameContains.toLowerCase();
+            return (0, queries_1.getPlayer)(state, player).zones.field.some((c) => {
+                const def = (0, registry_1.getCardDef)((0, queries_1.resolveCardNo)(state, c));
+                if (!def || def.cardType !== "follower")
+                    return false;
+                return (0, reprints_1.normalizeIdentityName)(def.name).toLowerCase().includes(needle);
+            });
+        }
+        case "selectedTargetHasTraits": {
+            const targetId = state.resolutionContext?.forcedTargetId;
+            if (!targetId || targetId === "leader" || targetId === "selfLeader")
+                return false;
+            const found = (0, queries_1.findInstance)(state, targetId);
+            if (!found)
+                return false;
+            const def = (0, registry_1.getCardDef)((0, queries_1.resolveCardNo)(state, found.card));
+            if (!def?.traits?.length)
+                return false;
+            return condition.allTraits.every((t) => def.traits.includes(t));
+        }
+        case "sourcePersistentCounterMin": {
+            const sourceId = state.resolutionContext?.sourceInstanceId;
+            if (!sourceId)
+                return false;
+            const found = (0, queries_1.findInstance)(state, sourceId);
+            if (!found)
+                return false;
+            return (found.card.persistentCounters?.[condition.key] ?? 0) >= condition.count;
+        }
+        case "lastRevealedIdentityContains": {
+            const list = state.revealedCards;
+            if (!list?.length)
+                return false;
+            const last = list[list.length - 1];
+            const needle = condition.identityNameContains.toLowerCase();
+            return (0, reprints_1.normalizeIdentityName)(last.name).toLowerCase().includes(needle);
+        }
         case "notEnteredFromHand": {
             const sourceId = state.resolutionContext?.sourceInstanceId;
             if (!sourceId)

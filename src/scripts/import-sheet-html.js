@@ -288,13 +288,18 @@ async function importFile(htmlPath, expansion, setName, opts = {}) {
     };
 
     // Flat fields too (BP17-style) for engine consumers
-    card.cardType = (cardTypeRaw || "follower").toLowerCase().includes("spell")
-      ? "spell"
-      : (cardTypeRaw || "").toLowerCase().includes("amulet")
-        ? "amulet"
-        : (cardTypeRaw || "").toLowerCase().includes("leader")
-          ? "leader"
-          : "follower";
+    {
+      const ct = (cardTypeRaw || "follower").toLowerCase();
+      card.cardType = ct.includes("spell")
+        ? "spell"
+        : ct.includes("crest")
+          ? "crest"
+          : ct.includes("amulet")
+            ? "amulet"
+            : ct.includes("leader")
+              ? "leader"
+              : "follower";
+    }
     if (type === "evolved") card.specialType = "evolved";
     if (type === "token") card.specialType = "token";
     card.traits = trait

@@ -96,14 +96,12 @@ export default function Game(callback) {
           // setWallpaper={setWallpaper}
         />
       )}
-      {/* Left side */}
-      {!uiChromeHidden && (
-        <div className={"leftSideCanvas"}>
-          <div style={{ ...leftScaleStyle, width: "100%", display: "flex", justifyContent: "center" }}>
-            <ChatUI setHovering={setHovering} />
-          </div>
+      {/* Left side — action log stays visible while other chrome is hidden */}
+      <div className={"leftSideCanvas"}>
+        <div style={{ ...leftScaleStyle, width: "100%", display: "flex", justifyContent: "center" }}>
+          <ChatUI setHovering={setHovering} />
         </div>
-      )}
+      </div>
 
       {/* Center Field */}
       <motion.div

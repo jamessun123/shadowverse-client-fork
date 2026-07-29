@@ -213,16 +213,18 @@ export default function Card({
         )}
         {counterVal > 0 && (
           <>
-            <input
-              disabled={opponentField ? true : false}
-              value={counter}
-              onChange={handleCounterInput}
-              type="number"
-              min={0}
-              className={"counterInput"}
-              onMouseEnter={handleStartHoverInput}
-              onMouseLeave={handleEndHoverInput}
-            />
+            {gameMode !== "automated" && !opponentField && (
+              <input
+                disabled={opponentField ? true : false}
+                value={counter}
+                onChange={handleCounterInput}
+                type="number"
+                min={0}
+                className={"counterInput"}
+                onMouseEnter={handleStartHoverInput}
+                onMouseLeave={handleEndHoverInput}
+              />
+            )}
             <div
               style={{
                 position: "absolute",
@@ -235,6 +237,11 @@ export default function Card({
                 backgroundColor: "rgba(0, 0, 0, 0.5)",
                 height: "50px",
                 width: "50px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                pointerEvents: "none",
+                zIndex: 2,
               }}
             >
               {counter}
@@ -255,17 +262,18 @@ export default function Card({
 
         {showAtk && (
           <>
-            <input
-              disabled={opponentField ? true : false}
-              value={atk}
-              onChange={handleAtkInput}
-              type="number"
-              min={0}
-              max={99}
-              className={"atkInputNum"}
-              onMouseEnter={handleStartHoverInput}
-              onMouseLeave={handleEndHoverInput}
-            />
+            {gameMode !== "automated" && !opponentField && (
+              <input
+                value={atk}
+                onChange={handleAtkInput}
+                type="number"
+                min={0}
+                max={99}
+                className={"atkInputNum"}
+                onMouseEnter={handleStartHoverInput}
+                onMouseLeave={handleEndHoverInput}
+              />
+            )}
             <div
               style={{
                 position: "absolute",
@@ -273,6 +281,7 @@ export default function Card({
                 right: atk > 9 ? "50%" : "60%",
                 display: "flex",
                 alignItems: "center",
+                pointerEvents: "none",
               }}
             >
               <img height={"40px"} src={atkImg} alt="atk" />
@@ -293,16 +302,17 @@ export default function Card({
         )}
         {showDef && (
           <>
-            <input
-              disabled={opponentField ? true : false}
-              value={def}
-              onChange={handleDefInput}
-              type="number"
-              min={0}
-              className={"defInputNum"}
-              onMouseEnter={handleStartHoverInput}
-              onMouseLeave={handleEndHoverInput}
-            />
+            {gameMode !== "automated" && !opponentField && (
+              <input
+                value={def}
+                onChange={handleDefInput}
+                type="number"
+                min={0}
+                className={"defInputNum"}
+                onMouseEnter={handleStartHoverInput}
+                onMouseLeave={handleEndHoverInput}
+              />
+            )}
             <div
               style={{
                 position: "absolute",
@@ -310,9 +320,10 @@ export default function Card({
                 left: "70%",
                 display: "flex",
                 alignItems: "center",
+                pointerEvents: "none",
               }}
             >
-              <img height={"40px"} src={defImg} alt="atk" />
+              <img height={"40px"} src={defImg} alt="def" />
               <span
                 style={{
                   color: "white",

@@ -64,13 +64,16 @@ function destroyFollower(state, instanceId) {
         if (evoIdx >= 0) {
             const [evoCard] = next.players[removed.player].zones.resolutionZone.splice(evoIdx, 1);
             (0, card_reset_1.resetCardInstanceState)(evoCard);
+            evoCard.evolveUsed = true;
             next.players[removed.player].zones.evolveDeck.push(evoCard);
         }
         else {
             next = moveCard(next, link.evolveInstanceId, "evolveDeck", removed.player);
             const evoInDeck = next.players[removed.player].zones.evolveDeck.find((c) => c.instanceId === link.evolveInstanceId);
-            if (evoInDeck)
+            if (evoInDeck) {
                 (0, card_reset_1.resetCardInstanceState)(evoInDeck);
+                evoInDeck.evolveUsed = true;
+            }
         }
         next.players[removed.player].zones.evolveZone = next.players[removed.player].zones.evolveZone.filter((l) => l.fieldInstanceId !== instanceId);
     }

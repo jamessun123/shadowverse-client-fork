@@ -25,6 +25,7 @@ function resolveDeckCardName(nameOrCardNo, fallback) {
 function clearTurnScopedCardState(card) {
     card.abilitiesActivatedThisTurn = [];
     card.counters = {};
+    card.chosenChooseOptionsThisTurn = {};
     card.modifiers = card.modifiers.filter((m) => !m.untilEndOfTurn);
     card.playCostReduction = 0;
     card.evolveCostOverride = undefined;

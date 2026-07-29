@@ -85,6 +85,7 @@ function preserveResumeContext(next, sourceId, stack, tail) {
         sourceInstanceId: sourceId,
         effectStack: stack,
         resumeAfterChoice: appended.length > 0 ? appended : tail,
+        forcedTargetId: prev?.forcedTargetId,
         buriedCosts: prev?.buriedCosts,
         lastDiscardedCardName: prev?.lastDiscardedCardName,
         engagedAsCostCount: prev?.engagedAsCostCount,
@@ -111,6 +112,7 @@ function continueAfterChoice(state, player) {
             sourceInstanceId: sourceId,
             effectStack: stack,
             resumeAfterChoice: tail,
+            forcedTargetId: prev?.forcedTargetId,
             buriedCosts: prev?.buriedCosts,
             lastDiscardedCardName: prev?.lastDiscardedCardName,
             engagedAsCostCount: prev?.engagedAsCostCount,
@@ -320,6 +322,31 @@ function handleChoiceResponse(state, player, payload) {
                 next = (0, zones_1.destroyFollower)(next, id);
                 continue;
             }
+            if (choice.action === "fuse") {
+                const pZones = next.players[player].zones;
+                let handIdx = pZones.hand.findIndex((c) => c.instanceId === id);
+                if (handIdx >= 0) {
+                    const [card] = pZones.hand.splice(handIdx, 1);
+                    pZones.cemetery.push(card);
+                    next.resolutionContext = {
+                        ...next.resolutionContext,
+                        sourceInstanceId: next.resolutionContext?.sourceInstanceId,
+                        effectStack: next.resolutionContext?.effectStack ?? [],
+                        resumeAfterChoice: next.resolutionContext?.resumeAfterChoice,
+                        deferTriggers: next.resolutionContext?.deferTriggers,
+                        buriedCosts: next.resolutionContext?.buriedCosts,
+                        engagedAsCostCount: next.resolutionContext?.engagedAsCostCount,
+                        lastDiscardedCardName: card.name,
+                    };
+                    continue;
+                }
+                const exIdx = pZones.exArea.findIndex((c) => c.instanceId === id);
+                if (exIdx < 0)
+                    return fail(state, "Invalid card");
+                const [card] = pZones.exArea.splice(exIdx, 1);
+                pZones.cemetery.push(card);
+                continue;
+            }
             const zone = next.players[player].zones[choice.fromZone];
             const idx = zone.findIndex((c) => c.instanceId === id);
             if (idx < 0)
@@ -485,18 +512,56 @@ function handleChoiceResponse(state, player, payload) {
             return ok(finishChoiceResolution(next, player));
         }
         const instanceId = String(payload.instanceId);
+        const zoneOwner = choice.fromPlayer ?? player;
         const found = (0, queries_1.findInstance)(next, instanceId);
-        if (!found || found.zone !== choice.fromZone || found.player !== player) {
+        if (!found || found.zone !== choice.fromZone || found.player !== zoneOwner) {
             return fail(state, "Invalid card");
         }
-        if ((0, reveal_1.shouldRevealBeforeHand)(choice.to, choice.fromZone, choice.reveal)) {
-            next = (0, reveal_1.revealCard)(next, player, instanceId, found.card.name);
+        if (choice.playSelected) {
+            const def = (0, registry_1.getCardDef)(found.card.name);
+            if (!def)
+                return fail(state, "Unknown card");
+            if (def.cardType === "crest") {
+                if (next.players[player].zones.exArea.length >= next.players[player].exLimit) {
+                    return fail(state, "EX area full");
+                }
+            }
+            else if (def.cardType !== "spell" &&
+                next.players[player].zones.field.length >= next.players[player].fieldLimit) {
+                return fail(state, "Field full");
+            }
+            if (def.cardType === "spell" && !(0, resolver_1.canPlayCardFromZones)(next, player, found.card.name)) {
+                return fail(state, "No valid targets");
+            }
+            next = playCardForFree(next, player, instanceId);
+            return ok(finishChoiceResolution(next, player));
         }
-        next = (0, resolver_1.moveZoneCardTo)(next, player, instanceId, choice.fromZone, choice.to);
-        if (choice.to === "exArea" && choice.playCostReduction) {
-            const moved = (0, queries_1.findInstance)(next, instanceId);
-            if (moved) {
-                moved.card.playCostReduction += choice.playCostReduction;
+        if ((0, reveal_1.shouldRevealBeforeHand)(choice.to, choice.fromZone, choice.reveal)) {
+            next = (0, reveal_1.revealCard)(next, zoneOwner, instanceId, found.card.name);
+        }
+        if (zoneOwner !== player) {
+            next = (0, zones_1.moveCard)(next, instanceId, choice.to, player);
+            if (choice.to === "exArea" && choice.playCostReduction) {
+                const moved = (0, queries_1.findInstance)(next, instanceId);
+                if (moved) {
+                    moved.card.playCostReduction += choice.playCostReduction;
+                }
+            }
+            if (choice.to === "field") {
+                const moved = (0, queries_1.findInstance)(next, instanceId);
+                if (moved) {
+                    moved.card.enteredFromCemetery = choice.fromZone === "cemetery";
+                    moved.card.enteredFromHand = false;
+                }
+            }
+        }
+        else {
+            next = (0, resolver_1.moveZoneCardTo)(next, player, instanceId, choice.fromZone, choice.to);
+            if (choice.to === "exArea" && choice.playCostReduction) {
+                const moved = (0, queries_1.findInstance)(next, instanceId);
+                if (moved) {
+                    moved.card.playCostReduction += choice.playCostReduction;
+                }
             }
         }
         return ok(finishChoiceResolution(next, player));
@@ -561,6 +626,19 @@ function handleChoiceResponse(state, player, payload) {
             }
             next.players[player].pp -= opt.additionalPpCost;
         }
+        if (choice.trackChosenKey) {
+            const sourceId = next.resolutionContext?.sourceInstanceId;
+            const source = sourceId ? (0, queries_1.findInstance)(next, sourceId) : null;
+            if (source) {
+                if (!source.card.chosenChooseOptionsThisTurn) {
+                    source.card.chosenChooseOptionsThisTurn = {};
+                }
+                const list = source.card.chosenChooseOptionsThisTurn[choice.trackChosenKey] ?? [];
+                if (!list.includes(index)) {
+                    source.card.chosenChooseOptionsThisTurn[choice.trackChosenKey] = [...list, index];
+                }
+            }
+        }
         next = (0, resolver_1.resolveEffect)(next, opt.effect, player);
         return ok(finishChoiceResolution(next, player));
     }
@@ -603,6 +681,90 @@ function putHandCardOnDeck(state, player, instanceId, position) {
         next.players[player].zones.deck.push(card);
     return next;
 }
+/** Play a card already in a zone (e.g. opponent cemetery) for 0 PP. */
+function playCardForFree(state, player, instanceId) {
+    const found = (0, queries_1.findInstance)(state, instanceId);
+    if (!found)
+        return state;
+    const def = (0, registry_1.getCardDef)(found.card.name);
+    if (!def)
+        return state;
+    const prev = state.resolutionContext;
+    let next = structuredClone(state);
+    const p = next.players[player];
+    p.flags.cardsPlayedThisTurn += 1;
+    (0, queries_1.consumeGrantedPlayCostReductions)(next, player, found.card.name);
+    if (def.cardType === "crest") {
+        if (p.zones.exArea.length >= p.exLimit)
+            return state;
+        next = (0, zones_1.moveCard)(next, instanceId, "exArea", player);
+        next.resolutionContext = {
+            sourceInstanceId: prev?.sourceInstanceId,
+            effectStack: prev?.effectStack ?? [],
+            resumeAfterChoice: prev?.resumeAfterChoice,
+            forcedTargetId: prev?.forcedTargetId,
+            buriedCosts: prev?.buriedCosts,
+            lastDiscardedCardName: prev?.lastDiscardedCardName,
+            engagedAsCostCount: prev?.engagedAsCostCount,
+            deferTriggers: true,
+        };
+    }
+    else if (def.cardType !== "spell") {
+        if (p.zones.field.length >= p.fieldLimit)
+            return state;
+        next = (0, zones_1.moveCard)(next, instanceId, "field", player);
+        const onField = (0, queries_1.findInstance)(next, instanceId);
+        if (onField) {
+            onField.card.enteredFromCemetery = found.zone === "cemetery";
+            onField.card.enteredFromHand = false;
+        }
+        next.resolutionContext = {
+            sourceInstanceId: prev?.sourceInstanceId,
+            effectStack: prev?.effectStack ?? [],
+            resumeAfterChoice: prev?.resumeAfterChoice,
+            forcedTargetId: prev?.forcedTargetId,
+            buriedCosts: prev?.buriedCosts,
+            lastDiscardedCardName: prev?.lastDiscardedCardName,
+            engagedAsCostCount: prev?.engagedAsCostCount,
+            deferTriggers: true,
+        };
+    }
+    else {
+        next = (0, zones_1.moveCard)(next, instanceId, "resolutionZone", player);
+        next.resolutionContext = {
+            sourceInstanceId: instanceId,
+            effectStack: [],
+            resumeAfterChoice: prev?.resumeAfterChoice,
+            forcedTargetId: prev?.forcedTargetId,
+            buriedCosts: prev?.buriedCosts,
+            lastDiscardedCardName: prev?.lastDiscardedCardName,
+            engagedAsCostCount: prev?.engagedAsCostCount,
+            deferTriggers: true,
+        };
+        next = (0, resolver_1.resolveSpell)(next, found.card.name, player);
+        if (!next.pendingChoices) {
+            const res = (0, queries_1.findInstance)(next, instanceId);
+            if (res?.zone === "resolutionZone") {
+                next = (0, zones_1.moveCard)(next, instanceId, "cemetery", player);
+            }
+            // Restore prior ability source after the free spell finishes immediately.
+            if (!(next.resolutionContext?.resumeAfterChoice?.length ?? 0)) {
+                next.resolutionContext = {
+                    sourceInstanceId: prev?.sourceInstanceId,
+                    effectStack: prev?.effectStack ?? [],
+                    resumeAfterChoice: prev?.resumeAfterChoice,
+                    forcedTargetId: prev?.forcedTargetId,
+                    buriedCosts: prev?.buriedCosts,
+                    lastDiscardedCardName: prev?.lastDiscardedCardName,
+                    engagedAsCostCount: prev?.engagedAsCostCount,
+                    deferTriggers: true,
+                };
+            }
+        }
+    }
+    (0, trigger_queue_1.queueOnCardPlayed)(next, instanceId, player);
+    return next;
+}
 function beginEndPhaseDiscard(state) {
     return finishEndPhase(structuredClone(state));
 }
@@ -624,6 +786,7 @@ function endTurn(state) {
             for (const card of cards) {
                 card.modifiers = card.modifiers.filter((m) => !m.untilEndOfTurn);
                 card.abilitiesActivatedThisTurn = [];
+                card.chosenChooseOptionsThisTurn = {};
             }
         }
     }
@@ -677,7 +840,12 @@ function playCard(state, player, handInstanceId, targets, fromQuickWindow = fals
         return fail(state, "Not enough PP");
     p.pp -= playCost;
     p.flags.cardsPlayedThisTurn += 1;
-    if (p.zones.field.length >= p.fieldLimit && def.cardType !== "spell") {
+    (0, queries_1.consumeGrantedPlayCostReductions)(next, player, found.card.name);
+    if (def.cardType === "crest") {
+        if (p.zones.exArea.length >= p.exLimit)
+            return fail(state, "EX area full");
+    }
+    else if (p.zones.field.length >= p.fieldLimit && def.cardType !== "spell") {
         return fail(state, "Field full");
     }
     next = (0, zones_1.moveCard)(next, handInstanceId, "resolutionZone", player);
@@ -703,6 +871,9 @@ function playCard(state, player, handInstanceId, targets, fromQuickWindow = fals
                 next.resolutionContext = null;
             }
         }
+    }
+    else if (def.cardType === "crest") {
+        next = (0, zones_1.moveCard)(next, handInstanceId, "exArea", player);
     }
     else if (def.cardType === "follower" || def.cardType === "amulet") {
         next = (0, zones_1.moveCard)(next, handInstanceId, "field", player);
@@ -921,14 +1092,17 @@ function evolve(state, player, fieldInstanceId, evolveDeckInstanceId, useSuperEv
     const evoFound = (0, queries_1.findInstance)(state, evoCard.instanceId);
     if (!evoFound || evoFound.zone !== "evolveDeck")
         return fail(state, "Invalid evolve card");
+    if (evoFound.card.evolveUsed)
+        return fail(state, "Evolve card already used");
     const evolveDeckInstanceIdResolved = evoCard.instanceId;
     const baseDef = (0, registry_1.getCardDef)(fieldFound.card.name);
     const evoDef = (0, registry_1.getCardDef)(evoFound.card.name);
     if (!(0, queries_1.evolveCardsMatch)(fieldFound.card.name, evoFound.card.name)) {
         return fail(state, "Cards do not match");
     }
-    const cost = fieldFound.card.evolveCostOverride ??
-        (0, queries_1.getEvolveCost)(evoFound.card.name, fieldFound.card.name);
+    const cost = (0, queries_1.getEffectiveEvolveCost)(state, player, fieldFound.card);
+    if (cost == null)
+        return fail(state, "Cannot evolve this follower");
     let next = structuredClone(state);
     const p = next.players[player];
     const payment = (0, queries_1.computeEvolvePayment)(cost, p.pp, p.evoPoints, Boolean(useEvoPoint));
@@ -1028,6 +1202,9 @@ function finishActivateAfterCost(state, player, sourceInstanceId, zone, abilityK
         if (ability.oncePerTurn && !liveSource.card.abilitiesActivatedThisTurn.includes(abilityKey)) {
             liveSource.card.abilitiesActivatedThisTurn.push(abilityKey);
         }
+        if (ability.maxPerTurn != null) {
+            liveSource.card.counters[abilityKey] = (liveSource.card.counters[abilityKey] ?? 0) + 1;
+        }
     }
     if (ability.cost?.burySelf) {
         const src = (0, queries_1.findInstance)(next, sourceInstanceId);
@@ -1041,12 +1218,15 @@ function finishActivateAfterCost(state, player, sourceInstanceId, zone, abilityK
         effectStack: [ability.effect],
     };
     next = (0, resolver_1.resolveEffect)(next, ability.effect, player);
+    if (ability.cost?.fuse) {
+        (0, trigger_queue_1.queueOnCardFused)(next, sourceInstanceId, player);
+    }
     if ((0, effect_utils_1.shouldClearResolutionContext)(next)) {
         next.resolutionContext = null;
     }
     return next;
 }
-function resolveActivate(state, player, sourceInstanceId, zone, useEvoPoint) {
+function resolveActivate(state, player, sourceInstanceId, zone, useEvoPoint, abilityKey) {
     const found = (0, queries_1.findInstance)(state, sourceInstanceId);
     if (!found || found.zone !== zone || found.player !== player) {
         return fail(state, "Invalid card");
@@ -1054,12 +1234,20 @@ function resolveActivate(state, player, sourceInstanceId, zone, useEvoPoint) {
     const activated = (0, queries_1.getActivatedAbilities)(state, found.card, player, zone);
     if (activated.length === 0)
         return fail(state, "No activated ability");
-    if (zone === "field" && found.card.engaged && activated[0].ability.cost?.engage) {
+    const selected = abilityKey
+        ? activated.find((entry) => entry.key === abilityKey)
+        : activated.length === 1
+            ? activated[0]
+            : undefined;
+    if (!selected) {
+        return fail(state, abilityKey ? "Invalid activated ability" : "Choose which ability to activate");
+    }
+    if (zone === "field" && found.card.engaged && selected.ability.cost?.engage) {
         return fail(state, "Follower is engaged and cannot pay engage cost");
     }
     let next = structuredClone(state);
     const p = next.players[player];
-    const { ability, key } = activated[0];
+    const { ability, key } = selected;
     const def = (0, registry_1.getCardDef)((0, queries_1.resolveCardNo)(next, found.card));
     const advance = (0, effect_utils_1.isAdvanceAbility)(def, ability);
     if (advance && p.flags.evolvedThisTurn) {
@@ -1203,6 +1391,40 @@ function resolveActivate(state, player, sourceInstanceId, zone, useEvoPoint) {
             return ok(next);
         }
     }
+    if (ability.cost?.fuse) {
+        const filter = ability.cost.fuse.filter;
+        const count = ability.cost.fuse.count ?? 1;
+        const excludeSelf = ability.cost.fuse.excludeSelf !== false;
+        const matches = [];
+        for (const c of p.zones.hand) {
+            if (excludeSelf && c.instanceId === sourceInstanceId)
+                continue;
+            if (!(0, conditions_1.cardMatchesFilter)(c.name, filter))
+                continue;
+            const base = (0, registry_1.getCardDef)(c.name)?.name || c.name;
+            matches.push({ instanceId: c.instanceId, name: c.name, label: `${base} (Hand)` });
+        }
+        for (const c of p.zones.exArea) {
+            if (excludeSelf && c.instanceId === sourceInstanceId)
+                continue;
+            if (!(0, conditions_1.cardMatchesFilter)(c.name, filter))
+                continue;
+            const base = (0, registry_1.getCardDef)(c.name)?.name || c.name;
+            matches.push({ instanceId: c.instanceId, name: c.name, label: `${base} (EX)` });
+        }
+        if (matches.length < count)
+            return fail(state, "Cannot pay fuse cost");
+        next.pendingChoices = {
+            type: "selectZoneCards",
+            player,
+            fromZone: "hand",
+            count,
+            action: "fuse",
+            options: matches,
+            resumeActivate: { sourceInstanceId, zone, abilityKey: key },
+        };
+        return ok(next);
+    }
     next = finishActivateAfterCost(next, player, sourceInstanceId, zone, key);
     next = (0, confirmation_1.runConfirmationTiming)(next);
     return ok(next);
@@ -1285,7 +1507,7 @@ function applyActionUnlogged(state, player, action) {
             const phaseErr = assertPhase(state, ["main"], "Cannot activate now");
             if (phaseErr)
                 return phaseErr;
-            return resolveActivate(state, player, action.fieldInstanceId, "field", action.useEvoPoint);
+            return resolveActivate(state, player, action.fieldInstanceId, "field", action.useEvoPoint, action.abilityKey);
         }
         case "ACTIVATE_CEMETERY": {
             const activeErr = assertActivePlayer(state, player, "Not your turn");
@@ -1294,7 +1516,7 @@ function applyActionUnlogged(state, player, action) {
             const phaseErr = assertPhase(state, ["main"], "Cannot activate now");
             if (phaseErr)
                 return phaseErr;
-            return resolveActivate(state, player, action.cemeteryInstanceId, "cemetery");
+            return resolveActivate(state, player, action.cemeteryInstanceId, "cemetery", undefined, action.abilityKey);
         }
         case "ACTIVATE_EXAREA": {
             const activeErr = assertActivePlayer(state, player, "Not your turn");
@@ -1303,7 +1525,7 @@ function applyActionUnlogged(state, player, action) {
             const phaseErr = assertPhase(state, ["main"], "Cannot activate now");
             if (phaseErr)
                 return phaseErr;
-            return resolveActivate(state, player, action.exAreaInstanceId, "exArea");
+            return resolveActivate(state, player, action.exAreaInstanceId, "exArea", undefined, action.abilityKey);
         }
         case "ACTIVATE_HAND": {
             const activeErr = assertActivePlayer(state, player, "Not your turn");
@@ -1312,7 +1534,7 @@ function applyActionUnlogged(state, player, action) {
             const phaseErr = assertPhase(state, ["main"], "Cannot activate now");
             if (phaseErr)
                 return phaseErr;
-            return resolveActivate(state, player, action.handInstanceId, "hand", action.useEvoPoint);
+            return resolveActivate(state, player, action.handInstanceId, "hand", action.useEvoPoint, action.abilityKey);
         }
         case "CONCEDE": {
             const next = structuredClone(state);

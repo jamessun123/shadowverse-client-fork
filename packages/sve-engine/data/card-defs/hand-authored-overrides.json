@@ -408,42 +408,6 @@
       }
     ]
   },
-  "Octrice, Omen of Usurpation": {
-    "name": "Octrice, Omen of Usurpation",
-    "class": "sword",
-    "printingType": "base",
-    "keywords": [
-      "fanfare",
-      "evolve"
-    ],
-    "abilities": [
-      {
-        "timing": "fanfare",
-        "condition": {
-          "type": "opponentCemeteryMin",
-          "count": 10
-        },
-        "effect": {
-          "op": "playFromOpponentCemetery",
-          "filter": {}
-        }
-      }
-    ]
-  },
-  "Octrice, Omen of Usurpation Evolved": {
-    "name": "Octrice, Omen of Usurpation Evolved",
-    "class": "sword",
-    "printingType": "evolved",
-    "abilities": [
-      {
-        "timing": "onEvolve",
-        "effect": {
-          "op": "playFromOpponentCemetery",
-          "filter": {}
-        }
-      }
-    ]
-  },
   "Tetra, Sapphire Rebel Evolved": {
     "name": "Tetra, Sapphire Rebel Evolved",
     "class": "rune",

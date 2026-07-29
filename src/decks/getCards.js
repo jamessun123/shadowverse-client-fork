@@ -3473,7 +3473,7 @@ function cardImageExact(cardName) {
     case "Octrice, Omen of Usurpation":
       return "../textures/BP05-018EN.png";
     case "Octrice, Omen of Usurpation Evolved":
-      return "../textures/BP05-U02EN.png";
+      return "../textures/BP05-019EN.png";
     case "Magna Legacy":
       return "../textures/BP05-020EN.png";
     case "Apostle of Usurpation":

@@ -1,10 +1,9 @@
 import {
   getCardDefClient,
-  getCardByNameClient,
   getNameByCardNoClient,
   getCardStatsClient,
 } from "./cardLookup";
-import { cardImage, getCardNoFromName } from "../decks/getCards";
+import { cardImage } from "../decks/getCards";
 import { detectDeckIdentity } from "../decks/detectDeck";
 import cardStats from "./card-stats.json";
 import mvpCards from "./mvp-cards.json";
@@ -45,6 +44,12 @@ export function engineViewToRedux(view, playerSlot) {
   const baneField = Array(10).fill(0);
   const auraField = Array(10).fill(0);
   const exPlayCostField = Array(10).fill(null);
+  const counterField = Array(10).fill(0);
+
+  const visibleCounter = (inst) => {
+    const persistent = inst?.persistentCounters || {};
+    return Object.values(persistent).reduce((sum, n) => sum + (Number(n) || 0), 0);
+  };
 
   const cardName = (instance) => {
     const key = instanceKey(instance);
@@ -67,7 +72,8 @@ export function engineViewToRedux(view, playerSlot) {
   };
 
   const applyStats = (inst, idx, displayKey) => {
-    const stats = getCardStatsClient(displayKey || instanceKey(inst));
+    const key = displayKey || instanceKey(inst);
+    const stats = getCardStatsClient(key);
     const isFollower = stats.cardType === "follower";
     let atk = stats.attack ?? 0;
     let defVal = stats.defense ?? 0;
@@ -93,6 +99,7 @@ export function engineViewToRedux(view, playerSlot) {
   ps.zones.field.forEach((inst, i) => {
     field[i] = cardName(inst);
     fieldInstanceIds[i] = inst.instanceId;
+    counterField[i] = visibleCounter(inst);
     const link = ps.zones.evolveZone.find((l) => l.fieldInstanceId === inst.instanceId);
     const evoInst =
       (link ? findEvoInstance(ps, link.evolveInstanceId) : null) ||
@@ -109,6 +116,7 @@ export function engineViewToRedux(view, playerSlot) {
     const idx = 5 + i;
     field[idx] = cardName(inst);
     fieldInstanceIds[idx] = inst.instanceId;
+    counterField[idx] = visibleCounter(inst);
     applyStats(inst, idx);
     const printed = getCardStatsClient(instanceKey(inst)).cost ?? 0;
     const effective = view.exPlayCosts?.[inst.instanceId];
@@ -122,6 +130,7 @@ export function engineViewToRedux(view, playerSlot) {
   const enemyEvoField = Array(10).fill(0);
   const enemyEngaged = Array(10).fill(false);
   const enemyExPlayCostField = Array(10).fill(null);
+  const enemyCounterField = Array(10).fill(0);
   const enemyCustom = Array(10)
     .fill(null)
     .map(() => ({ showAtk: true, atk: 0, showDef: true, def: 0 }));
@@ -129,6 +138,7 @@ export function engineViewToRedux(view, playerSlot) {
   es.zones.field.forEach((inst, i) => {
     enemyField[i] = cardName(inst);
     enemyFieldInstanceIds[i] = inst.instanceId;
+    enemyCounterField[i] = visibleCounter(inst);
     enemyEngaged[i] = Boolean(inst.engaged);
     const link = es.zones.evolveZone.find((l) => l.fieldInstanceId === inst.instanceId);
     const evoInst =
@@ -159,6 +169,7 @@ export function engineViewToRedux(view, playerSlot) {
     const idx = 5 + i;
     enemyField[idx] = cardName(inst);
     enemyFieldInstanceIds[idx] = inst.instanceId;
+    enemyCounterField[idx] = visibleCounter(inst);
     const est = getCardStatsClient(instanceKey(inst));
     const isFollower = est.cardType === "follower";
     let atk = est.attack ?? 0;
@@ -197,19 +208,30 @@ export function engineViewToRedux(view, playerSlot) {
     baneField,
     auraField,
     exPlayCostField,
+    counterField,
     enemyField,
     enemyFieldInstanceIds,
     enemyEvoField,
     enemyEngagedField: enemyEngaged,
     enemyExPlayCostField,
+    enemyCounterField,
     enemyCustomValues: enemyCustom,
     cemetery: ps.zones.cemetery.map((c) => cardName(c)),
     cemeteryInstanceIds: ps.zones.cemetery.map((c) => c.instanceId),
     enemyCemetery: es.zones.cemetery.map((c) => cardName(c)),
-    evoDeck: ps.zones.evolveDeck.map((c) => ({
-      card: cardName(c),
-      status: false,
-    })),
+    evoDeck: [
+      ...ps.zones.evolveDeck.map((c) => ({
+        card: cardName(c),
+        status: Boolean(c.evolveUsed),
+      })),
+      // Evolve cards currently on field followers stay shown face-up (used).
+      ...ps.zones.evolveZone
+        .map((link) => {
+          const evo = findEvoInstance(ps, link.evolveInstanceId);
+          return evo ? { card: cardName(evo), status: true } : null;
+        })
+        .filter(Boolean),
+    ],
     enemyEvoDeck: Array(view.opponentEvoDeckCount ?? es.zones.evolveDeck.length)
       .fill(null)
       .map(() => ({ card: "Hidden Card", status: false })),
@@ -254,8 +276,8 @@ const ENGINE_CARD_NAMES = new Set([
 /**
  * Map a deck-builder name to an engine identity when we can normalize it.
  * Unknown names are passed through — the server registry is the source of truth.
- * Never silently rewrite a whole deck to Vanilla Soldier (that breaks deploys
- * when the client card-stats set is incomplete).
+ * Never silently rewrite a deck name to a different card via texture cardNo →
+ * card-stats lookup (those codes collide when cards.json is incomplete).
  */
 function resolveEngineCardName(name, fallback) {
   if (!name) return fallback;
@@ -264,17 +286,6 @@ function resolveEngineCardName(name, fallback) {
   const asToken = `${stripped} TOKEN`;
   if (ENGINE_CARD_NAMES.has(asToken)) return asToken;
   if (stripped !== name && ENGINE_CARD_NAMES.has(stripped)) return stripped;
-
-  const cardNo =
-    getCardByNameClient(name)?.cardNo ||
-    getCardDefClient(name)?.cardNo ||
-    getCardNoFromName(name);
-  if (cardNo) {
-    const fromStats = cardStats[cardNo]?.name;
-    if (fromStats) return fromStats;
-    const fromMvp = mvpCards.find((c) => c.cardNo === cardNo)?.name;
-    if (fromMvp) return fromMvp;
-  }
   return name;
 }
 

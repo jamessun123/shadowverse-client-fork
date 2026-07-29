@@ -153,7 +153,7 @@ export function onCardEntersExArea(
 
 function markTriggerAbilityUsed(state: GameState, trigger: PendingTrigger): void {
   if (!trigger.abilityKey) return;
-  if (trigger.timing !== "onCardPlayed" && trigger.timing !== "onAllyFollowerEnter") return;
+  if (trigger.timing !== "onCardPlayed" && trigger.timing !== "onAllyFollowerEnter" && trigger.timing !== "onOpponentDeckToCemetery") return;
   const found = findInstance(state, trigger.sourceInstanceId);
   if (!found) return;
   const { ability, abilityKey } = trigger;

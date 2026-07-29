@@ -20,4 +20,6 @@ export function resetCardInstanceState(card: CardInstance): void {
   card.foughtWithInstanceId = undefined;
   card.onFieldSinceTurnStart = false;
   card.counters = {};
+  card.persistentCounters = {};
+  card.chosenChooseOptionsThisTurn = {};
 }

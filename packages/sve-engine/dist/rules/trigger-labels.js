@@ -5,6 +5,10 @@ exports.describeAbility = describeAbility;
 const registry_1 = require("../cards/registry");
 function describeEffect(effect) {
     switch (effect.op) {
+        case "grantOnCardPlayed":
+            return "next matching card costs less";
+        case "playCostReduction":
+            return `reduce play cost by ${effect.amount}`;
         case "choose":
             return "choose an option";
         case "chooseMultiple":
@@ -47,6 +51,8 @@ function describeAbility(sourceCardNo, ability) {
                             ? "When you play a card"
                             : ability.timing === "onAllyFollowerEnter"
                                 ? "When an ally enters the field"
-                                : ability.timing;
+                                : ability.timing === "onOpponentDeckToCemetery"
+                                    ? "When an opponent mills"
+                                    : ability.timing;
     return `${name} — ${timingLabel}: ${describeEffect(ability.effect)}`;
 }

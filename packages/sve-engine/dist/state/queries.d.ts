@@ -21,6 +21,13 @@ export declare function resolveCardDefCost(cardNo: string): number;
 /** EX-area discount from passives on the card being played and followers on field (e.g. Tetra Evo). */
 export declare function getExAreaPlayCostReduction(state: GameState, player: PlayerId, cardNo: string): number;
 export declare function getPassivePlayCostReduction(state: GameState, player: PlayerId, cardNo: string): number;
+/**
+ * Pending "next matching card costs less" grants from activate abilities
+ * (stored on field/EX via grantOnCardPlayed + playCostReduction).
+ */
+export declare function getGrantedPlayCostReduction(state: GameState, player: PlayerId, cardNo: string): number;
+/** Consume pending play-cost grants that matched a card that was just played. */
+export declare function consumeGrantedPlayCostReductions(state: GameState, player: PlayerId, cardNo: string): void;
 export declare function getEffectivePlayCost(card: CardInstance, cardNo: string, state?: GameState, player?: PlayerId, fromZone?: string): number;
 export declare function getEffectiveStats(card: CardInstance, state?: GameState): {
     atk: number;
@@ -36,6 +43,13 @@ export declare function getEffectiveStats(card: CardInstance, state?: GameState)
 export declare function isFollowerCard(card: CardInstance, state?: GameState): boolean;
 /** PP cost to evolve (separate from a card's play cost). */
 export declare function getEvolveCost(evoCardNo: string, baseCardNo?: string): number;
+/**
+ * Evolve costs currently available for a field follower.
+ * Alternate evolve abilities are independent — any met option unlocks evolving.
+ */
+export declare function getAvailableEvolveCosts(state: GameState, player: PlayerId, fieldCard: CardInstance): number[];
+/** Cheapest currently available evolve PP cost, or null if none are legal. */
+export declare function getEffectiveEvolveCost(state: GameState, player: PlayerId, fieldCard: CardInstance): number | null;
 export declare function hasKeyword(card: CardInstance, keyword: Keyword, state?: GameState, player?: PlayerId): boolean;
 export declare function clampDamageToFollower(state: GameState, card: CardInstance, player: PlayerId, amount: number): number;
 export declare function canEvolveFollower(state: GameState, player: PlayerId, fieldInstanceId: string): boolean;

@@ -3622,7 +3622,7 @@
       "effect": "Activate 0PP: Select an enemy follower on the field and change its defense to 1. Activate only once per turn."
     },
     "imgSrc": "",
-    "cardType": "follower",
+    "cardType": "crest",
     "specialType": "token",
     "traits": [
       "Omen",
@@ -3654,7 +3654,7 @@
       "effect": "At the start of your main phase or whenever you play or fuse a Loot card, put a reversal counter on this. If this has at least 8 reversal counters, banish this, search your deck for a Thief card, reveal it, add it to your hand, then shuffle."
     },
     "imgSrc": "",
-    "cardType": "follower",
+    "cardType": "crest",
     "specialType": "token",
     "traits": [
       "Omen",
@@ -3747,7 +3747,7 @@
       "effect": "Activate 0PP: Select an Omen follower on your field and deal it 1 damage. Activate only once per turn."
     },
     "imgSrc": "",
-    "cardType": "follower",
+    "cardType": "crest",
     "specialType": "token",
     "traits": [
       "Omen",
@@ -3778,7 +3778,7 @@
       "effect": "When you would choose 1 or more effects, you may choose any number of effects instead."
     },
     "imgSrc": "",
-    "cardType": "follower",
+    "cardType": "crest",
     "specialType": "token",
     "traits": [
       "Omen",
@@ -3810,7 +3810,7 @@
       "effect": "At the start of your end phase, select an enemy leader or enemy follower on the field and deal it 1 damage. If there are at least 3 crests in your EX area, deal it 2 damage. If there are at least 5 crests, deal it 4 damage instead."
     },
     "imgSrc": "",
-    "cardType": "follower",
+    "cardType": "crest",
     "specialType": "token",
     "traits": [
       "Omen",
@@ -3841,7 +3841,7 @@
       "effect": "At the start of your end phase, select an enemy follower on the field. If there are at least 3 crests in your EX area, give it 🗡️-2/🛡️-2. If there are at least 5 crests, give it 🗡️-4/🛡️-4 instead."
     },
     "imgSrc": "",
-    "cardType": "follower",
+    "cardType": "crest",
     "specialType": "token",
     "traits": [
       "Omen",
@@ -3873,7 +3873,7 @@
       "effect": "At the start of your end phase, select an Omen follower on your field and, if there are at least 3 crests in your EX area, give it 🗡️+1/🛡️+1."
     },
     "imgSrc": "",
-    "cardType": "follower",
+    "cardType": "crest",
     "specialType": "token",
     "traits": [
       "Omen",
@@ -3904,7 +3904,7 @@
       "effect": "At the start of your end phase, if there are at least 3 crests in your EX area, give your leader 🛡️+1."
     },
     "imgSrc": "",
-    "cardType": "follower",
+    "cardType": "crest",
     "specialType": "token",
     "traits": [
       "Omen",
@@ -3935,7 +3935,7 @@
       "effect": "At the start of your end phase, if there are 1 or less cards in your hand, draw a card."
     },
     "imgSrc": "",
-    "cardType": "follower",
+    "cardType": "crest",
     "specialType": "token",
     "traits": [
       "Omen"

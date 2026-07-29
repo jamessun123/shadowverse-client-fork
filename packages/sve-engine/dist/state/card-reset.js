@@ -21,4 +21,6 @@ function resetCardInstanceState(card) {
     card.foughtWithInstanceId = undefined;
     card.onFieldSinceTurnStart = false;
     card.counters = {};
+    card.persistentCounters = {};
+    card.chosenChooseOptionsThisTurn = {};
 }

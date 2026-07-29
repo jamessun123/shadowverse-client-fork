@@ -1,0 +1,1344 @@
+{
+  "Deep-Sea Scout": {
+    "name": "Deep-Sea Scout",
+    "cardNo": "BP19-030EN",
+    "class": "sword",
+    "printingType": "base",
+    "cost": 1,
+    "attack": 2,
+    "defense": 2,
+    "cardType": "follower",
+    "traits": [
+      "Condemned",
+      "Thief"
+    ],
+    "keywords": [
+      "fanfare"
+    ],
+    "cardText": "Fanfare Put a Dread Pirate's Flag token into your EX area.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "summon",
+          "tokenName": "Dread Pirate's Flag",
+          "count": 1,
+          "zone": "exArea"
+        }
+      }
+    ]
+  },
+  "Servant of Usurpation": {
+    "name": "Servant of Usurpation",
+    "cardNo": "BP05-029EN",
+    "class": "sword",
+    "printingType": "base",
+    "cost": 1,
+    "attack": 1,
+    "defense": 2,
+    "cardType": "follower",
+    "traits": [
+      "Omen",
+      "Thief"
+    ],
+    "keywords": [
+      "fanfare"
+    ],
+    "cardText": "[fanfare] Each opponent puts the top card of their deck into their cemetery. During your turn, whenever a card is put from an opponent's deck into the cemetery, give this follower [attack]+1.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "millOpponent",
+          "count": 1
+        }
+      },
+      {
+        "timing": "onOpponentDeckToCemetery",
+        "effect": {
+          "op": "buff",
+          "atk": 1,
+          "targets": {
+            "type": "self"
+          }
+        }
+      }
+    ]
+  },
+  "Avaritia": {
+    "name": "Avaritia",
+    "cardNo": "BP05-034EN",
+    "class": "sword",
+    "printingType": "base",
+    "cost": 1,
+    "cardType": "spell",
+    "traits": [
+      "Omen",
+      "Thief"
+    ],
+    "keywords": [],
+    "cardText": "Look at the top 4 cards of your deck. You may reveal a Thief card from among them and add it to your hand. Put the remaining cards on the bottom of your deck in any order. If you revealed an Octrice, Omen of Usurpation, return this card to its owner's hand.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "searchDeckChoose",
+              "filter": {
+                "trait": "Thief"
+              },
+              "lookAt": 4,
+              "to": "hand",
+              "optional": true,
+              "remainderTo": "deckBottom",
+              "reveal": true
+            },
+            {
+              "op": "if",
+              "condition": {
+                "type": "lastRevealedIdentityContains",
+                "identityNameContains": "Octrice, Omen of Usurpation"
+              },
+              "then": {
+                "op": "returnSourceToHand"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Ultimate Hollow": {
+    "name": "Ultimate Hollow",
+    "cardNo": "BP15-026EN",
+    "class": "sword",
+    "printingType": "base",
+    "cost": 1,
+    "cardType": "spell",
+    "traits": [
+      "Omen",
+      "Thief",
+      "Loot"
+    ],
+    "keywords": [
+      "quick"
+    ],
+    "cardText": "[quick] Select an enemy follower on the field. Deal it 2 damage and put a Gilded Goblet token into your EX area.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "quick": true,
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "dealDamage",
+              "amount": 2,
+              "targets": {
+                "type": "enemyFollower",
+                "count": 1
+              }
+            },
+            {
+              "op": "summon",
+              "tokenName": "Gilded Goblet",
+              "count": 1,
+              "zone": "exArea"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Chivalrous Bandit": {
+    "name": "Chivalrous Bandit",
+    "cardNo": "BP15-035EN",
+    "class": "sword",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 3,
+    "defense": 1,
+    "cardType": "follower",
+    "traits": [
+      "Officer",
+      "Thief"
+    ],
+    "keywords": [
+      "rush",
+      "fanfare"
+    ],
+    "cardText": "Rush. While there are at least 10 cards in opponents' cemeteries, this has Assail. [fanfare] Put a Gilded Blade token into your EX area. Each opponent buries the top card of their deck.",
+    "abilities": [
+      {
+        "timing": "passive",
+        "condition": {
+          "type": "opponentCemeteryMin",
+          "count": 10
+        },
+        "effect": {
+          "op": "passiveKeywords",
+          "keywords": [
+            "assail"
+          ]
+        }
+      },
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "summon",
+              "tokenName": "Gilded Blade",
+              "count": 1,
+              "zone": "exArea"
+            },
+            {
+              "op": "millOpponent",
+              "count": 1
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Storm-Wracked First Mate": {
+    "name": "Storm-Wracked First Mate",
+    "cardNo": "BP19-028EN",
+    "class": "sword",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 2,
+    "cardType": "follower",
+    "traits": [
+      "Condemned",
+      "Thief"
+    ],
+    "keywords": [
+      "fanfare",
+      "evolve"
+    ],
+    "evolveCost": 1,
+    "evolvesTo": "Storm-Wracked First Mate Evolved",
+    "cardText": "Evolve (1): Evolve this.\nFanfare Put a Dread Pirate's Flag token into your EX area.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "summon",
+          "tokenName": "Dread Pirate's Flag",
+          "count": 1,
+          "zone": "exArea"
+        }
+      },
+      {
+        "timing": "evolve",
+        "cost": {
+          "pp": 1
+        },
+        "effect": {
+          "op": "noop"
+        }
+      }
+    ]
+  },
+  "Gilnelise, Ravenous Craving": {
+    "name": "Gilnelise, Ravenous Craving",
+    "cardNo": "BP15-SP02EN",
+    "class": "neutral",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 2,
+    "cardType": "follower",
+    "traits": [
+      "Omen"
+    ],
+    "keywords": [
+      "evolve"
+    ],
+    "evolveCost": 1,
+    "evolvesTo": "Gilnelise, Ravenous Craving Evolved",
+    "cardText": "[evolve] [cost01]: Evolve this. While your leader's defense is 10 or less, this has Drain.",
+    "abilities": [
+      {
+        "timing": "passive",
+        "condition": {
+          "type": "leaderDefMax",
+          "count": 10
+        },
+        "effect": {
+          "op": "passiveKeywords",
+          "keywords": [
+            "drain"
+          ]
+        }
+      },
+      {
+        "timing": "evolve",
+        "cost": {
+          "pp": 1
+        },
+        "effect": {
+          "op": "noop"
+        }
+      }
+    ]
+  },
+  "Octrice, Hollowness Manifest": {
+    "name": "Octrice, Hollowness Manifest",
+    "cardNo": "BP20-019EN",
+    "class": "sword",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 3,
+    "cardType": "follower",
+    "traits": [
+      "Omen",
+      "Thief"
+    ],
+    "keywords": [
+      "fanfare"
+    ],
+    "cardText": "Whenever you play or fuse a Loot card, give this Storm.\nFanfare Choose one. (1) Put a Crest: Octrice, Hollowness Manifest token into your EX area. (2) Search your deck for a Returning Slash, reveal it, add it to your hand, then shuffle.",
+    "abilities": [
+      {
+        "timing": "onCardPlayedOrFused",
+        "filter": {
+          "trait": "Loot"
+        },
+        "effect": {
+          "op": "grantKeyword",
+          "keyword": "storm",
+          "targets": {
+            "type": "self"
+          }
+        }
+      },
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "choose",
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "label": "Put Crest: Octrice, Hollowness Manifest into EX",
+              "effect": {
+                "op": "summon",
+                "tokenName": "Crest: Octrice, Hollowness Manifest",
+                "count": 1,
+                "zone": "exArea"
+              }
+            },
+            {
+              "label": "Search Returning Slash",
+              "effect": {
+                "op": "tutorFromDeck",
+                "filter": {
+                  "name": "Returning Slash"
+                },
+                "to": "hand",
+                "reveal": true
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Adherent of Hollowness": {
+    "name": "Adherent of Hollowness",
+    "cardNo": "BP15-028EN",
+    "class": "sword",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 2,
+    "cardType": "follower",
+    "traits": [
+      "Omen",
+      "Thief"
+    ],
+    "keywords": [
+      "fanfare",
+      "evolve"
+    ],
+    "evolveCost": 1,
+    "evolvesTo": "Adherent of Hollowness Evolved",
+    "cardText": "[evolve] [cost01]: Evolve this. [fanfare] If there are at least 10 cards in opponents' cemeteries, evolve this.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "autoEvolveIf",
+          "condition": {
+            "type": "opponentCemeteryMin",
+            "count": 10
+          },
+          "triggerOnEvolve": true
+        }
+      },
+      {
+        "timing": "evolve",
+        "cost": {
+          "pp": 1
+        },
+        "effect": {
+          "op": "noop"
+        }
+      }
+    ]
+  },
+  "Octrice, Omen of Usurpation": {
+    "name": "Octrice, Omen of Usurpation",
+    "cardNo": "BP05-018EN",
+    "class": "sword",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 2,
+    "cardType": "follower",
+    "traits": [
+      "Omen",
+      "Thief"
+    ],
+    "keywords": [
+      "fanfare",
+      "evolve"
+    ],
+    "evolveCost": 2,
+    "evolvesTo": "Octrice, Omen of Usurpation Evolved",
+    "cardText": "[evolve] [cost02]: Evolve this follower. [evolve] [cost00]: Evolve this follower. This ability can be activated if there are at least 10 cards in opponents' cemeteries. [fanfare] Each opponent puts the top 2 cards of their deck into their cemetery. [act] [cost08]: Select a card in an opponent's cemetery and play it for 0 play points.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "millOpponent",
+          "count": 2
+        }
+      },
+      {
+        "timing": "evolve",
+        "cost": {
+          "pp": 2
+        },
+        "effect": {
+          "op": "noop"
+        }
+      },
+      {
+        "timing": "evolve",
+        "cost": {
+          "pp": 0
+        },
+        "condition": {
+          "type": "opponentCemeteryMin",
+          "count": 10
+        },
+        "effect": {
+          "op": "noop"
+        }
+      },
+      {
+        "timing": "activated",
+        "cost": {
+          "pp": 8
+        },
+        "effect": {
+          "op": "playFromOpponentCemetery",
+          "filter": {}
+        }
+      }
+    ]
+  },
+  "Tidal Gunner": {
+    "name": "Tidal Gunner",
+    "cardNo": "BP19-026EN",
+    "class": "sword",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 3,
+    "cardType": "follower",
+    "traits": [
+      "Condemned",
+      "Thief"
+    ],
+    "keywords": [
+      "fanfare"
+    ],
+    "cardText": "Whenever you play a Dread Pirate's Flag, select an enemy leader or enemy follower on the field and deal it 1 damage.\nFanfare Put a Dread Pirate's Flag token into your EX area.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "summon",
+          "tokenName": "Dread Pirate's Flag",
+          "count": 1,
+          "zone": "exArea"
+        }
+      },
+      {
+        "timing": "onCardPlayed",
+        "filter": {
+          "identityName": "Dread Pirate's Flag"
+        },
+        "effect": {
+          "op": "dealDamage",
+          "amount": 1,
+          "targets": {
+            "type": "enemyLeaderOrFollower",
+            "count": 1
+          }
+        }
+      }
+    ]
+  },
+  "Returning Slash": {
+    "name": "Returning Slash",
+    "cardNo": "BP20-026EN",
+    "class": "sword",
+    "printingType": "base",
+    "cost": 2,
+    "cardType": "spell",
+    "traits": [
+      "Omen",
+      "Thief",
+      "Loot"
+    ],
+    "keywords": [],
+    "cardText": "Select an enemy follower on the field and deal it 4 damage. If there's a follower with \"Octrice\" in its name on your field, put a Gilded Blade token into your EX area.\nActivate, Fuse 1 Loot card that costs at least 1: Give this \"This costs 1 less to play.\"",
+    "abilities": [
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "dealDamage",
+              "amount": 4,
+              "targets": {
+                "type": "enemyFollower",
+                "count": 1
+              }
+            },
+            {
+              "op": "if",
+              "condition": {
+                "type": "namedFollowerOnFieldContains",
+                "identityNameContains": "Octrice"
+              },
+              "then": {
+                "op": "summon",
+                "tokenName": "Gilded Blade",
+                "count": 1,
+                "zone": "exArea"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "timing": "activated",
+        "activateFrom": "hand",
+        "label": "Fuse 1 Loot (cost ≥ 1): put into EX, costs 1 less",
+        "cost": {
+          "fuse": {
+            "filter": {
+              "trait": "Loot",
+              "minCost": 1
+            },
+            "count": 1,
+            "excludeSelf": true
+          }
+        },
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "moveSourceToExArea"
+            },
+            {
+              "op": "grantPlayCostReduction",
+              "amount": 1,
+              "targets": {
+                "type": "self"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Barbaros, Briny Convict": {
+    "name": "Barbaros, Briny Convict",
+    "cardNo": "BP19-019EN",
+    "class": "sword",
+    "printingType": "base",
+    "cost": 4,
+    "attack": 3,
+    "defense": 3,
+    "cardType": "follower",
+    "traits": [
+      "Condemned",
+      "Thief"
+    ],
+    "keywords": [
+      "fanfare",
+      "evolve"
+    ],
+    "evolveCost": 1,
+    "evolvesTo": "Barbaros, Briny Convict Evolved",
+    "cardText": "Evolve (1): Evolve this.\nLoot cards in your EX area cost 1 less to play.\nFanfare Put a Dread Pirate's Flag token into your EX area.",
+    "abilities": [
+      {
+        "timing": "passive",
+        "filter": {
+          "trait": "Loot"
+        },
+        "effect": {
+          "op": "exAreaPlayCostReduction",
+          "amount": 1
+        }
+      },
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "summon",
+          "tokenName": "Dread Pirate's Flag",
+          "count": 1,
+          "zone": "exArea"
+        }
+      },
+      {
+        "timing": "evolve",
+        "cost": {
+          "pp": 1
+        },
+        "effect": {
+          "op": "noop"
+        }
+      }
+    ]
+  },
+  "Octrice, Hollow Usurpation": {
+    "name": "Octrice, Hollow Usurpation",
+    "cardNo": "BP15-020EN",
+    "class": "sword",
+    "printingType": "base",
+    "cost": 3,
+    "attack": 3,
+    "defense": 3,
+    "cardType": "follower",
+    "traits": [
+      "Omen",
+      "Thief"
+    ],
+    "keywords": [
+      "fanfare"
+    ],
+    "cardText": "[fanfare] Put a Remnant of Hollowness token into your EX area. [act] [cost00]: The next Loot card you play this turn costs 2 less. Activate only twice per turn. [act] Banish an Octrice, Omen of Usurpation from your cemetery: Put a Gilded Blade, Gilded Goblet, or Gilded Boots token into your EX area.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "summon",
+          "tokenName": "Remnant of Hollowness",
+          "count": 1,
+          "zone": "exArea"
+        }
+      },
+      {
+        "timing": "activated",
+        "label": "Next Loot costs 2 less (twice per turn)",
+        "cost": {
+          "pp": 0
+        },
+        "maxPerTurn": 2,
+        "effect": {
+          "op": "grantOnCardPlayed",
+          "filter": {
+            "trait": "Loot"
+          },
+          "untilEndOfTurn": true,
+          "effect": {
+            "op": "playCostReduction",
+            "amount": 2
+          }
+        }
+      },
+      {
+        "timing": "activated",
+        "label": "Banish Octrice from cemetery: put a Loot token into EX",
+        "cost": {
+          "pp": 0,
+          "banishFromCemetery": {
+            "name": "Octrice, Omen of Usurpation"
+          },
+          "banishCount": 1
+        },
+        "effect": {
+          "op": "choose",
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "label": "Gilded Blade",
+              "effect": {
+                "op": "summon",
+                "tokenName": "Gilded Blade",
+                "count": 1,
+                "zone": "exArea"
+              }
+            },
+            {
+              "label": "Gilded Goblet",
+              "effect": {
+                "op": "summon",
+                "tokenName": "Gilded Goblet",
+                "count": 1,
+                "zone": "exArea"
+              }
+            },
+            {
+              "label": "Gilded Boots",
+              "effect": {
+                "op": "summon",
+                "tokenName": "Gilded Boots",
+                "count": 1,
+                "zone": "exArea"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Storm-Wracked First Mate Evolved": {
+    "name": "Storm-Wracked First Mate Evolved",
+    "cardNo": "BP19-029EN",
+    "class": "sword",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 3,
+    "defense": 3,
+    "cardType": "follower",
+    "traits": [
+      "Condemned",
+      "Thief"
+    ],
+    "keywords": [
+      "onEvolve"
+    ],
+    "evolvesFrom": "Storm-Wracked First Mate",
+    "cardText": "On Evolve - Search your deck for a follower with both the Condemned and Thief traits, reveal it, add it to your hand, then shuffle.",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "effect": {
+          "op": "tutorFromDeck",
+          "filter": {
+            "allTraits": [
+              "Condemned",
+              "Thief"
+            ],
+            "cardType": "follower"
+          },
+          "to": "hand",
+          "reveal": true
+        }
+      }
+    ]
+  },
+  "Adherent of Hollowness Evolved": {
+    "name": "Adherent of Hollowness Evolved",
+    "cardNo": "BP15-029EN",
+    "class": "sword",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 3,
+    "defense": 3,
+    "cardType": "follower",
+    "traits": [
+      "Omen",
+      "Thief"
+    ],
+    "keywords": [
+      "onEvolve"
+    ],
+    "evolvesFrom": "Adherent of Hollowness",
+    "cardText": "On Evolve - Put a Gilded Blade token into your EX area. Once per turn, when you play a Loot card, put a Gilded Boots token into your EX area.",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "effect": {
+          "op": "summon",
+          "tokenName": "Gilded Blade",
+          "count": 1,
+          "zone": "exArea"
+        }
+      },
+      {
+        "timing": "onCardPlayed",
+        "filter": {
+          "trait": "Loot"
+        },
+        "oncePerTurn": true,
+        "effect": {
+          "op": "summon",
+          "tokenName": "Gilded Boots",
+          "count": 1,
+          "zone": "exArea"
+        }
+      }
+    ]
+  },
+  "Octrice, Omen of Usurpation Evolved": {
+    "name": "Octrice, Omen of Usurpation Evolved",
+    "cardNo": "BP05-019EN",
+    "class": "sword",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 4,
+    "defense": 4,
+    "cardType": "follower",
+    "traits": [
+      "Omen",
+      "Thief"
+    ],
+    "keywords": [
+      "onEvolve"
+    ],
+    "evolvesFrom": "Octrice, Omen of Usurpation",
+    "cardText": "On Evolve: Select a card in an opponent's cemetery and put it into your EX area. [act] [cost08]: Select a card in an opponent's cemetery and play it for 0 play points. If there are at least 10 cards in opponents' cemeteries, any card you play from the EX area costs 2 less.",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "effect": {
+          "op": "tutorFromOpponentCemetery",
+          "filter": {},
+          "to": "exArea"
+        }
+      },
+      {
+        "timing": "activated",
+        "cost": {
+          "pp": 8
+        },
+        "effect": {
+          "op": "playFromOpponentCemetery",
+          "filter": {}
+        }
+      },
+      {
+        "timing": "passive",
+        "condition": {
+          "type": "opponentCemeteryMin",
+          "count": 10
+        },
+        "effect": {
+          "op": "exAreaPlayCostReduction",
+          "amount": 2
+        }
+      }
+    ]
+  },
+  "Barbaros, Briny Convict Evolved": {
+    "name": "Barbaros, Briny Convict Evolved",
+    "cardNo": "BP19-020EN",
+    "class": "sword",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 4,
+    "defense": 4,
+    "cardType": "follower",
+    "traits": [
+      "Condemned",
+      "Thief"
+    ],
+    "keywords": [],
+    "evolvesFrom": "Barbaros, Briny Convict",
+    "cardText": "Loot cards in your EX area cost 1 less to play.\nWhenever you play a Loot card during your turn, choose 1 that you haven't already chosen this turn. (1) Select an enemy follower on the field and destroy it. (2) Each opponent buries the top 2 cards of their deck. (3) Recover 2 play points.",
+    "abilities": [
+      {
+        "timing": "passive",
+        "filter": {
+          "trait": "Loot"
+        },
+        "effect": {
+          "op": "exAreaPlayCostReduction",
+          "amount": 1
+        }
+      },
+      {
+        "timing": "onCardPlayed",
+        "filter": {
+          "trait": "Loot"
+        },
+        "effect": {
+          "op": "choose",
+          "min": 1,
+          "max": 1,
+          "excludeChosenThisTurn": true,
+          "trackKey": "barbarosLoot",
+          "options": [
+            {
+              "label": "Destroy an enemy follower",
+              "effect": {
+                "op": "destroy",
+                "targets": {
+                  "type": "enemyFollower",
+                  "count": 1
+                }
+              }
+            },
+            {
+              "label": "Opponent mills 2",
+              "effect": {
+                "op": "millOpponent",
+                "count": 2
+              }
+            },
+            {
+              "label": "Recover 2 PP",
+              "effect": {
+                "op": "recoverPp",
+                "amount": 2
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Gilnelise, Ravenous Craving Evolved": {
+    "name": "Gilnelise, Ravenous Craving Evolved",
+    "cardNo": "BP15-U07EN",
+    "class": "neutral",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 3,
+    "defense": 3,
+    "cardType": "follower",
+    "traits": [
+      "Omen"
+    ],
+    "keywords": [
+      "onEvolve"
+    ],
+    "evolvesFrom": "Gilnelise, Ravenous Craving",
+    "cardText": "While your leader's defense is 10 or less, this has Drain. On Evolve - Choose 1. (1) Select another follower on the field and give it [attack]+2/[defense]-2. (2) Put a Ravenous Sweetness token into your EX area.",
+    "abilities": [
+      {
+        "timing": "passive",
+        "condition": {
+          "type": "leaderDefMax",
+          "count": 10
+        },
+        "effect": {
+          "op": "passiveKeywords",
+          "keywords": [
+            "drain"
+          ]
+        }
+      },
+      {
+        "timing": "onEvolve",
+        "effect": {
+          "op": "choose",
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "label": "Give another follower +2/-2",
+              "effect": {
+                "op": "buff",
+                "atk": 2,
+                "def": -2,
+                "targets": {
+                  "type": "anyFollower",
+                  "count": 1,
+                  "excludeSelf": true
+                }
+              }
+            },
+            {
+              "label": "Put Ravenous Sweetness into EX",
+              "effect": {
+                "op": "summon",
+                "tokenName": "Ravenous Sweetness",
+                "count": 1,
+                "zone": "exArea"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Dread Pirate's Flag TOKEN": {
+    "name": "Dread Pirate's Flag TOKEN",
+    "cardNo": "BP19-T01EN",
+    "class": "sword",
+    "printingType": "token",
+    "specialType": "token",
+    "cost": 1,
+    "cardType": "spell",
+    "traits": [
+      "Condemned",
+      "Thief",
+      "Loot"
+    ],
+    "keywords": [],
+    "cardText": "Select a Thief follower on your field and give it [attack]+1. If it has both the Condemned and Thief traits, deal 1 damage to each enemy leader.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "buff",
+              "atk": 1,
+              "targets": {
+                "type": "selfFollower",
+                "trait": "Thief",
+                "count": 1
+              }
+            },
+            {
+              "op": "if",
+              "condition": {
+                "type": "selectedTargetHasTraits",
+                "allTraits": [
+                  "Condemned",
+                  "Thief"
+                ]
+              },
+              "then": {
+                "op": "dealDamage",
+                "amount": 1,
+                "targets": {
+                  "type": "enemyLeader"
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Gilded Goblet TOKEN": {
+    "name": "Gilded Goblet TOKEN",
+    "cardNo": "BP15-T02EN",
+    "class": "sword",
+    "printingType": "token",
+    "specialType": "token",
+    "cost": 2,
+    "cardType": "spell",
+    "traits": [
+      "Loot"
+    ],
+    "keywords": [],
+    "cardText": "Give your leader [defense]+1. If there are at least 10 cards in opponents' cemeteries, give [defense]+2 instead.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "if",
+          "condition": {
+            "type": "opponentCemeteryMin",
+            "count": 10
+          },
+          "then": {
+            "op": "healLeader",
+            "amount": 2
+          },
+          "else": {
+            "op": "healLeader",
+            "amount": 1
+          }
+        }
+      }
+    ]
+  },
+  "Gilded Boots TOKEN": {
+    "name": "Gilded Boots TOKEN",
+    "cardNo": "BP15-T03EN",
+    "class": "sword",
+    "printingType": "token",
+    "specialType": "token",
+    "cost": 2,
+    "cardType": "spell",
+    "traits": [
+      "Loot"
+    ],
+    "keywords": [],
+    "cardText": "Select a Thief follower on your field and give it Rush. If there are at least 10 cards in opponents' cemeteries, give Storm instead.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "if",
+          "condition": {
+            "type": "opponentCemeteryMin",
+            "count": 10
+          },
+          "then": {
+            "op": "grantKeyword",
+            "keyword": "storm",
+            "targets": {
+              "type": "selfFollower",
+              "trait": "Thief",
+              "count": 1
+            }
+          },
+          "else": {
+            "op": "grantKeyword",
+            "keyword": "rush",
+            "targets": {
+              "type": "selfFollower",
+              "trait": "Thief",
+              "count": 1
+            }
+          }
+        }
+      }
+    ]
+  },
+  "Gilded Blade TOKEN": {
+    "name": "Gilded Blade TOKEN",
+    "cardNo": "BP15-T01EN",
+    "class": "sword",
+    "printingType": "token",
+    "specialType": "token",
+    "cost": 2,
+    "cardType": "spell",
+    "traits": [
+      "Loot"
+    ],
+    "keywords": [],
+    "cardText": "Select an enemy follower on the field. Deal it 2 damage and, if there are at least 10 cards in opponents' cemeteries, deal 2 damage to its leader.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "if",
+          "condition": {
+            "type": "opponentCemeteryMin",
+            "count": 10
+          },
+          "then": {
+            "op": "damageFollowerAndLeader",
+            "followerAmount": 2,
+            "leaderAmount": 2
+          },
+          "else": {
+            "op": "dealDamage",
+            "amount": 2,
+            "targets": {
+              "type": "enemyFollower",
+              "count": 1
+            }
+          }
+        }
+      }
+    ]
+  },
+  "Crest: Octrice, Hollowness Manifest TOKEN": {
+    "name": "Crest: Octrice, Hollowness Manifest TOKEN",
+    "cardNo": "BP20-T02EN",
+    "class": "sword",
+    "printingType": "token",
+    "specialType": "token",
+    "cost": 0,
+    "cardType": "crest",
+    "traits": [
+      "Omen",
+      "Thief"
+    ],
+    "keywords": [],
+    "cardText": "At the start of your main phase or whenever you play or fuse a Loot card, put a reversal counter on this. If this has at least 8 reversal counters, banish this, search your deck for a Thief card, reveal it, add it to your hand, then shuffle.",
+    "abilities": [
+      {
+        "timing": "startOfMain",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "addPersistentCounter",
+              "key": "reversal",
+              "amount": 1
+            },
+            {
+              "op": "if",
+              "condition": {
+                "type": "sourcePersistentCounterMin",
+                "key": "reversal",
+                "count": 8
+              },
+              "then": {
+                "op": "sequence",
+                "steps": [
+                  {
+                    "op": "banishSelf"
+                  },
+                  {
+                    "op": "tutorFromDeck",
+                    "filter": {
+                      "trait": "Thief"
+                    },
+                    "to": "hand",
+                    "reveal": true
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "timing": "onCardPlayedOrFused",
+        "filter": {
+          "trait": "Loot"
+        },
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "addPersistentCounter",
+              "key": "reversal",
+              "amount": 1
+            },
+            {
+              "op": "if",
+              "condition": {
+                "type": "sourcePersistentCounterMin",
+                "key": "reversal",
+                "count": 8
+              },
+              "then": {
+                "op": "sequence",
+                "steps": [
+                  {
+                    "op": "banishSelf"
+                  },
+                  {
+                    "op": "tutorFromDeck",
+                    "filter": {
+                      "trait": "Thief"
+                    },
+                    "to": "hand",
+                    "reveal": true
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Remnant of Hollowness TOKEN": {
+    "name": "Remnant of Hollowness TOKEN",
+    "cardNo": "BP15-PR10EN",
+    "class": "sword",
+    "printingType": "token",
+    "specialType": "token",
+    "cost": 2,
+    "cardType": "spell",
+    "traits": [
+      "Omen",
+      "Thief",
+      "Loot"
+    ],
+    "keywords": [],
+    "cardText": "Choose 1. If there are at least 10 cards in opponents' cemeteries, choose up to 2 instead. (1) Select an enemy follower on the field and deal it 3 damage. If there are at least 10 cards in opponents' cemeteries, deal 8 damage instead. (2) Look at the top 3 cards of your deck. You may reveal a Thief card from among them and add it to your hand. Put the rest on the bottom of your deck in any order.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "if",
+          "condition": {
+            "type": "opponentCemeteryMin",
+            "count": 10
+          },
+          "then": {
+            "op": "chooseMultiple",
+            "min": 1,
+            "max": 2,
+            "options": [
+              {
+                "label": "Deal 8 damage to an enemy follower",
+                "effect": {
+                  "op": "dealDamage",
+                  "amount": 8,
+                  "targets": {
+                    "type": "enemyFollower",
+                    "count": 1
+                  }
+                }
+              },
+              {
+                "label": "Look at top 3; may take a Thief",
+                "effect": {
+                  "op": "searchDeckChoose",
+                  "filter": {
+                    "trait": "Thief"
+                  },
+                  "lookAt": 3,
+                  "to": "hand",
+                  "optional": true,
+                  "remainderTo": "deckBottom",
+                  "reveal": true
+                }
+              }
+            ]
+          },
+          "else": {
+            "op": "choose",
+            "min": 1,
+            "max": 1,
+            "options": [
+              {
+                "label": "Deal 3 damage to an enemy follower",
+                "effect": {
+                  "op": "dealDamage",
+                  "amount": 3,
+                  "targets": {
+                    "type": "enemyFollower",
+                    "count": 1
+                  }
+                }
+              },
+              {
+                "label": "Look at top 3; may take a Thief",
+                "effect": {
+                  "op": "searchDeckChoose",
+                  "filter": {
+                    "trait": "Thief"
+                  },
+                  "lookAt": 3,
+                  "to": "hand",
+                  "optional": true,
+                  "remainderTo": "deckBottom",
+                  "reveal": true
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

@@ -1,5 +1,5 @@
 export type PlayerId = 0 | 1;
-export type CardType = "follower" | "spell" | "amulet" | "leader";
+export type CardType = "follower" | "spell" | "amulet" | "crest" | "leader";
 export type SpecialType = "evolved" | "advanced" | "token";
 export type Phase = "mulligan" | "start" | "main" | "end" | "combat" | "quickWindow" | "gameOver";
 export type QuickWindow = "afterAttack" | "endPhase" | null;
@@ -24,7 +24,13 @@ export interface CardDefinition {
     evolveCost?: number;
     abilities?: AbilityDefinition[];
 }
-export type TriggerTiming = "fanfare" | "lastWords" | "onEvolve" | "onSuperEvolve" | "onCardPlayed" | "strike" | "startOfMain" | "startOfEnd" | "passive" | "aura" | "onExAreaEntry" | "onAllyFollowerEnter" | "evolve";
+export type TriggerTiming = "fanfare" | "lastWords" | "onEvolve" | "onSuperEvolve" | "onCardPlayed"
+/** Fires when a card is fused into EX (and for abilities that also watch plays). */
+ | "onCardFused"
+/** Fires on either play or fuse of a matching card. */
+ | "onCardPlayedOrFused" | "strike" | "startOfMain" | "startOfEnd" | "passive" | "aura" | "onExAreaEntry" | "onAllyFollowerEnter"
+/** Fires when a card moves from an opponent's deck to cemetery during your turn. */
+ | "onOpponentDeckToCemetery" | "evolve";
 export interface AbilityDefinition {
     timing: TriggerTiming | "activated" | "spell";
     cost?: {
@@ -41,6 +47,16 @@ export interface AbilityDefinition {
         engageFromField?: DeckFilter;
         engageFieldCount?: number;
         excludeSelfFromEngage?: boolean;
+        /**
+         * Fuse cost: discard from hand or bury from EX matching cards, then the
+         * activate effect typically moves this card into EX.
+         */
+        fuse?: {
+            filter: DeckFilter;
+            count?: number;
+            /** Default true — cannot use the fuse source as its own material. */
+            excludeSelf?: boolean;
+        };
     };
     quick?: boolean;
     condition?: Condition;
@@ -72,16 +88,27 @@ export type TargetSelector = {
     count?: number;
     trait?: string;
     cardType?: CardType;
+    excludeSelf?: boolean;
+}
+/** Enemy leader or an enemy follower (player chooses). */
+ | {
+    type: "enemyLeaderOrFollower";
+    count?: number;
+    trait?: string;
+    cardType?: CardType;
+    excludeSelf?: boolean;
 } | {
     type: "anyFollower";
     count?: number;
     trait?: string;
     cardType?: CardType;
+    excludeSelf?: boolean;
 } | {
     type: "selfFollower";
     count?: number;
     trait?: string;
     cardType?: CardType;
+    excludeSelf?: boolean;
 }
 /** Ally field card (follower or amulet), optionally trait-filtered. */
  | {
@@ -89,6 +116,7 @@ export type TargetSelector = {
     count?: number;
     trait?: string;
     cardType?: CardType;
+    excludeSelf?: boolean;
 };
 export type DeckFilter = {
     /** Exact card name (gameplay identity). */
@@ -122,6 +150,27 @@ export type Condition = {
 } | {
     type: "namedFollowerOnFieldByName";
     identityName: string;
+}
+/** True when an ally field follower's normalized name contains the substring. */
+ | {
+    type: "namedFollowerOnFieldContains";
+    identityNameContains: string;
+}
+/** True when forcedTargetId's card has every listed trait. */
+ | {
+    type: "selectedTargetHasTraits";
+    allTraits: string[];
+}
+/** True when the source instance has at least `count` of the named persistent counter. */
+ | {
+    type: "sourcePersistentCounterMin";
+    key: string;
+    count: number;
+}
+/** True when the most recently revealed card's name contains this substring. */
+ | {
+    type: "lastRevealedIdentityContains";
+    identityNameContains: string;
 } | {
     type: "notEnteredFromHand";
 } | {
@@ -281,6 +330,10 @@ export type Effect = {
     }[];
     min: number;
     max: number;
+    /** Exclude option indices already chosen this turn on the source instance. */
+    excludeChosenThisTurn?: boolean;
+    /** Key for chosen-option tracking (default "default"). */
+    trackKey?: string;
 } | {
     op: "chooseMultiple";
     options: {
@@ -321,6 +374,21 @@ export type Effect = {
     to: "hand" | "field" | "exArea";
     playCostReduction?: number;
     reveal?: boolean;
+} | {
+    op: "tutorFromOpponentCemetery";
+    filter?: DeckFilter;
+    to: "hand" | "field" | "exArea";
+    playCostReduction?: number;
+} | {
+    /** Select a card in an opponent's cemetery and play it for 0 PP. */
+    op: "playFromOpponentCemetery";
+    filter?: DeckFilter;
+} | {
+    op: "addPersistentCounter";
+    key: string;
+    amount?: number;
+} | {
+    op: "returnSourceToHand";
 } | {
     op: "autoEvolveIf";
     condition: Condition;
@@ -468,7 +536,12 @@ export interface CardInstance {
     /** false = reserved (free to act); true = engaged (attacked, ward engaged, or [engage] activate) */
     engaged: boolean;
     modifiers: Modifier[];
+    /** Turn-scoped counters (ability maxPerTurn keys); cleared each start phase. */
     counters: Record<string, number>;
+    /** Persistent counters (e.g. Crest reversal); not cleared each turn. */
+    persistentCounters?: Record<string, number>;
+    /** Option indices chosen this turn for choose effects, keyed by trackKey. */
+    chosenChooseOptionsThisTurn?: Record<string, number[]>;
     enteredFieldTurn: number;
     evolvedThisTurn: boolean;
     superEvolved: boolean;
@@ -495,6 +568,11 @@ export interface CardInstance {
     grantedOnCardPlayed?: GrantedOnCardPlayed[];
     /** Temporary evolve PP cost override for this instance (cleared end of turn). */
     evolveCostOverride?: number;
+    /**
+     * True when this evolve-deck card has already been used (evolved and the
+     * follower left play). Face-up in the evolve deck; cannot be used again.
+     */
+    evolveUsed?: boolean;
 }
 export interface EvolveLink {
     fieldInstanceId: string;
@@ -577,7 +655,11 @@ export type ChoicePrompt = ChoiceSourceContext & ({
     type: "selectZoneCard";
     player: PlayerId;
     fromZone: "deck" | "cemetery" | "hand" | "evolveDeck";
+    /** Zone owner to select from (defaults to choosing player). */
+    fromPlayer?: PlayerId;
     to: "hand" | "exArea" | "field";
+    /** If true, play the selected card for 0 PP instead of moving to `to`. */
+    playSelected?: boolean;
     options: {
         instanceId: string;
         label: string;
@@ -597,6 +679,8 @@ export type ChoicePrompt = ChoiceSourceContext & ({
     }[];
     min: number;
     max: number;
+    /** When set, record chosen indices on the source under this track key. */
+    trackChosenKey?: string;
 } | {
     type: "chooseMultiple";
     player: PlayerId;
@@ -651,7 +735,8 @@ export type ChoicePrompt = ChoiceSourceContext & ({
     minCount?: number;
     /** Inclusive upper bound for variable selection (defaults to count). */
     maxCount?: number;
-    action: "banish" | "discard" | "bury" | "engage";
+    /** `fuse` = discard if in hand, bury if in EX. */
+    action: "banish" | "discard" | "bury" | "engage" | "fuse";
     options: {
         instanceId: string;
         label: string;
@@ -791,16 +876,20 @@ export type GameAction = {
     type: "ACTIVATE";
     fieldInstanceId: string;
     useEvoPoint?: boolean;
+    abilityKey?: string;
 } | {
     type: "ACTIVATE_CEMETERY";
     cemeteryInstanceId: string;
+    abilityKey?: string;
 } | {
     type: "ACTIVATE_EXAREA";
     exAreaInstanceId: string;
+    abilityKey?: string;
 } | {
     type: "ACTIVATE_HAND";
     handInstanceId: string;
     useEvoPoint?: boolean;
+    abilityKey?: string;
 } | {
     type: "END_MAIN";
 } | {
@@ -828,6 +917,14 @@ export interface PlayerView {
     opponentDeckCount: number;
     opponentEvoDeckCount: number;
     legalActions: string[];
+    /** Legal activated abilities with labels for multi-activate menus. */
+    activateOptions: {
+        instanceId: string;
+        zone: "field" | "cemetery" | "exArea" | "hand";
+        abilityKey: string;
+        label: string;
+        useEvoPoint: boolean;
+    }[];
     /** Effective play cost from EX area, keyed by instance id (self). */
     exPlayCosts: Record<string, number>;
     /** Effective play cost from EX area, keyed by instance id (opponent). */

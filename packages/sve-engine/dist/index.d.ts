@@ -9,4 +9,4 @@ export { applyAction, advanceCombatIfNeeded } from "./actions/applyAction";
 export { runConfirmationTiming } from "./rules/confirmation";
 export { resolveEffect, resolveSpell } from "./effects/resolver";
 export { createPlayerView, tryAction } from "./view/filterView";
-export { findInstance, getLegalAttackTargets, hasKeyword, getEffectiveStats, getEffectivePlayCost, getEvolveCost, resolveCardDefCost, isFollowerCard, } from "./state/queries";
+export { findInstance, getLegalAttackTargets, hasKeyword, getEffectiveStats, getEffectivePlayCost, getEvolveCost, getEffectiveEvolveCost, resolveCardDefCost, isFollowerCard, } from "./state/queries";

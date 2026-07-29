@@ -449,7 +449,9 @@ export default function ChoiceModal({ setHovering }) {
                 ? "bury"
                 : pending.action === "engage"
                   ? "engage"
-                  : "discard"}{" "}
+                  : pending.action === "fuse"
+                    ? "discard (hand) or bury (EX) for fuse"
+                    : "discard"}{" "}
 
             ({selectedDiscardIds.length}/
 

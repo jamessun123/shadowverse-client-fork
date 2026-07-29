@@ -30,10 +30,11 @@ export default function ZoomedCard({ hovering, name, scale = 1, setHovering }) {
         <div
           style={{
             position: "fixed",
-            top: "8%",
+            top: "2%",
             left: 0,
-            width: "22vw",
-            maxHeight: "84vh",
+            width: "39vw",
+            maxWidth: 546,
+            maxHeight: "96vh",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
@@ -54,7 +55,7 @@ export default function ZoomedCard({ hovering, name, scale = 1, setHovering }) {
             style={{
               height: "auto",
               width: "100%",
-              maxHeight: effectText ? "52vh" : "60vh",
+              maxHeight: effectText ? "72vh" : "90vh",
               objectFit: "contain",
               flex: "0 0 auto",
             }}
@@ -65,7 +66,7 @@ export default function ZoomedCard({ hovering, name, scale = 1, setHovering }) {
               onMouseLeave={() => setHovering?.(false)}
               style={{
                 width: "100%",
-                maxHeight: "28vh",
+                maxHeight: "22vh",
                 overflowY: "auto",
                 pointerEvents: "auto",
                 background: "rgba(0, 0, 0, 0.78)",
@@ -75,7 +76,7 @@ export default function ZoomedCard({ hovering, name, scale = 1, setHovering }) {
                 boxSizing: "border-box",
                 color: "#fff",
                 fontFamily: "Noto Serif JP, serif",
-                fontSize: 13,
+                fontSize: 18,
                 lineHeight: 1.45,
                 whiteSpace: "pre-wrap",
                 boxShadow: "0 4px 16px rgba(0, 0, 0, 0.45)",

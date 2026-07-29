@@ -10,10 +10,14 @@ exports.resolveCardNo = resolveCardNo;
 exports.resolveCardDefCost = resolveCardDefCost;
 exports.getExAreaPlayCostReduction = getExAreaPlayCostReduction;
 exports.getPassivePlayCostReduction = getPassivePlayCostReduction;
+exports.getGrantedPlayCostReduction = getGrantedPlayCostReduction;
+exports.consumeGrantedPlayCostReductions = consumeGrantedPlayCostReductions;
 exports.getEffectivePlayCost = getEffectivePlayCost;
 exports.getEffectiveStats = getEffectiveStats;
 exports.isFollowerCard = isFollowerCard;
 exports.getEvolveCost = getEvolveCost;
+exports.getAvailableEvolveCosts = getAvailableEvolveCosts;
+exports.getEffectiveEvolveCost = getEffectiveEvolveCost;
 exports.hasKeyword = hasKeyword;
 exports.clampDamageToFollower = clampDamageToFollower;
 exports.canEvolveFollower = canEvolveFollower;
@@ -169,11 +173,47 @@ function getPassivePlayCostReduction(state, player, cardNo) {
     }
     return reduction;
 }
+/**
+ * Pending "next matching card costs less" grants from activate abilities
+ * (stored on field/EX via grantOnCardPlayed + playCostReduction).
+ */
+function getGrantedPlayCostReduction(state, player, cardNo) {
+    let reduction = 0;
+    const zones = getPlayer(state, player).zones;
+    for (const source of [...zones.field, ...zones.exArea]) {
+        if ((0, passives_1.isBoxed)(source, state))
+            continue;
+        for (const granted of source.grantedOnCardPlayed ?? []) {
+            if (granted.effect.op !== "playCostReduction")
+                continue;
+            if (granted.filter && !(0, conditions_1.cardMatchesFilter)(cardNo, granted.filter))
+                continue;
+            reduction += granted.effect.amount;
+        }
+    }
+    return reduction;
+}
+/** Consume pending play-cost grants that matched a card that was just played. */
+function consumeGrantedPlayCostReductions(state, player, cardNo) {
+    const zones = getPlayer(state, player).zones;
+    for (const source of [...zones.field, ...zones.exArea]) {
+        if (!source.grantedOnCardPlayed?.length)
+            continue;
+        source.grantedOnCardPlayed = source.grantedOnCardPlayed.filter((granted) => {
+            if (granted.effect.op !== "playCostReduction")
+                return true;
+            if (granted.filter && !(0, conditions_1.cardMatchesFilter)(cardNo, granted.filter))
+                return true;
+            return false;
+        });
+    }
+}
 function getEffectivePlayCost(card, cardNo, state, player, fromZone) {
     const playNo = getBaseCardNoForInstance(cardNo, card.linkedEvoInstanceId);
     let base = resolveCardDefCost(playNo);
     if (state && player != null) {
         base = Math.max(0, base - getPassivePlayCostReduction(state, player, playNo));
+        base = Math.max(0, base - getGrantedPlayCostReduction(state, player, playNo));
         if (fromZone === "exArea") {
             base = Math.max(0, base - getExAreaPlayCostReduction(state, player, cardNo));
         }
@@ -209,6 +249,34 @@ function getEvolveCost(evoCardNo, baseCardNo) {
     if (parsed != null)
         return parsed;
     return 2;
+}
+/**
+ * Evolve costs currently available for a field follower.
+ * Alternate evolve abilities are independent — any met option unlocks evolving.
+ */
+function getAvailableEvolveCosts(state, player, fieldCard) {
+    if (fieldCard.evolveCostOverride != null)
+        return [fieldCard.evolveCostOverride];
+    const baseNo = getBaseCardNoForInstance(fieldCard.name, fieldCard.linkedEvoInstanceId);
+    const def = (0, registry_1.getCardDef)(baseNo);
+    const evolveRules = (def?.abilities ?? []).filter((a) => a.timing === "evolve");
+    if (evolveRules.length === 0) {
+        return [getEvolveCost("", baseNo)];
+    }
+    const costs = [];
+    for (const rule of evolveRules) {
+        if (rule.condition && !(0, conditions_1.evalCondition)(state, player, rule.condition))
+            continue;
+        costs.push(rule.cost?.pp ?? 0);
+    }
+    return costs;
+}
+/** Cheapest currently available evolve PP cost, or null if none are legal. */
+function getEffectiveEvolveCost(state, player, fieldCard) {
+    const costs = getAvailableEvolveCosts(state, player, fieldCard);
+    if (costs.length === 0)
+        return null;
+    return Math.min(...costs);
 }
 function hasKeyword(card, keyword, state, player) {
     if (state && (0, passives_1.isBoxed)(card, state))
@@ -253,10 +321,7 @@ function canEvolveFollower(state, player, fieldInstanceId) {
         return false;
     if (!findMatchingEvolveCard(state, player, fieldInstanceId))
         return false;
-    const baseNo = getBaseCardNoForInstance(fieldFound.card.name, fieldFound.card.linkedEvoInstanceId);
-    const def = (0, registry_1.getCardDef)(baseNo);
-    const evolveRules = (def?.abilities ?? []).filter((a) => a.timing === "evolve");
-    return evolveRules.every((a) => !a.condition || (0, conditions_1.evalCondition)(state, player, a.condition));
+    return getEffectiveEvolveCost(state, player, fieldFound.card) != null;
 }
 function getActivatedAbilities(state, card, player, zone) {
     if (zone === "field" && (0, passives_1.isBoxed)(card, state))
@@ -271,6 +336,8 @@ function getActivatedAbilities(state, card, player, zone) {
             continue;
         const key = `activated:${idx}`;
         if (a.oncePerTurn && card.abilitiesActivatedThisTurn.includes(key))
+            continue;
+        if (a.maxPerTurn != null && (card.counters[key] ?? 0) >= a.maxPerTurn)
             continue;
         if (a.condition && !(0, conditions_1.evalCondition)(state, player, a.condition))
             continue;
@@ -318,6 +385,21 @@ function getActivatedAbilities(state, card, player, zone) {
             if (have < need)
                 continue;
         }
+        if (a.cost?.fuse) {
+            const need = a.cost.fuse.count ?? 1;
+            const filter = a.cost.fuse.filter;
+            const excludeSelf = a.cost.fuse.excludeSelf !== false;
+            const zones = getPlayer(state, player).zones;
+            let have = 0;
+            for (const c of [...zones.hand, ...zones.exArea]) {
+                if (excludeSelf && c.instanceId === card.instanceId)
+                    continue;
+                if ((0, conditions_1.cardMatchesFilter)(c.name, filter))
+                    have += 1;
+            }
+            if (have < need)
+                continue;
+        }
         if (a.cost?.burySelf && zone !== "field")
             continue;
         if (zone === "field" && a.cost?.engage && card.engaged)
@@ -349,7 +431,7 @@ function findMatchingEvolveCard(state, player, fieldInstanceId) {
         return null;
     if (fieldFound.card.linkedEvoInstanceId)
         return null;
-    return (state.players[player].zones.evolveDeck.find((evo) => evolveCardsMatch(fieldFound.card.name, evo.name)) ?? null);
+    return (state.players[player].zones.evolveDeck.find((evo) => !evo.evolveUsed && evolveCardsMatch(fieldFound.card.name, evo.name)) ?? null);
 }
 function getStrikeAbilities(state, card) {
     if ((0, passives_1.isBoxed)(card, state))

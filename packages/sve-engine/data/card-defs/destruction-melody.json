@@ -194,7 +194,7 @@
                 "op": "buff",
                 "atk": 2,
                 "def": -2,
-                "targets": { "type": "anyFollower", "count": 1 }
+                "targets": { "type": "anyFollower", "count": 1, "excludeSelf": true }
               }
             },
             {

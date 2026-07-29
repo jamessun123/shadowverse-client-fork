@@ -29,6 +29,8 @@ function createCardInstance(nameOrCardNo, owner, controller) {
         engaged: false,
         modifiers: [],
         counters: {},
+        persistentCounters: {},
+        chosenChooseOptionsThisTurn: {},
         enteredFieldTurn: 0,
         evolvedThisTurn: false,
         superEvolved: false,

@@ -8,6 +8,7 @@ export const GameStateSlice = createSlice({
     playerSlot: null,
     pendingChoices: null,
     legalActions: [],
+    activateOptions: [],
     enginePhase: null,
     engineWinner: null,
     quickWindow: null,
@@ -36,6 +37,7 @@ export const GameStateSlice = createSlice({
       if (view?.self != null) state.playerSlot = view.self;
       state.pendingChoices = view?.state?.pendingChoices ?? null;
       state.legalActions = view?.legalActions ?? [];
+      state.activateOptions = view?.activateOptions ?? [];
       state.enginePhase = view?.state?.phase ?? null;
       state.engineWinner = view?.state?.winner ?? null;
       state.quickWindow = view?.state?.quickWindow ?? null;
@@ -56,6 +58,7 @@ export const GameStateSlice = createSlice({
       state.engineView = null;
       state.pendingChoices = null;
       state.legalActions = [];
+      state.activateOptions = [];
       state.enginePhase = null;
       state.engineWinner = null;
       state.quickWindow = null;

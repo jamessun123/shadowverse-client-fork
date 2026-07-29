@@ -2478,6 +2478,8 @@ export const CardSlice = createSlice({
       if (s.enemyExPlayCostField !== undefined) {
         state.enemyExPlayCostField = s.enemyExPlayCostField;
       }
+      if (s.counterField !== undefined) state.counterField = s.counterField;
+      if (s.enemyCounterField !== undefined) state.enemyCounterField = s.enemyCounterField;
       if (s.cemetery !== undefined) state.cemetery = s.cemetery;
       if (s.cemeteryInstanceIds !== undefined) state.cemeteryInstanceIds = s.cemeteryInstanceIds;
       if (s.deck !== undefined) state.deck = s.deck;

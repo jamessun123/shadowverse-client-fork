@@ -21,6 +21,7 @@ export {
   getEffectiveStats,
   getEffectivePlayCost,
   getEvolveCost,
+  getEffectiveEvolveCost,
   resolveCardDefCost,
   isFollowerCard,
 } from "./state/queries";

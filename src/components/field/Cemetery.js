@@ -53,7 +53,8 @@ export default function Cemetery({
   const reduxBanish = useSelector((state) => state.card.banish);
   const reduxRoom = useSelector((state) => state.card.room);
   const gameMode = useSelector((state) => state.gameState.gameMode);
-  const legalActions = useSelector((state) => state.gameState.legalActions);
+  const legalActions = useSelector((state) => state.gameState.legalActions) ?? [];
+  const activateOptions = useSelector((state) => state.gameState.activateOptions) ?? [];
   const leaderActive = useSelector((state) => state.card.leaderActive);
   const pendingChoices = useSelector((state) => state.gameState.pendingChoices);
   const automated = gameMode === "automated";
@@ -111,22 +112,50 @@ export default function Cemetery({
     dispatch(addToBanishFromCemetery({ name: name, index: cardIndex }));
   };
 
-  const handleAutomatedActivateFromCemetery = () => {
+  const getCemeteryActivateOptions = (instanceId) => {
+    const fromView = activateOptions.filter(
+      (o) => o.instanceId === instanceId && o.zone === "cemetery",
+    );
+    if (fromView.length > 0) return fromView;
+    const opts = [];
+    for (const action of legalActions) {
+      if (action.startsWith(`ACTIVATE_CEMETERY:${instanceId}:`)) {
+        opts.push({
+          abilityKey: action.slice(`ACTIVATE_CEMETERY:${instanceId}:`.length),
+          label: "Activate",
+        });
+      }
+    }
+    if (opts.length === 0 && legalActions.includes(`ACTIVATE_CEMETERY:${instanceId}`)) {
+      opts.push({ label: "Activate" });
+    }
+    return opts;
+  };
+
+  const handleAutomatedActivateFromCemetery = (opt) => {
     if (!automated || cardIndex < 0) return;
     const instanceId = cemeteryInstanceIds[cardIndex];
-    if (!instanceId || !legalActions.includes(`ACTIVATE_CEMETERY:${instanceId}`)) return;
-    sendAction({ type: "ACTIVATE_CEMETERY", cemeteryInstanceId: instanceId });
+    if (!instanceId) return;
+    const options = getCemeteryActivateOptions(instanceId);
+    const chosen = opt || (options.length === 1 ? options[0] : null);
+    if (!chosen) return;
+    sendAction({
+      type: "ACTIVATE_CEMETERY",
+      cemeteryInstanceId: instanceId,
+      abilityKey: chosen.abilityKey,
+    });
     handleClose();
     handleModalClose();
   };
 
-  const canActivateFromCemetery =
+  const cemeteryActivateOpts =
     automated &&
     leaderActive &&
     !pendingChoices &&
     cardIndex >= 0 &&
-    cemeteryInstanceIds[cardIndex] &&
-    legalActions.includes(`ACTIVATE_CEMETERY:${cemeteryInstanceIds[cardIndex]}`);
+    cemeteryInstanceIds[cardIndex]
+      ? getCemeteryActivateOptions(cemeteryInstanceIds[cardIndex])
+      : [];
 
   const handleCardToHandFromCemetery = () => {
     handleModalClose();
@@ -340,9 +369,15 @@ export default function Cemetery({
             horizontal: "left",
           }}
         >
-          {cemeterySelected && canActivateFromCemetery && (
-            <MenuItem onClick={handleAutomatedActivateFromCemetery}>Activate</MenuItem>
-          )}
+          {cemeterySelected &&
+            cemeteryActivateOpts.map((opt) => (
+              <MenuItem
+                key={`cem-act-${opt.abilityKey}`}
+                onClick={() => handleAutomatedActivateFromCemetery(opt)}
+              >
+                {opt.label}
+              </MenuItem>
+            ))}
           {cemeterySelected && !automated && (
             <MenuItem onClick={handleCardToHandFromCemetery}>Hand</MenuItem>
           )}

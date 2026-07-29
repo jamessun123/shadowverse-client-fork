@@ -215,6 +215,7 @@ export default function Field({
   const fieldInstanceIds = useSelector((state) => state.card.fieldInstanceIds);
   const enemyFieldInstanceIds = useSelector((state) => state.card.enemyFieldInstanceIds);
   const legalActions = useSelector((state) => state.gameState.legalActions);
+  const activateOptions = useSelector((state) => state.gameState.activateOptions) ?? [];
   const selectedAttackerId = useSelector((state) => state.gameState.selectedAttackerId);
   const leaderActive = useSelector((state) => state.card.leaderActive);
   const pendingChoices = useSelector((state) => state.gameState.pendingChoices);
@@ -1227,8 +1228,16 @@ export default function Field({
         sendAction({ type: "PLAY_CARD", handInstanceId: instanceId });
         return;
       }
-      if (legalActions.includes(`ACTIVATE_EXAREA:${instanceId}`)) {
-        sendAction({ type: "ACTIVATE_EXAREA", exAreaInstanceId: instanceId });
+      if (legalActions.includes(`ACTIVATE_EXAREA:${instanceId}`) ||
+          legalActions.some((a) => a.startsWith(`ACTIVATE_EXAREA:${instanceId}:`))) {
+        const exOpts = getActivateOptionsForExAreaCard(instanceId);
+        if (exOpts.length === 1) {
+          sendAction({
+            type: "ACTIVATE_EXAREA",
+            exAreaInstanceId: instanceId,
+            abilityKey: exOpts[0].abilityKey,
+          });
+        }
         return;
       }
       return;
@@ -1297,31 +1306,80 @@ export default function Field({
   };
 
   const getActivateOptionsForFieldCard = (fieldInstanceId) => {
+    const fromView = activateOptions.filter(
+      (o) => o.instanceId === fieldInstanceId && o.zone === "field",
+    );
+    if (fromView.length > 0) return fromView;
+
+    // Fallback when the view only exposes legalActions (or activateOptions was dropped).
     const opts = [];
-    if (legalActions.includes(`ACTIVATE:${fieldInstanceId}`)) {
+    const keyed = [];
+    const keyedEp = [];
+    for (const action of legalActions) {
+      if (action.startsWith(`ACTIVATE_EP:${fieldInstanceId}:`)) {
+        keyedEp.push(action.slice(`ACTIVATE_EP:${fieldInstanceId}:`.length));
+      } else if (action.startsWith(`ACTIVATE:${fieldInstanceId}:`)) {
+        keyed.push(action.slice(`ACTIVATE:${fieldInstanceId}:`.length));
+      }
+    }
+    if (keyed.length > 0) {
+      for (const abilityKey of keyed) {
+        opts.push({ abilityKey, useEvoPoint: false, label: "Activate" });
+      }
+    } else if (legalActions.includes(`ACTIVATE:${fieldInstanceId}`)) {
       opts.push({ useEvoPoint: false, label: "Activate" });
     }
-    if (legalActions.includes(`ACTIVATE_EP:${fieldInstanceId}`)) {
+    if (keyedEp.length > 0) {
+      for (const abilityKey of keyedEp) {
+        opts.push({ abilityKey, useEvoPoint: true, label: "Activate (use EP)" });
+      }
+    } else if (legalActions.includes(`ACTIVATE_EP:${fieldInstanceId}`)) {
       opts.push({ useEvoPoint: true, label: "Activate (use EP)" });
     }
     return opts;
   };
 
-  const handleAutomatedActivate = (useEvoPoint = false) => {
-    if (!automatedFieldMenu) return;
+  const getActivateOptionsForExAreaCard = (instanceId) => {
+    const fromView = activateOptions.filter(
+      (o) => o.instanceId === instanceId && o.zone === "exArea",
+    );
+    if (fromView.length > 0) return fromView;
+    if (legalActions.includes(`ACTIVATE_EXAREA:${instanceId}`)) {
+      return [{ abilityKey: undefined, useEvoPoint: false, label: "Activate" }];
+    }
+    const opts = [];
+    for (const action of legalActions) {
+      if (action.startsWith(`ACTIVATE_EXAREA:${instanceId}:`)) {
+        opts.push({
+          abilityKey: action.slice(`ACTIVATE_EXAREA:${instanceId}:`.length),
+          useEvoPoint: false,
+          label: "Activate",
+        });
+      }
+    }
+    return opts;
+  };
+
+  const handleAutomatedActivate = (opt) => {
+    if (!automatedFieldMenu || !opt) return;
     sendAction({
       type: "ACTIVATE",
       fieldInstanceId: automatedFieldMenu.instanceId,
-      useEvoPoint: Boolean(useEvoPoint),
+      useEvoPoint: Boolean(opt.useEvoPoint),
+      abilityKey: opt.abilityKey,
     });
     closeAutomatedFieldMenu();
   };
 
-  const handleAutomatedActivateExArea = () => {
+  const handleAutomatedActivateExArea = (opt) => {
     if (!automatedFieldMenu) return;
+    const options = getActivateOptionsForExAreaCard(automatedFieldMenu.instanceId);
+    const chosen = opt || (options.length === 1 ? options[0] : null);
+    if (!chosen) return;
     sendAction({
       type: "ACTIVATE_EXAREA",
       exAreaInstanceId: automatedFieldMenu.instanceId,
+      abilityKey: chosen.abilityKey,
     });
     closeAutomatedFieldMenu();
   };
@@ -1434,7 +1492,7 @@ export default function Field({
         </div>
       </Tooltip>
       <Menu
-        open={chromeVisible && automatedFieldMenu !== null}
+        open={automatedFieldMenu !== null}
         onClose={closeAutomatedFieldMenu}
         anchorReference="anchorPosition"
         anchorPosition={
@@ -1447,17 +1505,22 @@ export default function Field({
           automatedFieldMenu.idx < 5 &&
           getActivateOptionsForFieldCard(automatedFieldMenu.instanceId).map((opt) => (
             <MenuItem
-              key={`activate-${opt.useEvoPoint ? "ep" : "pp"}`}
-              onClick={() => handleAutomatedActivate(opt.useEvoPoint)}
+              key={`activate-${opt.abilityKey}-${opt.useEvoPoint ? "ep" : "pp"}`}
+              onClick={() => handleAutomatedActivate(opt)}
             >
               {opt.label}
             </MenuItem>
           ))}
         {automatedFieldMenu &&
           automatedFieldMenu.idx >= 5 &&
-          legalActions.includes(`ACTIVATE_EXAREA:${automatedFieldMenu.instanceId}`) && (
-            <MenuItem onClick={handleAutomatedActivateExArea}>Activate</MenuItem>
-          )}
+          getActivateOptionsForExAreaCard(automatedFieldMenu.instanceId).map((opt) => (
+            <MenuItem
+              key={`activate-ex-${opt.abilityKey || "default"}-${opt.useEvoPoint ? "ep" : "pp"}`}
+              onClick={() => handleAutomatedActivateExArea(opt)}
+            >
+              {opt.label}
+            </MenuItem>
+          ))}
         {automatedFieldMenu &&
           getEvolveOptionsForFieldCard(automatedFieldMenu.instanceId).map((opt) => (
             <MenuItem
@@ -1492,10 +1555,10 @@ export default function Field({
         {!isToken(name) && !isAdvanced(name) && (
           <MenuItem onClick={handleCardToCemetery}>Cemetery</MenuItem>
         )}
-        {!reduxCustomValues[index].showAtk && (
+        {!automated && !reduxCustomValues[index].showAtk && (
           <MenuItem onClick={handleShowAtkDef}>Modify Atk/Def</MenuItem>
         )}
-        {reduxCustomValues[index].showAtk && (
+        {!automated && reduxCustomValues[index].showAtk && (
           <MenuItem onClick={handleHideAtkDef}>Hide Atk/Def</MenuItem>
         )}
         {reduxCounterField[index] < 1 && (
@@ -1564,10 +1627,10 @@ export default function Field({
       >
         <MenuItem onClick={() => handleReturnToEvolveDeck()}>Return</MenuItem>
         <MenuItem onClick={handleMoveEvoOnField}>Move</MenuItem>
-        {!reduxCustomValues[index].showAtk && (
+        {!automated && !reduxCustomValues[index].showAtk && (
           <MenuItem onClick={handleShowAtkDef}>Modify Atk/Def</MenuItem>
         )}
-        {reduxCustomValues[index].showAtk && (
+        {!automated && reduxCustomValues[index].showAtk && (
           <MenuItem onClick={handleHideAtkDef}>Hide Atk/Def</MenuItem>
         )}
         {!reduxCustomStatus[index] && (

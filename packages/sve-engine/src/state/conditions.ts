@@ -71,6 +71,37 @@ export function evalCondition(state: GameState, player: PlayerId, condition: Con
       return getPlayer(state, player).zones.field.some((c) => c.name === condition.name);
     case "namedFollowerOnFieldByName":
       return hasNamedFollowerOnFieldByIdentity(state, player, condition.identityName);
+    case "namedFollowerOnFieldContains": {
+      const needle = condition.identityNameContains.toLowerCase();
+      return getPlayer(state, player).zones.field.some((c) => {
+        const def = getCardDef(resolveCardNo(state, c));
+        if (!def || def.cardType !== "follower") return false;
+        return normalizeIdentityName(def.name).toLowerCase().includes(needle);
+      });
+    }
+    case "selectedTargetHasTraits": {
+      const targetId = state.resolutionContext?.forcedTargetId;
+      if (!targetId || targetId === "leader" || targetId === "selfLeader") return false;
+      const found = findInstance(state, targetId);
+      if (!found) return false;
+      const def = getCardDef(resolveCardNo(state, found.card));
+      if (!def?.traits?.length) return false;
+      return condition.allTraits.every((t) => def.traits!.includes(t));
+    }
+    case "sourcePersistentCounterMin": {
+      const sourceId = state.resolutionContext?.sourceInstanceId;
+      if (!sourceId) return false;
+      const found = findInstance(state, sourceId);
+      if (!found) return false;
+      return (found.card.persistentCounters?.[condition.key] ?? 0) >= condition.count;
+    }
+    case "lastRevealedIdentityContains": {
+      const list = state.revealedCards;
+      if (!list?.length) return false;
+      const last = list[list.length - 1];
+      const needle = condition.identityNameContains.toLowerCase();
+      return normalizeIdentityName(last.name).toLowerCase().includes(needle);
+    }
     case "notEnteredFromHand": {
       const sourceId = state.resolutionContext?.sourceInstanceId;
       if (!sourceId) return false;

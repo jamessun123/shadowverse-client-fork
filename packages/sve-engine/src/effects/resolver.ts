@@ -4,6 +4,7 @@ import { onCardEntersExArea, onFollowerEntersField, queueLastWords } from "../ru
 
 import { runConfirmationTiming } from "../rules/confirmation";
 import { describeEffect } from "../rules/trigger-labels";
+import { queueOnOpponentDeckToCemetery } from "../rules/trigger-queue";
 import {
   contextForTriggerResolution,
   finishDeferredTriggers,
@@ -85,6 +86,15 @@ function getTargetCandidates(
         .filter((c) => !hasKeyword(c, "aura", state, enemy))
         .filter(matchesExtra)
         .map((c) => c.instanceId);
+    case "enemyLeaderOrFollower":
+      return [
+        "leader",
+        ...getPlayer(state, enemy).zones.field
+          .filter((c) => isFollowerCard(c, state))
+          .filter((c) => !hasKeyword(c, "aura", state, enemy))
+          .filter(matchesExtra)
+          .map((c) => c.instanceId),
+      ];
     case "selfFollower":
       return getPlayer(state, player).zones.field
         .filter((c) => c.instanceId !== state.resolutionContext?.sourceInstanceId)
@@ -100,6 +110,13 @@ function getTargetCandidates(
       return [...getPlayer(state, 0).zones.field, ...getPlayer(state, 1).zones.field]
         .filter((c) => {
           if (!isFollowerCard(c, state)) return false;
+          if (
+            "excludeSelf" in selector &&
+            selector.excludeSelf &&
+            c.instanceId === state.resolutionContext?.sourceInstanceId
+          ) {
+            return false;
+          }
           const owner = getPlayer(state, 0).zones.field.some((f) => f.instanceId === c.instanceId)
             ? 0
             : 1;
@@ -220,7 +237,7 @@ function promptSelectZoneCards(
   player: PlayerId,
   fromZone: "cemetery" | "hand" | "exArea" | "field",
   count: number,
-  action: "banish" | "discard" | "bury" | "engage",
+  action: "banish" | "discard" | "bury" | "engage" | "fuse",
   matches: { instanceId: string; name: string }[],
   resumeActivate?: {
     sourceInstanceId: string;
@@ -347,40 +364,31 @@ function zoneCardOptions(cards: { instanceId: string; name: string }[]) {
 
 
 function promptSelectZoneCard(
-
   state: GameState,
-
   player: PlayerId,
-
   fromZone: "deck" | "cemetery" | "hand" | "evolveDeck",
-
   to: "hand" | "exArea" | "field",
-
   matches: { instanceId: string; name: string }[],
-
   optional?: boolean,
-
   playCostReduction?: number,
-
   reveal?: boolean,
-
+  fromPlayer?: PlayerId,
+  playSelected?: boolean,
 ): GameState {
-
   const next = structuredClone(state);
-
   next.pendingChoices = withChoiceContext(next, {
     type: "selectZoneCard",
     player,
     fromZone,
+    fromPlayer,
     to,
+    playSelected,
     optional,
     playCostReduction,
     reveal,
     options: zoneCardOptions(matches),
   });
-
   return next;
-
 }
 
 
@@ -582,35 +590,32 @@ export function moveZoneCardTo(
 
 
 function applyGrantKeyword(
-
   state: GameState,
-
   player: PlayerId,
-
   keyword: Keyword,
-
   targets: TargetSelector,
-
+  effect: Effect,
 ): GameState {
-
   const next = structuredClone(state);
-
   const candidates = getTargetCandidates(next, player, targets);
-
   if (candidates.length === 0) return state;
 
-  const found = findInstance(next, candidates[0]);
-
-  if (!found) return state;
-
-  if (!found.card.grantedKeywords.includes(keyword)) {
-
-    found.card.grantedKeywords.push(keyword);
-
+  const forced = next.resolutionContext?.forcedTargetId;
+  const picked = pickTargetFromCandidates(
+    forced,
+    candidates,
+    shouldPromptTargetSelection(targets, candidates) && !next.pendingChoices,
+  );
+  if (picked.needsPrompt) {
+    return promptSelectTarget(next, player, effect, candidates);
   }
 
+  const found = findInstance(next, picked.targetId!);
+  if (!found) return state;
+  if (!found.card.grantedKeywords.includes(keyword)) {
+    found.card.grantedKeywords.push(keyword);
+  }
   return next;
-
 }
 
 
@@ -858,7 +863,8 @@ export function resolveEffect(
 
     case "grantKeyword":
 
-      next = applyGrantKeyword(next, player, effect.keyword, effect.targets);
+      next = applyGrantKeyword(next, player, effect.keyword, effect.targets, effect);
+      if (next.pendingChoices) return next;
 
       break;
 
@@ -1043,6 +1049,15 @@ export function resolveEffect(
 
       if (!next.pendingChoices) {
 
+        const sourceId = next.resolutionContext?.sourceInstanceId;
+        const sourceCard = sourceId ? findInstance(next, sourceId)?.card : undefined;
+        const trackKey = effect.excludeChosenThisTurn
+          ? (effect.trackKey ?? "default")
+          : undefined;
+        const alreadyChosen = trackKey
+          ? new Set(sourceCard?.chosenChooseOptionsThisTurn?.[trackKey] ?? [])
+          : null;
+
         const affordableOptions = effect.options
           .map((o, i) => ({
             index: i,
@@ -1050,6 +1065,7 @@ export function resolveEffect(
             effect: o.effect,
             additionalPpCost: o.additionalPpCost,
           }))
+          .filter((o) => !(alreadyChosen?.has(o.index)))
           .filter(
             (o) =>
               (!o.additionalPpCost || next.players[player].pp >= o.additionalPpCost) &&
@@ -1063,6 +1079,7 @@ export function resolveEffect(
           options: affordableOptions,
           min: effect.min,
           max: effect.max,
+          trackChosenKey: trackKey,
         });
 
         return next;
@@ -1136,6 +1153,10 @@ export function resolveEffect(
 
         next.players[opp].zones.cemetery.push(card);
 
+        next.eventLog.push({ type: "millOpponent", player, data: { name: card.name } });
+
+        queueOnOpponentDeckToCemetery(next);
+
       }
 
       break;
@@ -1198,6 +1219,75 @@ export function resolveEffect(
 
       break;
 
+    }
+
+    case "tutorFromOpponentCemetery": {
+      const opp = opponentOf(player);
+      const filter = effect.filter ?? {};
+      const matches = next.players[opp].zones.cemetery.filter((c) =>
+        cardMatchesFilter(c.name, filter),
+      );
+      if (matches.length === 0) break;
+      if (!next.pendingChoices) {
+        return promptSelectZoneCard(
+          next,
+          player,
+          "cemetery",
+          effect.to,
+          matches,
+          undefined,
+          effect.playCostReduction,
+          undefined,
+          opp,
+        );
+      }
+      break;
+    }
+
+    case "playFromOpponentCemetery": {
+      const opp = opponentOf(player);
+      const filter = effect.filter ?? {};
+      const matches = next.players[opp].zones.cemetery.filter((c) =>
+        cardMatchesFilter(c.name, filter),
+      );
+      if (matches.length === 0) break;
+      if (!next.pendingChoices) {
+        return promptSelectZoneCard(
+          next,
+          player,
+          "cemetery",
+          "field",
+          matches,
+          undefined,
+          undefined,
+          undefined,
+          opp,
+          true,
+        );
+      }
+      break;
+    }
+
+    case "addPersistentCounter": {
+      const sourceId = next.resolutionContext?.sourceInstanceId;
+      if (!sourceId) break;
+      const found = findInstance(next, sourceId);
+      if (!found) break;
+      if (!found.card.persistentCounters) found.card.persistentCounters = {};
+      const amount = effect.amount ?? 1;
+      found.card.persistentCounters[effect.key] =
+        (found.card.persistentCounters[effect.key] ?? 0) + amount;
+      break;
+    }
+
+    case "returnSourceToHand": {
+      const sourceId = next.resolutionContext?.sourceInstanceId;
+      if (!sourceId) break;
+      const found = findInstance(next, sourceId);
+      if (!found) break;
+      if (found.zone === "hand") break;
+      next = moveCard(next, sourceId, "hand", found.card.owner);
+      break;
     }
 
 
@@ -1720,7 +1810,9 @@ export function resolveEffect(
 
       const filter = effect.filter ?? {};
 
-      const matches = p.zones.evolveDeck.filter((c) => cardMatchesFilter(c.name, filter));
+      const matches = p.zones.evolveDeck.filter(
+        (c) => !c.evolveUsed && cardMatchesFilter(c.name, filter),
+      );
 
       if (matches.length === 0) break;
 
@@ -1900,6 +1992,11 @@ export function resolveEffect(
       break;
     }
 
+    case "playCostReduction": {
+      // Applied via getEffectivePlayCost from pending grantOnCardPlayed entries.
+      break;
+    }
+
     case "setSourceEvolveCostOverride": {
       const sourceId = next.resolutionContext?.sourceInstanceId;
       const found = sourceId ? findInstance(next, sourceId) : null;
@@ -1985,6 +2082,13 @@ export function canEffectResolve(state: GameState, player: PlayerId, effect: Eff
     case "tutorFromCemetery": {
       return getPlayer(state, player).zones.cemetery.some((c) =>
         cardMatchesFilter(c.name, effect.filter),
+      );
+    }
+    case "tutorFromOpponentCemetery":
+    case "playFromOpponentCemetery": {
+      const filter = effect.filter ?? {};
+      return getPlayer(state, opponentOf(player)).zones.cemetery.some((c) =>
+        cardMatchesFilter(c.name, filter),
       );
     }
     case "discardFromHand": {

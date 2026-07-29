@@ -30,6 +30,8 @@ export function createCardInstance(
     engaged: false,
     modifiers: [],
     counters: {},
+    persistentCounters: {},
+    chosenChooseOptionsThisTurn: {},
     enteredFieldTurn: 0,
     evolvedThisTurn: false,
     superEvolved: false,
