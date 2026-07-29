@@ -622,7 +622,7 @@ function handleChoiceResponse(state, player, payload) {
             next.players[player].pp -= opt.additionalPpCost;
         }
         if (choice.trackChosenKey) {
-            const sourceId = next.resolutionContext?.sourceInstanceId;
+            const sourceId = choice.sourceInstanceId ?? next.resolutionContext?.sourceInstanceId;
             const source = sourceId ? (0, queries_1.findInstance)(next, sourceId) : null;
             if (source) {
                 if (!source.card.chosenChooseOptionsThisTurn) {
@@ -632,6 +632,14 @@ function handleChoiceResponse(state, player, payload) {
                 if (!list.includes(index)) {
                     source.card.chosenChooseOptionsThisTurn[choice.trackChosenKey] = [...list, index];
                 }
+            }
+            const flags = next.players[player].flags;
+            if (!flags.chosenChooseOptionTracksThisTurn) {
+                flags.chosenChooseOptionTracksThisTurn = {};
+            }
+            const playerList = flags.chosenChooseOptionTracksThisTurn[choice.trackChosenKey] ?? [];
+            if (!playerList.includes(index)) {
+                flags.chosenChooseOptionTracksThisTurn[choice.trackChosenKey] = [...playerList, index];
             }
         }
         next = (0, resolver_1.resolveEffect)(next, opt.effect, player);
@@ -777,6 +785,7 @@ function endTurn(state) {
     const player = next.activePlayer;
     for (const p of next.players) {
         p.flags.endStartAbilitiesQueued = false;
+        p.flags.chosenChooseOptionTracksThisTurn = {};
         for (const cards of [p.zones.field, p.zones.hand, p.zones.exArea, p.zones.cemetery]) {
             for (const card of cards) {
                 card.modifiers = card.modifiers.filter((m) => !m.untilEndOfTurn);

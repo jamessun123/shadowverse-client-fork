@@ -126,6 +126,7 @@ export function beginStartPhase(state: GameState): GameState {
   p.flags.evolvedThisTurn = false;
   p.flags.cardsPlayedThisTurn = 0;
   p.flags.leaderLostDefThisTurn = false;
+  p.flags.chosenChooseOptionTracksThisTurn = {};
 
   for (const card of p.zones.field) {
     refreshFieldCard(card, next);

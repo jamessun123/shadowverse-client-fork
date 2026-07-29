@@ -435,6 +435,11 @@ export interface PlayerFlags {
   owedDraws: number;
   /** Start-of-end abilities queued for the current end phase. */
   endStartAbilitiesQueued?: boolean;
+  /**
+   * Choose-option indices already taken this turn for excludeChosenThisTurn
+   * effects, keyed by trackKey (e.g. Barbaros loot modes).
+   */
+  chosenChooseOptionTracksThisTurn?: Record<string, number[]>;
 }
 
 export interface PlayerState {
@@ -509,6 +514,8 @@ export type ChoicePrompt = ChoiceSourceContext &
       max: number;
       /** When set, record chosen indices on the source under this track key. */
       trackChosenKey?: string;
+      /** Source card for excludeChosenThisTurn tracking (survives nested prompts). */
+      sourceInstanceId?: string;
     }
   | {
       type: "chooseMultiple";

@@ -707,9 +707,13 @@ function resolveEffect(state, effect, player, options) {
                 const trackKey = effect.excludeChosenThisTurn
                     ? (effect.trackKey ?? "default")
                     : undefined;
-                const alreadyChosen = trackKey
-                    ? new Set(sourceCard?.chosenChooseOptionsThisTurn?.[trackKey] ?? [])
-                    : null;
+                const fromCard = trackKey
+                    ? (sourceCard?.chosenChooseOptionsThisTurn?.[trackKey] ?? [])
+                    : [];
+                const fromPlayer = trackKey
+                    ? (next.players[player].flags.chosenChooseOptionTracksThisTurn?.[trackKey] ?? [])
+                    : [];
+                const alreadyChosen = trackKey ? new Set([...fromCard, ...fromPlayer]) : null;
                 const affordableOptions = effect.options
                     .map((o, i) => ({
                     index: i,
@@ -730,6 +734,7 @@ function resolveEffect(state, effect, player, options) {
                     min: effect.min,
                     max: effect.max,
                     trackChosenKey: trackKey,
+                    sourceInstanceId: sourceId,
                 });
                 return next;
             }
