@@ -82,8 +82,12 @@ export function emptyPlayer(player: PlayerId): PlayerState {
 }
 
 export function createInitialGameState(firstPlayer: PlayerId = 0): GameState {
+  const players: [PlayerState, PlayerState] = [emptyPlayer(0), emptyPlayer(1)];
+  // Opening EP belongs to the second player, not always slot 1.
+  players[0].evoPoints = firstPlayer === 0 ? 0 : 3;
+  players[1].evoPoints = firstPlayer === 1 ? 0 : 3;
   return {
-    players: [emptyPlayer(0), emptyPlayer(1)],
+    players,
     activePlayer: firstPlayer,
     turnNumber: 0,
     phase: "mulligan",

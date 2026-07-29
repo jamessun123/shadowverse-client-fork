@@ -159,11 +159,10 @@ export default function Game(callback) {
         </div>
       </motion.div>
 
-      {/* Right side */}
+      {/* Right side — portraits / HP / PP stay visible while other chrome is hidden */}
       {!uiChromeHidden && <ChoiceModal setHovering={setHovering} />}
       {!uiChromeHidden && <AutomatedControls />}
 
-      {!uiChromeHidden && (
       <div className={"rightSideCanvas"}>
         <div style={rightScaleStyle}>
           <EnemyUI />
@@ -173,7 +172,6 @@ export default function Game(callback) {
           <PlayerUI name={selectedOption} />
         </div>
       </div>
-      )}
     </div>
   );
 }

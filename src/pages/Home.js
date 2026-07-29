@@ -66,48 +66,20 @@ export default function Home() {
   const [showSelected, setShowSelected] = useState([]);
   const [contextMenu, setContextMenu] = useState(null);
   const [roomNumber, setRoomNumber] = useState("");
+  const [waitingRoom, setWaitingRoom] = useState("");
+  const [openRooms, setOpenRooms] = useState([]);
   const [name, setName] = useState("");
   const [open, setOpen] = useState(false);
   const [openDialogue, setOpenDialogue] = useState(false);
   const [leaderImage, setLeaderImage] = useState(null);
   const [leaderNum, setLeaderNum] = useState(0);
   const [openSnack, setOpenSnack] = useState(false);
+  const [snackMessage, setSnackMessage] = useState("Select a deck first");
   const [deckIdx, setDeckIdx] = useState(0);
 
   const reduxDecks = useSelector((state) => state.deck.decks);
   const reduxActiveUsers = useSelector((state) => state.card.activeUsers);
   const numLeaders = 7;
-
-  // Announcements board — add new entries to the top of this list.
-  // Each entry: { date, title, body }
-  const announcements = [
-    {
-      date: "2026-05-30",
-      title: "Card list updated to BP17",
-      body: "The deck builder now includes all cards up to and including BP17.",
-    },
-    {
-      date: "2026-05-30",
-      title: "Announcements board added",
-      body: "This board will show the latest set updates, new features, and other news.",
-    },
-    {
-      date: "2026-05-30",
-      title: "Responsive board scaling",
-      body: "The game board and UI now scale smoothly across different screen resolutions.",
-    },
-    {
-      date: "2026-05-30",
-      title: "Reconnect to active games",
-      body: "Reloading the page now reconnects you to your active game instead of dropping you out.",
-    },
-    {
-      date: "2026-05-30",
-      title: "Faster deck builder",
-      body: "The deck builder card list now loads faster and scrolls more smoothly.",
-    },
-  ];
-
   useEffect(() => {
     dispatch(setGameMode("automated"));
 
@@ -116,26 +88,47 @@ export default function Home() {
     const onEngineState = (views) => {
       const slot = store.getState().gameState.playerSlot;
       applyEnginePayload(dispatch, views, slot);
+      setWaitingRoom("");
       handleNavigateToGame();
     };
 
-    const onJoined = ({ slot }) => {
+    const onJoined = ({ slot, room }) => {
       dispatch(setPlayerSlot(slot));
       dispatch(setGameMode("automated"));
+      if (room) {
+        setWaitingRoom(String(room));
+        dispatch(setRoom(String(room)));
+        saveRoom(String(room));
+      }
       socket.emit("request_engine_state");
+    };
+
+    const onOpenRooms = (rooms) => {
+      setOpenRooms(Array.isArray(rooms) ? rooms : []);
+    };
+
+    const onJoinError = ({ error }) => {
+      setWaitingRoom("");
+      setSnackMessage(error || "Could not join room");
+      setOpenSnack(true);
     };
 
     socket.on("start_game", onStartGame);
     socket.on("engine_state", onEngineState);
     socket.on("joined", onJoined);
+    socket.on("open_rooms", onOpenRooms);
+    socket.on("join_error", onJoinError);
     socket.on("active_users", (data) => {
       dispatch(setActiveUsers(data));
     });
+    socket.emit("list_rooms");
 
     return () => {
       socket.off("start_game", onStartGame);
       socket.off("engine_state", onEngineState);
       socket.off("joined", onJoined);
+      socket.off("open_rooms", onOpenRooms);
+      socket.off("join_error", onJoinError);
     };
   }, [dispatch, socket]);
 
@@ -170,6 +163,13 @@ export default function Home() {
     setOpenDialogue(false);
   };
 
+  const requireDeck = () => {
+    if (Object.keys(selectedDeck).length !== 0) return true;
+    setSnackMessage("Select a deck first");
+    setOpenSnack(true);
+    return false;
+  };
+
   const buildEngineDeck = () => {
     if (!selectedDeck.deck?.length) return defaultMvpDeck();
     return deckToEnginePayload(selectedDeck.deck, selectedDeck.evoDeck || []);
@@ -178,6 +178,7 @@ export default function Home() {
   const joinRoomWithMode = (room) => {
     dispatch(setRoom(room));
     saveRoom(room);
+    setWaitingRoom(String(room));
     dispatch(resetEngine());
     dispatch(setGameMode("automated"));
     socket.emit("join_room", {
@@ -185,25 +186,38 @@ export default function Home() {
       playerId,
       automated: true,
       deck: buildEngineDeck(),
+      deckName: selectedDeck.name || null,
     });
   };
 
   const handleCreateRoom = () => {
-    if (Object.keys(selectedDeck).length !== 0) {
-      if (socket.id) {
-        const roomNumber = parseInt(Math.random() * 10000000);
-        setRoomNumber(roomNumber.toString());
-        joinRoomWithMode(roomNumber.toString());
-      }
-    }
+    if (!requireDeck()) return;
+    if (!socket.id) return;
+    const room = String(parseInt(Math.random() * 10000000, 10));
+    setRoomNumber(room);
+    joinRoomWithMode(room);
   };
+
   const handleJoinRoom = () => {
-    if (Object.keys(selectedDeck).length !== 0) {
-      if (roomNumber !== "") {
-        setRoomNumber(roomNumber.toString());
-        joinRoomWithMode(roomNumber.toString());
-      }
+    if (!requireDeck()) return;
+    if (roomNumber === "") {
+      setSnackMessage("Enter a room code or pick an open room");
+      setOpenSnack(true);
+      return;
     }
+    joinRoomWithMode(roomNumber.toString());
+  };
+
+  const handleJoinOpenRoom = (roomId) => {
+    if (!requireDeck()) return;
+    setRoomNumber(String(roomId));
+    joinRoomWithMode(String(roomId));
+  };
+
+  const handleCancelWaiting = () => {
+    socket.emit("leave_room");
+    setWaitingRoom("");
+    setRoomNumber("");
   };
 
   const handleDeleteDeck = () => {
@@ -468,7 +482,7 @@ export default function Home() {
         open={openSnack}
         autoHideDuration={6000}
         onClose={handleCloseSnack}
-        message="Copied link to clipboard"
+        message={snackMessage}
         action={action}
       />
       <div
@@ -724,21 +738,42 @@ export default function Home() {
           </div>
         </div>
       </div>
-      {roomNumber !== "" && (
+      {waitingRoom !== "" && (
         <div
           style={{
             position: "absolute",
-            top: "0%",
-            left: "40%",
-            height: "40px",
-            // width: "40px",
+            top: "2%",
+            left: "50%",
+            transform: "translateX(-50%)",
             color: "white",
-            fontSize: "50px",
+            fontSize: "28px",
             fontFamily: "Noto Serif JP, serif",
-            borderRadius: "7px",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.75em",
+            backgroundColor: "rgba(10, 14, 20, 0.8)",
+            border: "1px solid rgba(72, 171, 224, 0.5)",
+            borderRadius: "10px",
+            padding: "0.4em 0.9em",
+            zIndex: 5,
           }}
         >
-          Joining Room: 1/2 players...
+          <span>
+            Waiting in room {waitingRoom} — 1/2 players
+          </span>
+          <Button
+            onClick={handleCancelWaiting}
+            sx={{
+              color: "#daf6ff",
+              textTransform: "none",
+              fontFamily: "Noto Serif JP, serif",
+              minWidth: 0,
+              padding: "2px 10px",
+              border: "1px solid rgba(72, 171, 224, 0.45)",
+            }}
+          >
+            Cancel
+          </Button>
         </div>
       )}
       <div
@@ -785,68 +820,109 @@ export default function Home() {
             overflow: "hidden",
           }}
         >
-        <div
-          style={{
-            overflowY: "auto",
-            padding: "0.5em 1em 1em",
-            maxHeight: "270px",
-          }}
-        >
-          {announcements.map((item, idx) => (
-            <div
-              key={idx}
-              style={{
-                paddingTop: "0.75em",
-                paddingBottom: "0.75em",
-                borderBottom:
-                  idx < announcements.length - 1
-                    ? "1px solid rgba(255, 255, 255, 0.1)"
-                    : "none",
-              }}
-            >
+          <div
+            style={{
+              padding: "0.85em 1em 0.5em",
+              borderBottom: "1px solid rgba(255, 255, 255, 0.12)",
+              color: "#ffffff",
+              fontSize: "18px",
+              fontFamily: "Noto Serif JP, serif",
+              fontWeight: "bold",
+              letterSpacing: "0.02em",
+            }}
+          >
+            Open Rooms
+          </div>
+          <div
+            style={{
+              overflowY: "auto",
+              padding: "0.35em 0.75em 0.85em",
+              maxHeight: "320px",
+            }}
+          >
+            {openRooms.length === 0 ? (
               <div
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "baseline",
-                  gap: "0.5em",
-                }}
-              >
-                <span
-                  style={{
-                    color: "#ffffff",
-                    fontSize: "15px",
-                    fontFamily: "Noto Serif JP, serif",
-                    fontWeight: "bold",
-                  }}
-                >
-                  {item.title}
-                </span>
-                <span
-                  style={{
-                    color: "#7da7bd",
-                    fontSize: "12px",
-                    fontFamily: "Share Tech Mono, monospace",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {item.date}
-                </span>
-              </div>
-              <div
-                style={{
-                  color: "#c9d6dd",
+                  color: "#7da7bd",
                   fontSize: "13px",
                   fontFamily: "Noto Serif JP, serif",
-                  marginTop: "0.25em",
-                  lineHeight: "1.35",
+                  padding: "1em 0.35em",
+                  lineHeight: 1.4,
                 }}
               >
-                {item.body}
+                No open rooms. Select a deck and hit PLAY to host one.
               </div>
-            </div>
-          ))}
-        </div>
+            ) : (
+              openRooms.map((room) => {
+                const isOwn = waitingRoom !== "" && waitingRoom === room.roomId;
+                return (
+                  <div
+                    key={room.roomId}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "0.6em",
+                      padding: "0.7em 0.25em",
+                      borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+                    }}
+                  >
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div
+                        style={{
+                          color: "#ffffff",
+                          fontSize: "15px",
+                          fontFamily: "Share Tech Mono, monospace",
+                        }}
+                      >
+                        #{room.roomId}
+                      </div>
+                      <div
+                        style={{
+                          color: "#c9d6dd",
+                          fontSize: "13px",
+                          fontFamily: "Noto Serif JP, serif",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {room.deckName || "Open match"} · {room.players}/2
+                      </div>
+                    </div>
+                    {isOwn ? (
+                      <span
+                        style={{
+                          color: "#7da7bd",
+                          fontSize: "12px",
+                          fontFamily: "Noto Serif JP, serif",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        Waiting…
+                      </span>
+                    ) : (
+                      <Button
+                        onClick={() => handleJoinOpenRoom(room.roomId)}
+                        sx={{
+                          textTransform: "none",
+                          fontFamily: "Noto Serif JP, serif",
+                          fontWeight: "bold",
+                          color: "#0a1620",
+                          backgroundColor: "#48abe0",
+                          minWidth: 0,
+                          padding: "2px 12px",
+                          "&:hover": { backgroundColor: "#6bc0ef" },
+                        }}
+                      >
+                        Join
+                      </Button>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
       </div>
       <div

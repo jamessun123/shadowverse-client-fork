@@ -15,6 +15,9 @@ class GameRoom {
     this.state = null;
     this.seq = 0;
     this.legacySnapshots = {};
+    this.createdAt = Date.now();
+    /** Deck name shown in the open-rooms lobby for the host. */
+    this.hostDeckName = null;
   }
 
   addPlayer(socketId, playerId) {
@@ -37,7 +40,7 @@ class GameRoom {
     return this.players.get(socketId)?.slot;
   }
 
-  startAutomatedGame(decks) {
+  startAutomatedGame(decks, firstPlayer = 0) {
     resetIdCounter();
     const preparedDecks = decks.map((deck) => {
       const identity = detectDeckIdentity([
@@ -52,7 +55,8 @@ class GameRoom {
     this.deckIdentities = preparedDecks.map((deck) =>
       detectDeckIdentity([...(deck.mainDeck || []), ...(deck.evolveDeck || [])]),
     );
-    let state = createInitialGameState(0);
+    const first = firstPlayer === 1 ? 1 : 0;
+    let state = createInitialGameState(first);
     state = loadDecks(state, preparedDecks);
     this.state = state;
     this.seq += 1;

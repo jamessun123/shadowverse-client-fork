@@ -49,27 +49,87 @@ function getOrCreateRoom(roomId) {
 
 function parseJoinPayload(raw) {
   if (typeof raw === "string" || typeof raw === "number") {
-    return { room: normalizeRoomId(raw), playerId: null, deck: null };
+    return {
+      room: normalizeRoomId(raw),
+      playerId: null,
+      deck: null,
+      deckName: null,
+    };
   }
   if (raw && typeof raw === "object") {
     return {
       room: normalizeRoomId(raw.room),
       playerId: raw.playerId ?? null,
       deck: raw.deck ?? null,
+      deckName: typeof raw.deckName === "string" ? raw.deckName : null,
     };
   }
-  return { room: null, playerId: null, deck: null };
+  return { room: null, playerId: null, deck: null, deckName: null };
+}
+
+/** Rooms waiting for a second player (game not started yet). */
+function listOpenRooms() {
+  const open = [];
+  for (const [id, room] of rooms) {
+    if (room.state) continue;
+    if (room.players.size === 0 || room.players.size >= 2) continue;
+    open.push({
+      roomId: id,
+      players: room.players.size,
+      deckName: room.hostDeckName || null,
+      createdAt: room.createdAt || 0,
+    });
+  }
+  open.sort((a, b) => b.createdAt - a.createdAt);
+  return open;
+}
+
+function broadcastOpenRooms() {
+  io.emit("open_rooms", listOpenRooms());
+}
+
+function leaveWaitingRoom(socket) {
+  const roomId = socket.data.room;
+  if (!roomId) return;
+  const gameRoom = rooms.get(roomId);
+  if (!gameRoom || gameRoom.state) return;
+
+  gameRoom.players.delete(socket.id);
+  socket.leave(roomId);
+  socket.data.room = null;
+  socket.data.slot = null;
+
+  if (gameRoom.players.size === 0) {
+    rooms.delete(roomId);
+  }
+  broadcastOpenRooms();
 }
 
 io.on("connection", (socket) => {
+  socket.emit("open_rooms", listOpenRooms());
+
+  socket.on("list_rooms", () => {
+    socket.emit("open_rooms", listOpenRooms());
+  });
+
   socket.on("join_room", (payload) => {
-    const { room, playerId, deck } = parseJoinPayload(payload);
+    const { room, playerId, deck, deckName } = parseJoinPayload(payload);
     if (!room) {
       socket.emit("join_error", { error: "Invalid room" });
       return;
     }
 
+    // Leaving a previous waiting room before joining another.
+    if (socket.data.room && socket.data.room !== room) {
+      leaveWaitingRoom(socket);
+    }
+
     const gameRoom = getOrCreateRoom(room);
+    if (gameRoom.state) {
+      socket.emit("join_error", { error: "Room is full" });
+      return;
+    }
+
     const slot = gameRoom.addPlayer(socket.id, playerId);
     if (slot == null) {
       socket.emit("join_error", { error: "Room is full" });
@@ -82,6 +142,10 @@ io.on("connection", (socket) => {
     socket.data.slot = slot;
     socket.data.automated = true;
 
+    if (slot === 0 && deckName) {
+      gameRoom.hostDeckName = deckName;
+    }
+
     socket.emit("joined", {
       room,
       slot,
@@ -89,17 +153,25 @@ io.on("connection", (socket) => {
       serverMode: "authoritative",
     });
 
+    broadcastOpenRooms();
+
     if (deck) {
       gameRoom.pendingDecks = gameRoom.pendingDecks || {};
       gameRoom.pendingDecks[slot] = deck;
       if (gameRoom.pendingDecks[0] && gameRoom.pendingDecks[1]) {
-        const views = gameRoom.startAutomatedGame([
-          gameRoom.pendingDecks[0],
-          gameRoom.pendingDecks[1],
-        ]);
+        const firstPlayer = Math.random() < 0.5 ? 0 : 1;
+        const views = gameRoom.startAutomatedGame(
+          [gameRoom.pendingDecks[0], gameRoom.pendingDecks[1]],
+          firstPlayer,
+        );
         io.to(room).emit("engine_state", views);
+        broadcastOpenRooms();
       }
     }
+  });
+
+  socket.on("leave_room", () => {
+    leaveWaitingRoom(socket);
   });
 
   socket.on("engine_action", ({ actionId, action }) => {
@@ -159,6 +231,7 @@ io.on("connection", (socket) => {
     if (gameRoom.state) {
       socket.emit("engine_state", gameRoom.broadcastViews());
     }
+    broadcastOpenRooms();
   });
 
   socket.on("send msg", (msg) => {
@@ -179,7 +252,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    // rooms persist for reconnect
+    leaveWaitingRoom(socket);
   });
 });
 
