@@ -165,12 +165,13 @@ function dealDamageToFollower(state, instanceId, amount) {
     if (dmg <= 0)
         return next;
     found.card.modifiers.push({ atk: 0, def: -dmg, sourceId: "effect" });
+    // Fire "whenever this takes ability damage" even if this damage destroys it.
+    (0, trigger_queue_1.queueOnAbilityDamageTaken)(next, instanceId);
     const { def } = (0, queries_1.getEffectiveStats)(found.card, next);
     if (def <= 0) {
         (0, confirmation_1.queueLastWords)(next, instanceId, found.player);
         return (0, zones_1.destroyFollower)(next, instanceId);
     }
-    (0, trigger_queue_1.queueOnAbilityDamageTaken)(next, instanceId);
     return next;
 }
 function resolveDamageAmount(state, player, amount) {

@@ -11,6 +11,6 @@ export declare function queueOnOpponentDeckToCemetery(state: GameState): void;
 export declare function queueAllyFollowerEnterTriggers(state: GameState, enteredInstanceId: string, player: PlayerId): void;
 /** Cemetery cards that react when an ally follower enters (e.g. Delta Cannon + Tetra). */
 export declare function queueCemeteryOnAllyFollowerEnter(state: GameState, enteredInstanceId: string, player: PlayerId): void;
-/** Queue onAbilityDamageTaken for a follower that just took ability damage and survived. */
+/** Queue onAbilityDamageTaken after a follower takes ability damage (even if it dies to it). */
 export declare function queueOnAbilityDamageTaken(state: GameState, instanceId: string): void;
 export declare function onCardEntersExAreaTriggers(state: GameState, instanceId: string, player: PlayerId): void;

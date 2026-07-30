@@ -344,7 +344,7 @@ export function queueCemeteryOnAllyFollowerEnter(
   }
 }
 
-/** Queue onAbilityDamageTaken for a follower that just took ability damage and survived. */
+/** Queue onAbilityDamageTaken after a follower takes ability damage (even if it dies to it). */
 export function queueOnAbilityDamageTaken(
   state: GameState,
   instanceId: string,

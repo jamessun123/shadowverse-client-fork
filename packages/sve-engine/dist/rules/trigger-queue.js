@@ -266,7 +266,7 @@ function queueCemeteryOnAllyFollowerEnter(state, enteredInstanceId, player) {
         }
     }
 }
-/** Queue onAbilityDamageTaken for a follower that just took ability damage and survived. */
+/** Queue onAbilityDamageTaken after a follower takes ability damage (even if it dies to it). */
 function queueOnAbilityDamageTaken(state, instanceId) {
     const found = (0, queries_1.findInstance)(state, instanceId);
     if (!found || found.zone !== "field")
