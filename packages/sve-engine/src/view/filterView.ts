@@ -261,6 +261,7 @@ export function createPlayerView(state: GameState, self: PlayerId): PlayerView {
 
   const exPlayCosts: Record<string, number> = {};
   for (const card of state.players[self].zones.exArea) {
+    if (getCardDef(card.name)?.cardType === "crest") continue;
     exPlayCosts[card.instanceId] = getEffectivePlayCost(
       card,
       card.name,
@@ -271,6 +272,7 @@ export function createPlayerView(state: GameState, self: PlayerId): PlayerView {
   }
   const opponentExPlayCosts: Record<string, number> = {};
   for (const card of state.players[opponent].zones.exArea) {
+    if (getCardDef(card.name)?.cardType === "crest") continue;
     opponentExPlayCosts[card.instanceId] = getEffectivePlayCost(
       card,
       card.name,

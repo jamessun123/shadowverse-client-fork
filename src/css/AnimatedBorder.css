@@ -38,35 +38,174 @@
   animation: 0.5s rotate linear infinite;
 }
 
-.aura {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: -0.2em;
-  margin-right: -0.2em;
-  border-radius: 10px;
-  border: 4px solid #0000;
-  animation: 2.5s aura linear infinite;
+/* ---------------------------------------------------------------------------
+   Keyword silhouettes (shield / orb / spike / etc. — not rectangular boxes)
+--------------------------------------------------------------------------- */
+.kw-silhouette {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  transform: translate(-50%, -50%);
+  width: 132px;
+  height: 182px;
+  pointer-events: none;
+  z-index: 2;
+  animation: 2.5s kwGlow ease-in-out infinite;
 }
-.bane {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: -0.2em;
-  margin-right: -0.2em;
-  border-radius: 10px;
-  border: 4px solid #0000;
-  animation: 2.5s bane linear infinite;
+
+.kw-silhouette::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
 }
-.ward {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: -0.2em;
-  margin-right: -0.2em;
-  border-radius: 10px;
-  border: 4px solid #0000;
-  animation: 2.5s ward linear infinite;
+
+.kw-silhouette::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background-position: center;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+/* Ward — heraldic shield (green) */
+.kw-ward::before {
+  background: rgba(70, 190, 130, 0.28);
+  clip-path: polygon(
+    14% 3%,
+    86% 3%,
+    96% 12%,
+    96% 52%,
+    50% 97%,
+    4% 52%,
+    4% 12%
+  );
+}
+.kw-ward::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 132 182' fill='none'%3E%3Cpath d='M18 8 H114 C122 8 126 14 126 22 V92 C126 132 66 172 66 172 C66 172 6 132 6 92 V22 C6 14 10 8 18 8 Z' stroke='%236EE7A0' stroke-width='4.5' stroke-linejoin='round'/%3E%3Cpath d='M26 16 H106 C112 16 116 20 116 26 V90 C116 124 66 158 66 158 C66 158 16 124 16 90 V26 C16 20 20 16 26 16 Z' stroke='%2333A070' stroke-width='1.75' stroke-linejoin='round' opacity='0.75'/%3E%3C/svg%3E");
+}
+
+/* Aura — soft oval halo (gold) */
+.kw-aura {
+  width: 140px;
+  height: 190px;
+  z-index: 1;
+}
+.kw-aura::before {
+  background: rgba(252, 207, 49, 0.22);
+  border-radius: 50%;
+  clip-path: ellipse(46% 48% at 50% 50%);
+}
+.kw-aura::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 140 190' fill='none'%3E%3Cellipse cx='70' cy='95' rx='58' ry='82' stroke='%23FCD34D' stroke-width='4.5'/%3E%3Cellipse cx='70' cy='95' rx='48' ry='70' stroke='%23F59E0B' stroke-width='1.75' opacity='0.7'/%3E%3C/svg%3E");
+}
+
+/* Bane — jagged poison crystal (crimson) */
+.kw-bane::before {
+  background: rgba(200, 30, 40, 0.28);
+  clip-path: polygon(
+    50% 2%,
+    78% 18%,
+    96% 22%,
+    84% 48%,
+    92% 78%,
+    50% 98%,
+    8% 78%,
+    16% 48%,
+    4% 22%,
+    22% 18%
+  );
+}
+.kw-bane::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 132 182' fill='none'%3E%3Cpath d='M66 6 L100 34 L124 40 L108 86 L118 140 L66 176 L14 140 L24 86 L8 40 L32 34 Z' stroke='%23F87171' stroke-width='4.5' stroke-linejoin='round'/%3E%3Cpath d='M66 22 L92 44 L108 48 L96 84 L104 128 L66 156 L28 128 L36 84 L24 48 L40 44 Z' stroke='%23B91C1C' stroke-width='1.75' stroke-linejoin='round' opacity='0.75'/%3E%3C/svg%3E");
+}
+
+/* Rush — winged chevron / speed fins (orange) */
+.kw-rush::before {
+  background: rgba(255, 140, 40, 0.24);
+  clip-path: polygon(
+    18% 8%,
+    50% 2%,
+    82% 8%,
+    98% 28%,
+    88% 42%,
+    96% 70%,
+    72% 88%,
+    50% 98%,
+    28% 88%,
+    4% 70%,
+    12% 42%,
+    2% 28%
+  );
+}
+.kw-rush::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 132 182' fill='none'%3E%3Cpath d='M66 6 L104 20 L126 50 L112 76 L124 124 L94 158 L66 174 L38 158 L8 124 L20 76 L6 50 L28 20 Z' stroke='%23FB923C' stroke-width='4.5' stroke-linejoin='round'/%3E%3Cpath d='M66 20 L96 32 L112 54 L100 76 L110 118 L88 146 L66 158 L44 146 L22 118 L32 76 L20 54 L36 32 Z' stroke='%23EA580C' stroke-width='1.75' stroke-linejoin='round' opacity='0.75'/%3E%3C/svg%3E");
+}
+
+/* Storm — lightning bolt only (violet), no cloud/hex frame */
+.kw-storm::before {
+  background: rgba(160, 90, 255, 0.32);
+  clip-path: polygon(
+    58% 2%,
+    28% 48%,
+    48% 48%,
+    36% 98%,
+    78% 40%,
+    56% 40%
+  );
+}
+.kw-storm::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 132 182' fill='none'%3E%3Cpath d='M78 8 L38 86 H64 L48 174 L106 72 H78 Z' stroke='%23C084FC' stroke-width='5' stroke-linejoin='round'/%3E%3Cpath d='M74 22 L48 84 H68 L56 152 L94 78 H74 Z' stroke='%237C3AED' stroke-width='2' stroke-linejoin='round' opacity='0.8'/%3E%3C/svg%3E");
+}
+
+/* Drain — teardrop (magenta) */
+.kw-drain::before {
+  background: rgba(220, 60, 140, 0.26);
+  clip-path: polygon(
+    50% 4%,
+    78% 22%,
+    94% 48%,
+    88% 74%,
+    66% 94%,
+    50% 98%,
+    34% 94%,
+    12% 74%,
+    6% 48%,
+    22% 22%
+  );
+}
+.kw-drain::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 132 182' fill='none'%3E%3Cpath d='M66 8 C96 40 122 70 122 110 C122 144 96 170 66 170 C36 170 10 144 10 110 C10 70 36 40 66 8 Z' stroke='%23F472B6' stroke-width='4.5' stroke-linejoin='round'/%3E%3Cpath d='M66 28 C88 54 106 76 106 108 C106 134 88 154 66 154 C44 154 26 134 26 108 C26 76 44 54 66 28 Z' stroke='%23DB2777' stroke-width='1.75' stroke-linejoin='round' opacity='0.75'/%3E%3C/svg%3E");
+}
+
+/* Intimidate — horned / spiked frame (dark violet-red) */
+.kw-intimidate::before {
+  background: rgba(90, 30, 80, 0.32);
+  clip-path: polygon(
+    8% 18%,
+    22% 4%,
+    38% 14%,
+    50% 2%,
+    62% 14%,
+    78% 4%,
+    92% 18%,
+    98% 42%,
+    88% 62%,
+    96% 86%,
+    70% 98%,
+    50% 90%,
+    30% 98%,
+    4% 86%,
+    12% 62%,
+    2% 42%
+  );
+}
+.kw-intimidate::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 132 182' fill='none'%3E%3Cpath d='M12 36 L30 8 L50 28 L66 4 L82 28 L102 8 L120 36 L128 76 L112 112 L124 156 L90 176 L66 160 L42 176 L8 156 L20 112 L4 76 Z' stroke='%23E879F9' stroke-width='4.5' stroke-linejoin='round'/%3E%3Cpath d='M24 44 L38 24 L52 40 L66 20 L80 40 L94 24 L108 44 L114 74 L100 104 L110 142 L88 156 L66 144 L44 156 L22 142 L32 104 L18 74 Z' stroke='%239D174D' stroke-width='1.75' stroke-linejoin='round' opacity='0.8'/%3E%3C/svg%3E");
 }
 
 .sep_on {
@@ -95,28 +234,39 @@
   }
 }
 
-@keyframes aura {
-  from {
-    box-shadow: 0 0 10px -10px rgb(255, 200, 124);
+/* EX Crest (or other EX card) ready to Activate */
+.ex-activate-ready {
+  outline: 3px solid #ff9800 !important;
+  border-radius: 8px;
+  cursor: pointer;
+  animation: exActivatePulse 1.4s ease-in-out infinite;
+}
+
+@keyframes exActivatePulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 6px 1px rgba(255, 152, 0, 0.55),
+      0 0 14px 2px rgba(255, 152, 0, 0.35);
   }
-  to {
-    box-shadow: 0 0 10px 10px rgb(252, 207, 49);
+  50% {
+    box-shadow:
+      0 0 14px 4px rgba(255, 183, 77, 0.95),
+      0 0 28px 6px rgba(255, 152, 0, 0.55);
   }
 }
-@keyframes bane {
-  from {
-    box-shadow: 0 0 10px -10px rgb(100, 0, 0);
+
+@keyframes kwGlow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.25))
+      drop-shadow(0 0 8px rgba(255, 255, 255, 0.12));
+    opacity: 0.88;
   }
-  to {
-    box-shadow: 0 0 10px 10px rgb(200, 0, 0);
-  }
-}
-@keyframes ward {
-  from {
-    box-shadow: 0 0 10px -10px rgb(182, 244, 146);
-  }
-  to {
-    box-shadow: 0 0 10px 10px rgb(51, 139, 147);
+  50% {
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.45))
+      drop-shadow(0 0 16px rgba(255, 255, 255, 0.2));
+    opacity: 1;
   }
 }
 
@@ -138,11 +288,9 @@
 .none,
 .box,
 .box:hover,
-.box2,
-.aura,
-.bane,
-.ward {
+.box2 {
   position: relative;
   height: 161px;
   width: 115px;
+  overflow: visible;
 }

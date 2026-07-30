@@ -381,19 +381,26 @@
       {
         "timing": "onEvolve",
         "effect": {
-          "op": "sequence",
-          "steps": [
-            {
-              "op": "destroy",
-              "targets": { "type": "selfFieldCard", "trait": "Idolatry", "count": 1 }
-            },
-            {
-              "op": "tutorFromDeck",
-              "filter": { "identityNameContains": "Lishenna", "cardType": "follower" },
-              "to": "hand",
-              "reveal": true
+          "op": "optionalCost",
+          "label": "Bury another Idolatry: search for Lishenna",
+          "cost": {
+            "op": "destroy",
+            "targets": {
+              "type": "selfFieldCard",
+              "trait": "Idolatry",
+              "count": 1,
+              "excludeSelf": true
             }
-          ]
+          },
+          "then": {
+            "op": "tutorFromDeck",
+            "filter": {
+              "identityNameContains": "Lishenna",
+              "cardType": "follower"
+            },
+            "to": "hand",
+            "reveal": true
+          }
         }
       },
       {

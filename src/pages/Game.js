@@ -90,12 +90,10 @@ export default function Game(callback) {
         scale={sideScale}
         setHovering={setHovering}
       />
-      {!uiChromeHidden && (
-        <Selection
-          setSelectedOption={setSelectedOption}
-          // setWallpaper={setWallpaper}
-        />
-      )}
+      <Selection
+        setSelectedOption={setSelectedOption}
+        // setWallpaper={setWallpaper}
+      />
       {/* Left side — action log stays visible while other chrome is hidden */}
       <div className={"leftSideCanvas"}>
         <div style={{ ...leftScaleStyle, width: "100%", display: "flex", justifyContent: "center" }}>

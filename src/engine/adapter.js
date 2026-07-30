@@ -43,8 +43,18 @@ export function engineViewToRedux(view, playerSlot) {
   const wardField = Array(10).fill(0);
   const baneField = Array(10).fill(0);
   const auraField = Array(10).fill(0);
+  const rushField = Array(10).fill(0);
+  const stormField = Array(10).fill(0);
+  const drainField = Array(10).fill(0);
+  const intimidateField = Array(10).fill(0);
   const exPlayCostField = Array(10).fill(null);
   const counterField = Array(10).fill(0);
+
+  const hasKeywordFlag = (stats, inst, kw) =>
+    Boolean(
+      (stats.keywords || []).includes(kw) ||
+        (inst.grantedKeywords || []).includes(kw),
+    );
 
   const visibleCounter = (inst) => {
     const persistent = inst?.persistentCounters || {};
@@ -89,9 +99,13 @@ export function engineViewToRedux(view, playerSlot) {
       showDef: isFollower,
       def: defVal,
     };
-    wardField[idx] = stats.keywords.includes("ward") ? 1 : 0;
-    baneField[idx] = stats.keywords.includes("bane") ? 1 : 0;
-    auraField[idx] = stats.keywords.includes("aura") ? 1 : 0;
+    wardField[idx] = hasKeywordFlag(stats, inst, "ward") ? 1 : 0;
+    baneField[idx] = hasKeywordFlag(stats, inst, "bane") ? 1 : 0;
+    auraField[idx] = hasKeywordFlag(stats, inst, "aura") ? 1 : 0;
+    rushField[idx] = hasKeywordFlag(stats, inst, "rush") ? 1 : 0;
+    stormField[idx] = hasKeywordFlag(stats, inst, "storm") ? 1 : 0;
+    drainField[idx] = hasKeywordFlag(stats, inst, "drain") ? 1 : 0;
+    intimidateField[idx] = hasKeywordFlag(stats, inst, "intimidate") ? 1 : 0;
     // Engaged = horizontal; reserved = vertical (do not rotate).
     engagedField[idx] = Boolean(inst.engaged);
   };
@@ -131,9 +145,28 @@ export function engineViewToRedux(view, playerSlot) {
   const enemyEngaged = Array(10).fill(false);
   const enemyExPlayCostField = Array(10).fill(null);
   const enemyCounterField = Array(10).fill(0);
+  const enemyWardField = Array(10).fill(0);
+  const enemyBaneField = Array(10).fill(0);
+  const enemyAuraField = Array(10).fill(0);
+  const enemyRushField = Array(10).fill(0);
+  const enemyStormField = Array(10).fill(0);
+  const enemyDrainField = Array(10).fill(0);
+  const enemyIntimidateField = Array(10).fill(0);
   const enemyCustom = Array(10)
     .fill(null)
     .map(() => ({ showAtk: true, atk: 0, showDef: true, def: 0 }));
+
+  const applyEnemyKeywordFlags = (inst, idx, displayKey) => {
+    const key = displayKey || instanceKey(inst);
+    const stats = getCardStatsClient(key);
+    enemyWardField[idx] = hasKeywordFlag(stats, inst, "ward") ? 1 : 0;
+    enemyBaneField[idx] = hasKeywordFlag(stats, inst, "bane") ? 1 : 0;
+    enemyAuraField[idx] = hasKeywordFlag(stats, inst, "aura") ? 1 : 0;
+    enemyRushField[idx] = hasKeywordFlag(stats, inst, "rush") ? 1 : 0;
+    enemyStormField[idx] = hasKeywordFlag(stats, inst, "storm") ? 1 : 0;
+    enemyDrainField[idx] = hasKeywordFlag(stats, inst, "drain") ? 1 : 0;
+    enemyIntimidateField[idx] = hasKeywordFlag(stats, inst, "intimidate") ? 1 : 0;
+  };
 
   es.zones.field.forEach((inst, i) => {
     enemyField[i] = cardName(inst);
@@ -164,6 +197,7 @@ export function engineViewToRedux(view, playerSlot) {
       showDef: isFollower,
       def: defVal,
     };
+    applyEnemyKeywordFlags(inst, i, displayKey);
   });
   es.zones.exArea.forEach((inst, i) => {
     const idx = 5 + i;
@@ -186,6 +220,7 @@ export function engineViewToRedux(view, playerSlot) {
       showDef: isFollower,
       def: defVal,
     };
+    applyEnemyKeywordFlags(inst, idx);
     const printed = getCardStatsClient(instanceKey(inst)).cost ?? 0;
     const effective = view.opponentExPlayCosts?.[inst.instanceId];
     if (effective != null && effective < printed) {
@@ -207,6 +242,10 @@ export function engineViewToRedux(view, playerSlot) {
     wardField,
     baneField,
     auraField,
+    rushField,
+    stormField,
+    drainField,
+    intimidateField,
     exPlayCostField,
     counterField,
     enemyField,
@@ -216,6 +255,13 @@ export function engineViewToRedux(view, playerSlot) {
     enemyExPlayCostField,
     enemyCounterField,
     enemyCustomValues: enemyCustom,
+    enemyWardField,
+    enemyBaneField,
+    enemyAuraField,
+    enemyRushField,
+    enemyStormField,
+    enemyDrainField,
+    enemyIntimidateField,
     cemetery: ps.zones.cemetery.map((c) => cardName(c)),
     cemeteryInstanceIds: ps.zones.cemetery.map((c) => c.instanceId),
     enemyCemetery: es.zones.cemetery.map((c) => cardName(c)),

@@ -4,7 +4,7 @@ import { onCardEntersExArea, onFollowerEntersField, queueLastWords } from "../ru
 
 import { runConfirmationTiming } from "../rules/confirmation";
 import { describeEffect } from "../rules/trigger-labels";
-import { queueOnOpponentDeckToCemetery } from "../rules/trigger-queue";
+import { queueOnOpponentDeckToCemetery, queueOnAbilityDamageTaken } from "../rules/trigger-queue";
 import {
   contextForTriggerResolution,
   finishDeferredTriggers,
@@ -97,13 +97,19 @@ function getTargetCandidates(
       ];
     case "selfFollower":
       return getPlayer(state, player).zones.field
-        .filter((c) => c.instanceId !== state.resolutionContext?.sourceInstanceId)
+        .filter((c) => {
+          if ("includeSelf" in selector && selector.includeSelf) return true;
+          return c.instanceId !== state.resolutionContext?.sourceInstanceId;
+        })
         .filter((c) => isFollowerCard(c, state))
         .filter(matchesExtra)
         .map((c) => c.instanceId);
     case "selfFieldCard":
       return getPlayer(state, player).zones.field
-        .filter((c) => c.instanceId !== state.resolutionContext?.sourceInstanceId)
+        .filter((c) => {
+          if ("includeSelf" in selector && selector.includeSelf) return true;
+          return c.instanceId !== state.resolutionContext?.sourceInstanceId;
+        })
         .filter(matchesExtra)
         .map((c) => c.instanceId);
     case "anyFollower":
@@ -152,6 +158,21 @@ function shouldPromptTargetSelection(
   return true;
 }
 
+function targetSelectionBounds(selector: TargetSelector): { min: number; max: number } {
+  const count = "count" in selector && selector.count != null ? selector.count : 1;
+  const min =
+    "minCount" in selector && selector.minCount != null ? selector.minCount : count;
+  const max =
+    "maxCount" in selector && selector.maxCount != null ? selector.maxCount : count;
+  return { min, max };
+}
+
+/** Multi-select UI when range allows 0 or more than one target. */
+function isMultiTargetSelection(selector: TargetSelector): boolean {
+  const { min, max } = targetSelectionBounds(selector);
+  return max > 1 || min !== max;
+}
+
 function pickTargetFromCandidates(
   forced: string | undefined,
   candidates: string[],
@@ -182,6 +203,7 @@ function dealDamageToFollower(state: GameState, instanceId: string, amount: numb
   if (!isFollowerCard(found.card, next)) return state;
 
   const dmg = clampDamageToFollower(next, found.card, found.player, amount);
+  if (dmg <= 0) return next;
 
   found.card.modifiers.push({ atk: 0, def: -dmg, sourceId: "effect" });
 
@@ -194,6 +216,8 @@ function dealDamageToFollower(state: GameState, instanceId: string, amount: numb
     return destroyFollower(next, instanceId);
 
   }
+
+  queueOnAbilityDamageTaken(next, instanceId);
 
   return next;
 
@@ -310,7 +334,17 @@ function labelForInstance(state: GameState, id: string): string {
 
 }
 
-
+function sideForTargetCandidate(
+  state: GameState,
+  choosingPlayer: PlayerId,
+  instanceId: string,
+): "ally" | "enemy" {
+  if (instanceId === "leader") return "enemy";
+  if (instanceId === "selfLeader") return "ally";
+  const found = findInstance(state, instanceId);
+  if (!found) return "ally";
+  return found.player === choosingPlayer ? "ally" : "enemy";
+}
 
 function promptSelectTarget(
 
@@ -322,14 +356,21 @@ function promptSelectTarget(
 
   candidates: string[],
 
+  bounds?: { min: number; max: number },
+
 ): GameState {
 
   const next = structuredClone(state);
+  const minCount = bounds?.min ?? 1;
+  const maxCount = bounds?.max ?? 1;
 
   next.pendingChoices = withChoiceContext(next, {
     type: "selectTarget",
     player,
     effect,
+    count: maxCount,
+    minCount,
+    maxCount,
     reasonLabel: describeEffect(effect),
     candidates: candidates.map((instanceId) => {
       const found = findInstance(next, instanceId);
@@ -337,6 +378,7 @@ function promptSelectTarget(
         instanceId,
         label: labelForInstance(next, instanceId),
         name: found?.card.name,
+        side: sideForTargetCandidate(next, player, instanceId),
       };
     }),
   });
@@ -413,6 +455,8 @@ function promptSearchDeckTop(
 
   reveal?: boolean,
 
+  playCostReductionFilter?: DeckFilter,
+
 ): GameState {
 
   const next = structuredClone(state);
@@ -425,6 +469,7 @@ function promptSearchDeckTop(
     topInstanceIds: top.map((c) => c.instanceId),
     optional,
     playCostReduction,
+    playCostReductionFilter,
     remainderTo,
     reveal,
     reasonLabel: "Search deck",
@@ -460,11 +505,13 @@ function promptSelectDeckSummon(
   maxTotalCost: number | undefined,
   remainderTo: "cemetery" | "deckBottom",
   maxCount?: number,
-  to: "field" | "exArea" = "field",
+  to: "field" | "exArea" | "hand" = "field",
+  reveal?: boolean,
 ): GameState {
   const next = structuredClone(state);
   const filterLabel = describeDeckFilter(filter);
-  const destLabel = to === "exArea" ? "into your EX area" : "onto your field";
+  const destLabel =
+    to === "exArea" ? "into your EX area" : to === "hand" ? "into your hand" : "onto your field";
   const countLabel =
     maxCount != null ? `up to ${maxCount} ${filterLabel}` : filterLabel;
   const costLabel =
@@ -482,6 +529,7 @@ function promptSelectDeckSummon(
     filter,
     topInstanceIds: top.map((c) => c.instanceId),
     remainderTo,
+    reveal,
     reasonLabel: `Select ${countLabel} to put ${destLabel}${costLabel}.${remainderLabel}`,
     options: top.map((c) => ({
       instanceId: c.instanceId,
@@ -657,6 +705,10 @@ function canSatisfyOptionalCost(state: GameState, player: PlayerId, effect: Effe
       const found = findInstance(state, sourceId);
       return Boolean(found && found.zone === "field" && found.player === player);
     }
+    case "destroy":
+      return getTargetCandidates(state, player, effect.targets).length > 0;
+    case "discard":
+      return getPlayer(state, player).zones.hand.length >= effect.count;
     case "sequence":
       return effect.steps.every((step) => canSatisfyOptionalCost(state, player, step));
     default:
@@ -720,6 +772,14 @@ export function resolveEffect(
       break;
     }
 
+    case "increaseMaxPp": {
+      const p = next.players[player];
+      const gain = Math.max(0, effect.amount);
+      // Max only (empty orb). Pair with recoverPp when the point should be usable now.
+      p.maxPp = Math.min(10, p.maxPp + gain);
+      break;
+    }
+
     case "rollDie": {
       const roll = Math.floor(Math.random() * effect.sides) + 1;
       next.eventLog.push({ type: "diceRoll", player, data: { roll } });
@@ -766,10 +826,38 @@ export function resolveEffect(
 
 
     case "dealDamage": {
+      const forcedIds = next.resolutionContext?.forcedTargetIds;
       const forced = next.resolutionContext?.forcedTargetId;
       const candidates = getTargetCandidates(next, player, effect.targets);
 
+      const applyTo = (targetId: string) => {
+        const damage = resolveDamageAmount(next, player, effect.amount);
+        if (targetId === "leader") {
+          next = dealDamageToLeader(next, opponentOf(player), damage);
+        } else if (targetId === "selfLeader") {
+          next = dealDamageToLeader(next, player, damage);
+        } else {
+          next = dealDamageToFollower(next, targetId, damage);
+        }
+      };
+
+      if (forcedIds) {
+        for (const targetId of forcedIds) {
+          applyTo(targetId);
+        }
+        break;
+      }
+
       if (candidates.length === 0) break;
+
+      const bounds = targetSelectionBounds(effect.targets);
+      if (
+        isMultiTargetSelection(effect.targets) &&
+        shouldPromptTargetSelection(effect.targets, candidates) &&
+        !next.pendingChoices
+      ) {
+        return promptSelectTarget(next, player, effect, candidates, bounds);
+      }
 
       const picked = pickTargetFromCandidates(
         forced,
@@ -777,25 +865,9 @@ export function resolveEffect(
         shouldPromptTargetSelection(effect.targets, candidates) && !next.pendingChoices,
       );
       if (picked.needsPrompt) {
-        return promptSelectTarget(next, player, effect, candidates);
+        return promptSelectTarget(next, player, effect, candidates, bounds);
       }
-      const targetId = picked.targetId!;
-
-      const damage = resolveDamageAmount(next, player, effect.amount);
-
-      if (targetId === "leader") {
-
-        next = dealDamageToLeader(next, opponentOf(player), damage);
-
-      } else if (targetId === "selfLeader") {
-
-        next = dealDamageToLeader(next, player, damage);
-
-      } else {
-
-        next = dealDamageToFollower(next, targetId, damage);
-
-      }
+      applyTo(picked.targetId!);
 
       break;
 
@@ -868,7 +940,16 @@ export function resolveEffect(
 
       break;
 
-
+    case "grantKeywordMatching": {
+      const p = next.players[player];
+      for (const card of p.zones.field) {
+        if (!cardMatchesFilter(resolveCardNo(next, card), effect.filter)) continue;
+        if (!card.grantedKeywords.includes(effect.keyword)) {
+          card.grantedKeywords.push(effect.keyword);
+        }
+      }
+      break;
+    }
 
     case "destroy": {
 
@@ -1273,6 +1354,29 @@ export function resolveEffect(
       break;
     }
 
+    case "playFromCemetery": {
+      const filter = effect.filter ?? {};
+      const matches = next.players[player].zones.cemetery.filter((c) =>
+        cardMatchesFilter(c.name, filter),
+      );
+      if (matches.length === 0) break;
+      if (!next.pendingChoices) {
+        return promptSelectZoneCard(
+          next,
+          player,
+          "cemetery",
+          "field",
+          matches,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          true,
+        );
+      }
+      break;
+    }
+
     case "addPersistentCounter": {
       const sourceId = next.resolutionContext?.sourceInstanceId;
       if (!sourceId) break;
@@ -1405,6 +1509,7 @@ export function resolveEffect(
           effect.playCostReduction,
           effect.remainderTo ?? "cemetery",
           effect.reveal,
+          effect.playCostReductionFilter,
         );
 
       }
@@ -1925,6 +2030,7 @@ export function resolveEffect(
           effect.remainderTo ?? "deckBottom",
           effect.maxCount,
           effect.to ?? "field",
+          effect.reveal,
         );
       }
       break;
@@ -1977,6 +2083,22 @@ export function resolveEffect(
           if (def?.cardType !== "follower") continue;
           next = dealDamageToFollower(next, card.instanceId, amount);
         }
+      }
+      break;
+    }
+
+    case "dealDamageAllFollowers": {
+      const amount = resolveDamageAmount(next, player, effect.amount);
+      const ids = [
+        ...next.players[0].zones.field.map((c) => c.instanceId),
+        ...next.players[1].zones.field.map((c) => c.instanceId),
+      ];
+      for (const id of ids) {
+        const found = findInstance(next, id);
+        if (!found) continue;
+        const def = getCardDef(found.card.name);
+        if (def?.cardType !== "follower") continue;
+        next = dealDamageToFollower(next, id, amount);
       }
       break;
     }
@@ -2066,8 +2188,20 @@ export function canEffectResolve(state: GameState, player: PlayerId, effect: Eff
     case "dealDamage":
     case "engage":
     case "box":
-    case "destroy":
+    case "destroy": {
+      if (
+        (effect.op === "dealDamage" ||
+          effect.op === "buff" ||
+          effect.op === "engage" ||
+          effect.op === "box" ||
+          effect.op === "destroy") &&
+        "minCount" in effect.targets &&
+        effect.targets.minCount === 0
+      ) {
+        return true;
+      }
       return getTargetCandidates(state, player, effect.targets).length > 0;
+    }
     case "sequence":
       return effect.steps.every((step) => canEffectResolve(state, player, step));
     case "if":
@@ -2096,6 +2230,12 @@ export function canEffectResolve(state: GameState, player: PlayerId, effect: Eff
         cardMatchesFilter(c.name, filter),
       );
     }
+    case "playFromCemetery": {
+      const filter = effect.filter ?? {};
+      return getPlayer(state, player).zones.cemetery.some((c) =>
+        cardMatchesFilter(c.name, filter),
+      );
+    }
     case "discardFromHand": {
       const need = effect.count ?? 1;
       const matches = getPlayer(state, player).zones.hand.filter((c) =>
@@ -2115,6 +2255,8 @@ export function canPlayCardFromZones(
 ): boolean {
   const def = getCardDef(cardNo);
   if (!def) return false;
+  // Crests enter EX via effects only — they are never played from hand/EX.
+  if (def.cardType === "crest") return false;
   if (def.cardType === "spell") {
     const spell = def.abilities?.find((a) => a.timing === "spell");
     if (!spell) return false;

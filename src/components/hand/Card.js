@@ -17,6 +17,7 @@ import atkImg from "../../assets/logo/atk.png";
 import defImg from "../../assets/logo/def.png";
 
 import "../../css/Card.css";
+import "../../css/AnimatedBorder.css";
 
 export default function Card({
   name,
@@ -38,6 +39,10 @@ export default function Card({
   aura,
   bane,
   ward,
+  rush,
+  storm,
+  drain,
+  intimidate,
   handLength,
   inHand = false,
   inHandIndex = -1,
@@ -180,15 +185,18 @@ export default function Card({
               (reduxEnemyCardSelectedInHand - handLength + 1) * -1 ===
                 inHandIndex
             ? "box2"
-            : aura === 1
-            ? "aura"
-            : bane === 1
-            ? "bane"
-            : ward === 1
-            ? "ward"
             : "none"
         }
       >
+        {aura === 1 && <span className="kw-silhouette kw-aura" aria-hidden />}
+        {bane === 1 && <span className="kw-silhouette kw-bane" aria-hidden />}
+        {ward === 1 && <span className="kw-silhouette kw-ward" aria-hidden />}
+        {rush === 1 && <span className="kw-silhouette kw-rush" aria-hidden />}
+        {storm === 1 && <span className="kw-silhouette kw-storm" aria-hidden />}
+        {drain === 1 && <span className="kw-silhouette kw-drain" aria-hidden />}
+        {intimidate === 1 && (
+          <span className="kw-silhouette kw-intimidate" aria-hidden />
+        )}
         {discountedPlayCost != null && (
           <div
             style={{

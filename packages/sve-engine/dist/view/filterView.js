@@ -203,10 +203,14 @@ function createPlayerView(state, self) {
     }
     const exPlayCosts = {};
     for (const card of state.players[self].zones.exArea) {
+        if ((0, registry_1.getCardDef)(card.name)?.cardType === "crest")
+            continue;
         exPlayCosts[card.instanceId] = (0, queries_1.getEffectivePlayCost)(card, card.name, state, self, "exArea");
     }
     const opponentExPlayCosts = {};
     for (const card of state.players[opponent].zones.exArea) {
+        if ((0, registry_1.getCardDef)(card.name)?.cardType === "crest")
+            continue;
         opponentExPlayCosts[card.instanceId] = (0, queries_1.getEffectivePlayCost)(card, card.name, state, opponent, "exArea");
     }
     return {

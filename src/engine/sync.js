@@ -3,8 +3,7 @@ import {
   syncFromEngine,
   setLeaderSilent,
   setEnemyLeader,
-  setShowEnemyCard,
-  setEnemyCard,
+  queueEnemyRevealedCards,
 } from "../redux/CardSlice";
 import { engineViewToRedux } from "./adapter";
 import { getNameByCardNoClient } from "./cardLookup";
@@ -47,6 +46,12 @@ export function applyEnginePayload(dispatch, payload, knownSlot = null) {
     dispatch(resetEngine());
   }
 
+  // Don't apply board/PP from a stale broadcast after a newer seq was already applied.
+  const lastSeq = store.getState().gameState.lastSeq;
+  if (!freshGame && seq != null && seq <= lastSeq) {
+    return false;
+  }
+
   dispatch(setEngineView({ view, seq, force: freshGame }));
   const mapped = engineViewToRedux(view, view.self);
   if (!mapped) return false;
@@ -58,17 +63,24 @@ export function applyEnginePayload(dispatch, payload, knownSlot = null) {
   const self = view.self;
   const reveals = view.state?.revealedCards ?? [];
   const opponentReveals = reveals.filter((r) => r.owner !== self);
-  const newReveal = opponentReveals.find((r) => r.instanceId && !shownRevealIds.has(r.instanceId));
+  const newReveals = opponentReveals.filter(
+    (r) => r.instanceId && !shownRevealIds.has(r.instanceId)
+  );
 
-  if (newReveal) {
-    shownRevealIds.add(newReveal.instanceId);
-    const key = newReveal.name || newReveal.cardNo;
-    const name = (getNameByCardNoClient(key) || key || "").replace(/\s+TOKEN$/i, "");
-    dispatch(setEnemyCard(name));
-    dispatch(setShowEnemyCard(true));
-  } else if (opponentReveals.length === 0 && store.getState().card.showEnemyCard) {
-    // Engine cleared reveals after the action; hide if still open from a prior show.
-    // Keep visible briefly via UI auto-dismiss; do not force-close mid-animation here.
+  if (newReveals.length > 0) {
+    for (const r of newReveals) shownRevealIds.add(r.instanceId);
+    dispatch(
+      queueEnemyRevealedCards(
+        newReveals.map((r) => {
+          const key = r.name || r.cardNo;
+          const name = (getNameByCardNoClient(key) || key || "").replace(
+            /\s+TOKEN$/i,
+            ""
+          );
+          return { id: r.instanceId, name };
+        })
+      )
+    );
   }
 
   return true;

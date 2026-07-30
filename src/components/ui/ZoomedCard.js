@@ -1,28 +1,52 @@
 import React from "react";
 import { cardImage } from "../../decks/getCards";
-import { getDetails } from "../../decks/cardDetails";
+import { getDetails, traitTokens } from "../../decks/cardDetails";
 import EffectText from "../deckbuilder/EffectText";
+import { getCardDefClient } from "../../engine/cardLookup";
 
-function resolveEffectText(name) {
-  if (!name) return "";
-  const direct = getDetails(name)?.effect;
-  if (direct) return direct;
+function resolveDetails(name) {
+  if (!name) return null;
+  const direct = getDetails(name);
+  if (direct) return { name, details: direct };
   if (!String(name).endsWith(" TOKEN")) {
-    const withToken = getDetails(`${name} TOKEN`)?.effect;
-    if (withToken) return withToken;
+    const withToken = getDetails(`${name} TOKEN`);
+    if (withToken) return { name: `${name} TOKEN`, details: withToken };
   } else {
-    const withoutToken = getDetails(String(name).replace(/ TOKEN$/, ""))?.effect;
-    if (withoutToken) return withoutToken;
+    const stripped = String(name).replace(/ TOKEN$/, "");
+    const withoutToken = getDetails(stripped);
+    if (withoutToken) return { name: stripped, details: withoutToken };
   }
-  return "";
+  return { name, details: null };
+}
+
+function resolveTraits(name, details) {
+  if (details?.trait && details.trait !== "-") {
+    return details.trait
+      .split("/")
+      .map((t) => t.trim())
+      .filter((t) => t && t !== "-");
+  }
+  const fromName = traitTokens(name);
+  if (fromName.length) return fromName;
+  const eng = getCardDefClient(name);
+  if (Array.isArray(eng?.traits) && eng.traits.length) return eng.traits;
+  return [];
 }
 
 function formatEffectText(text) {
-  return String(text).replace(/\s*-{3,}\s*/g, "\n\n").trim();
+  return String(text || "")
+    .replace(/\s*-{3,}\s*/g, "\n\n")
+    .trim();
 }
 
 export default function ZoomedCard({ hovering, name, scale = 1, setHovering }) {
-  const effectText = hovering ? formatEffectText(resolveEffectText(name)) : "";
+  const resolved = hovering ? resolveDetails(name) : null;
+  const displayName = resolved?.name || name || "";
+  const effectText = resolved
+    ? formatEffectText(resolved.details?.effect || "")
+    : "";
+  const traits = resolved ? resolveTraits(displayName, resolved.details) : [];
+  const showInfoPanel = Boolean(displayName || traits.length || effectText);
 
   return (
     <>
@@ -51,23 +75,25 @@ export default function ZoomedCard({ hovering, name, scale = 1, setHovering }) {
         >
           <img
             src={cardImage(name)}
-            alt={name}
+            alt={displayName || name}
             style={{
               height: "auto",
               width: "100%",
-              maxHeight: effectText ? "72vh" : "90vh",
+              // Shrink the art so the full text panel can sit below without scrolling.
+              maxHeight: showInfoPanel ? "58vh" : "90vh",
               objectFit: "contain",
-              flex: "0 0 auto",
+              flex: "1 1 auto",
+              minHeight: 0,
             }}
           />
-          {effectText ? (
+          {showInfoPanel ? (
             <div
               onMouseEnter={() => setHovering?.(true)}
               onMouseLeave={() => setHovering?.(false)}
               style={{
                 width: "100%",
-                maxHeight: "22vh",
-                overflowY: "auto",
+                flex: "0 0 auto",
+                overflow: "visible",
                 pointerEvents: "auto",
                 background: "rgba(0, 0, 0, 0.78)",
                 border: "1px solid rgba(72, 171, 224, 0.35)",
@@ -82,7 +108,48 @@ export default function ZoomedCard({ hovering, name, scale = 1, setHovering }) {
                 boxShadow: "0 4px 16px rgba(0, 0, 0, 0.45)",
               }}
             >
-              <EffectText text={effectText} iconSize={15} />
+              {displayName ? (
+                <div
+                  style={{
+                    fontWeight: 700,
+                    fontSize: 20,
+                    lineHeight: 1.25,
+                    marginBottom: traits.length || effectText ? 6 : 0,
+                  }}
+                >
+                  {displayName.replace(/\s+TOKEN$/i, "")}
+                </div>
+              ) : null}
+              {traits.length > 0 ? (
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 6,
+                    marginBottom: effectText ? 8 : 0,
+                  }}
+                >
+                  {traits.map((trait) => (
+                    <span
+                      key={trait}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        padding: "2px 9px",
+                        borderRadius: 999,
+                        fontSize: 13,
+                        background: "rgba(72, 171, 224, 0.22)",
+                        border: "1px solid rgba(72, 171, 224, 0.45)",
+                        color: "#d7f0ff",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {trait}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              {effectText ? <EffectText text={effectText} iconSize={15} /> : null}
             </div>
           ) : null}
         </div>

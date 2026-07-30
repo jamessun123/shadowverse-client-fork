@@ -30,10 +30,19 @@ if (cardsPath) {
 }
 const handAuthored: Record<string, Partial<CardDefinition>> = {};
 if (cardDefsDir) {
-  for (const file of fs.readdirSync(cardDefsDir).filter((f) => f.endsWith(".json"))) {
-    const chunk = JSON.parse(fs.readFileSync(path.join(cardDefsDir, file), "utf8"));
-    Object.assign(handAuthored, chunk);
+  function loadCardDefJsonFiles(dir: string): void {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        loadCardDefJsonFiles(full);
+        continue;
+      }
+      if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
+      const chunk = JSON.parse(fs.readFileSync(full, "utf8"));
+      Object.assign(handAuthored, chunk);
+    }
   }
+  loadCardDefJsonFiles(cardDefsDir);
 }
 
 /** Primary registry: exact card name → definition. */

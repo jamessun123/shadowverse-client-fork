@@ -1,0 +1,1101 @@
+{
+  "Hermit of Disdain": {
+    "name": "Hermit of Disdain",
+    "cardNo": "BP15-072EN",
+    "class": "dragon",
+    "printingType": "base",
+    "cost": 1,
+    "attack": 0,
+    "defense": 2,
+    "cardType": "follower",
+    "traits": [
+      "Omen",
+      "Wyrmkin"
+    ],
+    "keywords": [
+      "fanfare"
+    ],
+    "cardText": "[fanfare] Select a follower on your field and, if Overflow is active for you, deal it 1 damage. During your turn, whenever this takes ability damage, look at the top card of your deck. If it's an Omen card, you may reveal it and add it to your hand.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "if",
+          "condition": {
+            "type": "overflow"
+          },
+          "then": {
+            "op": "dealDamage",
+            "amount": 1,
+            "targets": {
+              "type": "selfFollower",
+              "count": 1,
+              "includeSelf": true
+            }
+          }
+        }
+      },
+      {
+        "timing": "onAbilityDamageTaken",
+        "effect": {
+          "op": "searchDeckChoose",
+          "filter": {
+            "trait": "Omen"
+          },
+          "lookAt": 1,
+          "to": "hand",
+          "optional": true,
+          "remainderTo": "deckBottom",
+          "reveal": true
+        }
+      }
+    ]
+  },
+  "Ardent Torch": {
+    "name": "Ardent Torch",
+    "cardNo": "PR-387EN",
+    "class": "dragon",
+    "printingType": "base",
+    "cost": 1,
+    "cardType": "spell",
+    "traits": [
+      "Omen",
+      "Wyrmkin"
+    ],
+    "keywords": [],
+    "cardText": "Select a follower on your field. Deal 1 damage to it and each enemy leader, and draw a card.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "dealDamage",
+              "amount": 1,
+              "targets": {
+                "type": "selfFollower",
+                "count": 1,
+                "includeSelf": true
+              }
+            },
+            {
+              "op": "dealDamage",
+              "amount": 1,
+              "targets": {
+                "type": "enemyLeader"
+              }
+            },
+            {
+              "op": "draw",
+              "count": 1
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Disdainful Rending": {
+    "name": "Disdainful Rending",
+    "cardNo": "BP05-058EN",
+    "class": "dragon",
+    "printingType": "base",
+    "cost": 1,
+    "cardType": "spell",
+    "traits": [
+      "Omen",
+      "Wyrmkin"
+    ],
+    "keywords": [],
+    "cardText": "Select a follower on your field and an enemy follower on the field. Deal 1 damage to the first follower and 3 damage to the second.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "dealDamage",
+              "amount": 1,
+              "targets": {
+                "type": "selfFollower",
+                "count": 1,
+                "includeSelf": true
+              }
+            },
+            {
+              "op": "dealDamage",
+              "amount": 3,
+              "targets": {
+                "type": "enemyFollower",
+                "count": 1
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Sneer of Disdain": {
+    "name": "Sneer of Disdain",
+    "cardNo": "BP08-068EN",
+    "class": "dragon",
+    "printingType": "base",
+    "cost": 1,
+    "cardType": "spell",
+    "traits": [
+      "Omen",
+      "Wyrmkin"
+    ],
+    "keywords": [],
+    "cardText": "When a Galmieux, Omen of Disdain is put onto your field, banish this card from your cemetery: Select a follower on your field and deal it 1 damage. ---------- Select a follower on the field and deal it 1 damage.",
+    "abilities": [
+      {
+        "timing": "onAllyFollowerEnter",
+        "activateFrom": "cemetery",
+        "filter": {
+          "identityName": "Galmieux, Omen of Disdain"
+        },
+        "label": "Sneer of Disdain — banish: deal 1 to ally",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "banishSelf"
+            },
+            {
+              "op": "dealDamage",
+              "amount": 1,
+              "targets": {
+                "type": "selfFollower",
+                "count": 1,
+                "includeSelf": true
+              }
+            }
+          ]
+        }
+      },
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "dealDamage",
+          "amount": 1,
+          "targets": {
+            "type": "anyFollower",
+            "count": 1
+          }
+        }
+      }
+    ]
+  },
+  "Nation of Disdain": {
+    "name": "Nation of Disdain",
+    "cardNo": "BP20-067EN",
+    "class": "dragon",
+    "printingType": "base",
+    "cost": 1,
+    "cardType": "amulet",
+    "traits": [
+      "Omen",
+      "Wyrmkin"
+    ],
+    "keywords": [
+      "fanfare"
+    ],
+    "cardText": "Fanfare Look at the top 2 cards of your deck. You may reveal a card with Omen and Wyrmkin traits from among them and add it to your hand. Put the rest on the bottom of your deck in any order.\nActivate Engage this, bury this: Select a follower on your field and deal it 1 damage.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "searchDeckChoose",
+          "filter": {
+            "allTraits": [
+              "Omen",
+              "Wyrmkin"
+            ]
+          },
+          "lookAt": 2,
+          "to": "hand",
+          "optional": true,
+          "remainderTo": "deckBottom",
+          "reveal": true
+        }
+      },
+      {
+        "timing": "activated",
+        "activateFrom": "field",
+        "cost": {
+          "engage": true,
+          "burySelf": true
+        },
+        "effect": {
+          "op": "dealDamage",
+          "amount": 1,
+          "targets": {
+            "type": "selfFollower",
+            "count": 1,
+            "includeSelf": true
+          }
+        }
+      }
+    ]
+  },
+  "Gilnelise, Ravenous Craving": {
+    "name": "Gilnelise, Ravenous Craving",
+    "cardNo": "BP15-SP02EN",
+    "class": "neutral",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 2,
+    "cardType": "follower",
+    "traits": [
+      "Omen"
+    ],
+    "keywords": [
+      "evolve"
+    ],
+    "evolveCost": 1,
+    "evolvesTo": "Gilnelise, Ravenous Craving Evolved",
+    "cardText": "[evolve] [cost01]: Evolve this. While your leader's defense is 10 or less, this has Drain.",
+    "abilities": [
+      {
+        "timing": "passive",
+        "condition": {
+          "type": "leaderDefMax",
+          "count": 10
+        },
+        "effect": {
+          "op": "passiveKeywords",
+          "keywords": [
+            "drain"
+          ]
+        }
+      },
+      {
+        "timing": "evolve",
+        "cost": {
+          "pp": 1
+        },
+        "effect": {
+          "op": "noop"
+        }
+      }
+    ]
+  },
+  "Gilnelise, Ravenous Craving Evolved": {
+    "name": "Gilnelise, Ravenous Craving Evolved",
+    "cardNo": "BP15-U07EN",
+    "class": "neutral",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 3,
+    "defense": 3,
+    "cardType": "follower",
+    "traits": [
+      "Omen"
+    ],
+    "keywords": [
+      "onEvolve"
+    ],
+    "evolvesFrom": "Gilnelise, Ravenous Craving",
+    "cardText": "While your leader's defense is 10 or less, this has Drain. On Evolve - Choose 1. (1) Select another follower on the field and give it [attack]+2/[defense]-2. (2) Put a Ravenous Sweetness token into your EX area.",
+    "abilities": [
+      {
+        "timing": "passive",
+        "condition": {
+          "type": "leaderDefMax",
+          "count": 10
+        },
+        "effect": {
+          "op": "passiveKeywords",
+          "keywords": [
+            "drain"
+          ]
+        }
+      },
+      {
+        "timing": "onEvolve",
+        "effect": {
+          "op": "choose",
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "label": "Give another follower +2/-2",
+              "effect": {
+                "op": "buff",
+                "atk": 2,
+                "def": -2,
+                "targets": {
+                  "type": "anyFollower",
+                  "count": 1,
+                  "excludeSelf": true
+                }
+              }
+            },
+            {
+              "label": "Put Ravenous Sweetness into EX",
+              "effect": {
+                "op": "summon",
+                "tokenName": "Ravenous Sweetness",
+                "count": 1,
+                "zone": "exArea"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Zealot of Disdain": {
+    "name": "Zealot of Disdain",
+    "cardNo": "BP08-063EN",
+    "class": "dragon",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 2,
+    "cardType": "follower",
+    "traits": [
+      "Omen",
+      "Wyrmkin"
+    ],
+    "keywords": [
+      "fanfare"
+    ],
+    "cardText": "[fanfare] Deal 1 damage to each follower on the field. During your turn, whenever this follower takes ability damage, deal 1 damage to each enemy leader.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "dealDamageAllFollowers",
+          "amount": 1
+        }
+      },
+      {
+        "timing": "onAbilityDamageTaken",
+        "effect": {
+          "op": "dealDamage",
+          "amount": 1,
+          "targets": {
+            "type": "enemyLeader"
+          }
+        }
+      }
+    ]
+  },
+  "Supplicant of Disdain": {
+    "name": "Supplicant of Disdain",
+    "cardNo": "BP20-064EN",
+    "class": "dragon",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 2,
+    "cardType": "follower",
+    "traits": [
+      "Omen",
+      "Wyrmkin"
+    ],
+    "keywords": [
+      "ward",
+      "fanfare",
+      "evolve"
+    ],
+    "evolveCost": 1,
+    "evolvesTo": "Supplicant of Disdain Evolved",
+    "cardText": "Evolve (1): Evolve this.\nWard.\nFanfare Select a follower on your field. If Overflow is active for you, deal it 1 damage and give your leader 🛡️+2.",
+    "abilities": [
+      {
+        "timing": "evolve",
+        "cost": {
+          "pp": 1
+        },
+        "effect": {
+          "op": "noop"
+        }
+      },
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "if",
+          "condition": {
+            "type": "overflow"
+          },
+          "then": {
+            "op": "sequence",
+            "steps": [
+              {
+                "op": "dealDamage",
+                "amount": 1,
+                "targets": {
+                  "type": "selfFollower",
+                  "count": 1,
+                  "includeSelf": true
+                }
+              },
+              {
+                "op": "healLeader",
+                "amount": 2
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "Supplicant of Disdain Evolved": {
+    "name": "Supplicant of Disdain Evolved",
+    "cardNo": "BP20-065EN",
+    "class": "dragon",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 3,
+    "defense": 3,
+    "cardType": "follower",
+    "traits": [
+      "Omen",
+      "Wyrmkin"
+    ],
+    "keywords": [
+      "ward",
+      "onEvolve"
+    ],
+    "evolvesFrom": "Supplicant of Disdain",
+    "cardText": "Ward.\nOn Evolve - Select an an enemy follower on the field and deal it 2 damage.",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "effect": {
+          "op": "dealDamage",
+          "amount": 2,
+          "targets": {
+            "type": "enemyFollower",
+            "count": 1
+          }
+        }
+      }
+    ]
+  },
+  "Ferocious Flame": {
+    "name": "Ferocious Flame",
+    "cardNo": "BP20-063EN",
+    "class": "dragon",
+    "printingType": "base",
+    "cost": 2,
+    "cardType": "spell",
+    "traits": [
+      "Omen",
+      "Wyrmkin"
+    ],
+    "keywords": [],
+    "cardText": "Select a follower on your field and an enemy follower on the field. Deal 1 damage to the first follower and 4 damage to the second. Draw a card. If you have a follower on your field with \"Galmieux\" in its name, increase your max play points by 1.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "dealDamage",
+              "amount": 1,
+              "targets": {
+                "type": "selfFollower",
+                "count": 1,
+                "includeSelf": true
+              }
+            },
+            {
+              "op": "dealDamage",
+              "amount": 4,
+              "targets": {
+                "type": "enemyFollower",
+                "count": 1
+              }
+            },
+            {
+              "op": "draw",
+              "count": 1
+            },
+            {
+              "op": "if",
+              "condition": {
+                "type": "namedFollowerOnFieldContains",
+                "identityNameContains": "Galmieux"
+              },
+              "then": {
+                "op": "increaseMaxPp",
+                "amount": 1
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Dragon Oracle": {
+    "name": "Dragon Oracle",
+    "cardNo": "PR-235EN",
+    "class": "dragon",
+    "printingType": "base",
+    "cost": 2,
+    "cardType": "spell",
+    "traits": [
+      "Wyrmkin"
+    ],
+    "keywords": [],
+    "cardText": "Choose one of the following. (1) Increase your max play points by 1. (2) Draw a card.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "choose",
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "label": "Increase max play points by 1",
+              "effect": {
+                "op": "increaseMaxPp",
+                "amount": 1
+              }
+            },
+            {
+              "label": "Draw a card",
+              "effect": {
+                "op": "draw",
+                "count": 1
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Apostle of Disdain": {
+    "name": "Apostle of Disdain",
+    "cardNo": "BP05-055EN",
+    "class": "dragon",
+    "printingType": "base",
+    "cost": 3,
+    "attack": 2,
+    "defense": 4,
+    "cardType": "follower",
+    "traits": [
+      "Omen",
+      "Wyrmkin"
+    ],
+    "keywords": [
+      "evolve"
+    ],
+    "evolveCost": 1,
+    "evolvesTo": "Apostle of Disdain Evolved",
+    "cardText": "[evolve] [cost01]: Evolve this follower. During your turn, whenever this follower takes ability damage, give it [attack]+1 and Storm.",
+    "abilities": [
+      {
+        "timing": "evolve",
+        "cost": {
+          "pp": 1
+        },
+        "effect": {
+          "op": "noop"
+        }
+      },
+      {
+        "timing": "onAbilityDamageTaken",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "buff",
+              "atk": 1,
+              "targets": {
+                "type": "self"
+              }
+            },
+            {
+              "op": "grantKeyword",
+              "keyword": "storm",
+              "targets": {
+                "type": "self"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Apostle of Disdain Evolved": {
+    "name": "Apostle of Disdain Evolved",
+    "cardNo": "BP05-056EN",
+    "class": "dragon",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 3,
+    "defense": 5,
+    "cardType": "follower",
+    "traits": [
+      "Omen",
+      "Wyrmkin"
+    ],
+    "keywords": [
+      "onEvolve"
+    ],
+    "evolvesFrom": "Apostle of Disdain",
+    "cardText": "On Evolve, discard a card: Look at the top 5 cards of your deck. From among them, you may reveal up to 2 Omen cards and add them to your hand. Put the remaining cards on the bottom of your deck in any order. During your turn, whenever this follower takes ability damage, give it [attack]+1 and Storm.",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "effect": {
+          "op": "optionalCost",
+          "label": "Discard a card: dig for up to 2 Omens",
+          "cost": {
+            "op": "discard",
+            "count": 1
+          },
+          "then": {
+            "op": "searchDeckSummonMultiple",
+            "filter": {
+              "trait": "Omen"
+            },
+            "lookAt": 5,
+            "maxCount": 2,
+            "to": "hand",
+            "remainderTo": "deckBottom",
+            "reveal": true
+          }
+        }
+      },
+      {
+        "timing": "onAbilityDamageTaken",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "buff",
+              "atk": 1,
+              "targets": {
+                "type": "self"
+              }
+            },
+            {
+              "op": "grantKeyword",
+              "keyword": "storm",
+              "targets": {
+                "type": "self"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Congregant of Disdain": {
+    "name": "Congregant of Disdain",
+    "cardNo": "BP20-062EN",
+    "class": "dragon",
+    "printingType": "base",
+    "cost": 3,
+    "attack": 3,
+    "defense": 4,
+    "cardType": "follower",
+    "traits": [
+      "Omen",
+      "Wyrmkin"
+    ],
+    "keywords": [
+      "fanfare"
+    ],
+    "cardText": "Once on each of your turns, when this takes ability damage, increase your max play points by 1.\nFanfare If Overflow is active for you, deal each follower on the field 1 damage.",
+    "abilities": [
+      {
+        "timing": "onAbilityDamageTaken",
+        "oncePerTurn": true,
+        "effect": {
+          "op": "increaseMaxPp",
+          "amount": 1
+        }
+      },
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "if",
+          "condition": {
+            "type": "overflow"
+          },
+          "then": {
+            "op": "dealDamageAllFollowers",
+            "amount": 1
+          }
+        }
+      }
+    ]
+  },
+  "Galmieux, Ardor Manifest": {
+    "name": "Galmieux, Ardor Manifest",
+    "cardNo": "BP20-056EN",
+    "class": "dragon",
+    "printingType": "base",
+    "cost": 3,
+    "attack": 3,
+    "defense": 3,
+    "cardType": "follower",
+    "traits": [
+      "Omen",
+      "Wyrmkin"
+    ],
+    "keywords": [
+      "fanfare"
+    ],
+    "cardText": "This has Storm while Overflow is active for you.\nOnce during each of your turns, whenever this takes ability damage, select an enemy follower on the field and deal it 2 damage.\nFanfare Put a Crest: Galmieux, Ardor Manifest token into your EX area.",
+    "abilities": [
+      {
+        "timing": "passive",
+        "condition": {
+          "type": "overflow"
+        },
+        "effect": {
+          "op": "passiveKeywords",
+          "keywords": [
+            "storm"
+          ]
+        }
+      },
+      {
+        "timing": "onAbilityDamageTaken",
+        "oncePerTurn": true,
+        "effect": {
+          "op": "dealDamage",
+          "amount": 2,
+          "targets": {
+            "type": "enemyFollower",
+            "count": 1
+          }
+        }
+      },
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "summon",
+          "tokenName": "Crest: Galmieux, Ardor Manifest",
+          "count": 1,
+          "zone": "exArea"
+        }
+      }
+    ]
+  },
+  "Adherent of Ardor": {
+    "name": "Adherent of Ardor",
+    "cardNo": "BP15-066EN",
+    "class": "dragon",
+    "printingType": "base",
+    "cost": 3,
+    "attack": 3,
+    "defense": 3,
+    "cardType": "follower",
+    "traits": [
+      "Omen",
+      "Wyrmkin"
+    ],
+    "keywords": [
+      "fanfare",
+      "evolve"
+    ],
+    "evolveCost": 1,
+    "evolvesTo": "Adherent of Ardor Evolved",
+    "cardText": "[evolve] [cost01]: Evolve this. [fanfare] Select up to 2 followers on your field and, if Overflow is active for you, deal them 1 damage. During your turn, whenever this takes ability damage, select an enemy follower on the field and deal it 3 damage.",
+    "abilities": [
+      {
+        "timing": "evolve",
+        "cost": {
+          "pp": 1
+        },
+        "effect": {
+          "op": "noop"
+        }
+      },
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "if",
+          "condition": {
+            "type": "overflow"
+          },
+          "then": {
+            "op": "dealDamage",
+            "amount": 1,
+            "targets": {
+              "type": "selfFollower",
+              "minCount": 0,
+              "maxCount": 2,
+              "includeSelf": true
+            }
+          }
+        }
+      },
+      {
+        "timing": "onAbilityDamageTaken",
+        "effect": {
+          "op": "dealDamage",
+          "amount": 3,
+          "targets": {
+            "type": "enemyFollower",
+            "count": 1
+          }
+        }
+      }
+    ]
+  },
+  "Adherent of Ardor Evolved": {
+    "name": "Adherent of Ardor Evolved",
+    "cardNo": "BP15-067EN",
+    "class": "dragon",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 4,
+    "defense": 4,
+    "cardType": "follower",
+    "traits": [
+      "Omen",
+      "Wyrmkin"
+    ],
+    "keywords": [
+      "onEvolve"
+    ],
+    "evolvesFrom": "Adherent of Ardor",
+    "cardText": "On Evolve - Select up to 2 followers on your field and deal them 1 damage. During your turn, whenever this takes ability damage, select an enemy follower on the field and deal it 3 damage.",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "effect": {
+          "op": "dealDamage",
+          "amount": 1,
+          "targets": {
+            "type": "selfFollower",
+            "minCount": 0,
+            "maxCount": 2,
+            "includeSelf": true
+          }
+        }
+      },
+      {
+        "timing": "onAbilityDamageTaken",
+        "effect": {
+          "op": "dealDamage",
+          "amount": 3,
+          "targets": {
+            "type": "enemyFollower",
+            "count": 1
+          }
+        }
+      }
+    ]
+  },
+  "Galmieux, Omen of Disdain": {
+    "name": "Galmieux, Omen of Disdain",
+    "cardNo": "BP05-052EN",
+    "class": "dragon",
+    "printingType": "base",
+    "cost": 5,
+    "attack": 5,
+    "defense": 5,
+    "cardType": "follower",
+    "traits": [
+      "Omen",
+      "Wyrmkin"
+    ],
+    "keywords": [
+      "evolve"
+    ],
+    "evolveCost": 2,
+    "evolvesTo": "Galmieux, Omen of Disdain Evolved",
+    "cardText": "[evolve] [cost02]: Evolve this follower. During your turn, whenever this follower takes ability damage, change its [evolve] cost to 0 for the rest of the turn.",
+    "abilities": [
+      {
+        "timing": "evolve",
+        "cost": {
+          "pp": 2
+        },
+        "effect": {
+          "op": "noop"
+        }
+      },
+      {
+        "timing": "onAbilityDamageTaken",
+        "effect": {
+          "op": "setSourceEvolveCostOverride",
+          "amount": 0
+        }
+      }
+    ]
+  },
+  "Galmieux, Omen of Disdain Evolved": {
+    "name": "Galmieux, Omen of Disdain Evolved",
+    "cardNo": "BP05-053EN",
+    "class": "dragon",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 6,
+    "defense": 6,
+    "cardType": "follower",
+    "traits": [
+      "Omen",
+      "Wyrmkin"
+    ],
+    "keywords": [
+      "onEvolve"
+    ],
+    "evolvesFrom": "Galmieux, Omen of Disdain",
+    "cardText": "On Evolve: Select an Omen card that costs 2 play points or less in your cemetery and play it for 0 play points. During your turn, whenever this follower takes ability damage, select an enemy leader or enemy follower on the field and deal it 3 damage.",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "effect": {
+          "op": "playFromCemetery",
+          "filter": {
+            "trait": "Omen",
+            "maxCost": 2
+          }
+        }
+      },
+      {
+        "timing": "onAbilityDamageTaken",
+        "effect": {
+          "op": "dealDamage",
+          "amount": 3,
+          "targets": {
+            "type": "enemyLeaderOrFollower",
+            "count": 1
+          }
+        }
+      }
+    ]
+  },
+  "Galmieux, Ardent Disdain": {
+    "name": "Galmieux, Ardent Disdain",
+    "cardNo": "BP15-U04EN",
+    "class": "dragon",
+    "printingType": "base",
+    "cost": 5,
+    "attack": 5,
+    "defense": 5,
+    "cardType": "follower",
+    "traits": [
+      "Omen",
+      "Wyrmkin"
+    ],
+    "keywords": [
+      "fanfare"
+    ],
+    "cardText": "[fanfare] Put a Fangs of Ardent Destruction token into your EX area. During your turn, whenever this takes ability damage, look at the top 2 cards of your deck. You may put one of them into your EX area. If it's an Omen card, it costs 3 less to play this turn. Bury the rest.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "summon",
+          "tokenName": "Fangs of Ardent Destruction",
+          "count": 1,
+          "zone": "exArea"
+        }
+      },
+      {
+        "timing": "onAbilityDamageTaken",
+        "effect": {
+          "op": "searchDeckChoose",
+          "filter": {},
+          "lookAt": 2,
+          "to": "exArea",
+          "optional": true,
+          "playCostReduction": 3,
+          "playCostReductionFilter": {
+            "trait": "Omen"
+          },
+          "remainderTo": "cemetery"
+        }
+      }
+    ]
+  },
+  "Fangs of Ardent Destruction TOKEN": {
+    "name": "Fangs of Ardent Destruction TOKEN",
+    "cardNo": "BP15-PR13EN",
+    "class": "dragon",
+    "printingType": "token",
+    "specialType": "token",
+    "cost": 1,
+    "cardType": "spell",
+    "traits": [
+      "Omen",
+      "Wyrmkin"
+    ],
+    "keywords": [],
+    "cardText": "Deal 1 damage to each follower on the field. If Overflow is active for you, give each Galmieux, Ardent Disdain on your field Storm.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "dealDamageAllFollowers",
+              "amount": 1
+            },
+            {
+              "op": "if",
+              "condition": {
+                "type": "overflow"
+              },
+              "then": {
+                "op": "grantKeywordMatching",
+                "keyword": "storm",
+                "filter": {
+                  "identityName": "Galmieux, Ardent Disdain"
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Crest: Galmieux, Ardor Manifest TOKEN": {
+    "name": "Crest: Galmieux, Ardor Manifest TOKEN",
+    "cardNo": "BP20-T05EN",
+    "class": "dragon",
+    "printingType": "token",
+    "specialType": "token",
+    "cost": 0,
+    "cardType": "crest",
+    "traits": [
+      "Omen",
+      "Wyrmkin"
+    ],
+    "keywords": [],
+    "cardText": "Activate 0PP: Select an Omen follower on your field and deal it 1 damage. Activate only once per turn.",
+    "abilities": [
+      {
+        "timing": "activated",
+        "activateFrom": "exArea",
+        "oncePerTurn": true,
+        "cost": {
+          "pp": 0
+        },
+        "effect": {
+          "op": "dealDamage",
+          "amount": 1,
+          "targets": {
+            "type": "selfFollower",
+            "count": 1,
+            "trait": "Omen",
+            "includeSelf": true
+          }
+        }
+      }
+    ]
+  }
+}

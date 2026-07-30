@@ -344,6 +344,35 @@ export function queueCemeteryOnAllyFollowerEnter(
   }
 }
 
+/** Queue onAbilityDamageTaken for a follower that just took ability damage and survived. */
+export function queueOnAbilityDamageTaken(
+  state: GameState,
+  instanceId: string,
+): void {
+  const found = findInstance(state, instanceId);
+  if (!found || found.zone !== "field") return;
+  // Most Disdain texts are "During your turn, whenever this takes ability damage…"
+  if (state.activePlayer !== found.player) return;
+  if (isBoxed(found.card, state)) return;
+  const cardNo = resolveCardNo(state, found.card);
+  const def = getCardDef(cardNo);
+  for (const [idx, ability] of (def?.abilities ?? []).entries()) {
+    if (ability.timing !== "onAbilityDamageTaken") continue;
+    const key = `onAbilityDamageTaken:${idx}`;
+    if (!canFireLimitedTrigger(found.card, key, ability)) continue;
+    pushTrigger(
+      state,
+      found.card.instanceId,
+      found.player,
+      cardNo,
+      ability,
+      "onAbilityDamageTaken",
+      "adt",
+      key,
+    );
+  }
+}
+
 export function onCardEntersExAreaTriggers(
   state: GameState,
   instanceId: string,

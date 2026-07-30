@@ -50,6 +50,9 @@ import {
   setShowEnemyHand,
   setShowEnemyCard,
   setEnemyCard,
+  clearEnemyRevealedCards,
+  dismissEnemyRevealedCard,
+  queueEnemyRevealedCards,
   setEnemyDeckSize,
   setEnemyEvoPoints,
   setEnemyPlayPoints,
@@ -189,6 +192,9 @@ export default function Field({
   const reduxShowEnemyHand = useSelector((state) => state.card.showEnemyHand);
   const reduxShowEnemyCard = useSelector((state) => state.card.showEnemyCard);
   const reduxEnemyCard = useSelector((state) => state.card.enemyCard);
+  const reduxEnemyRevealedCards = useSelector(
+    (state) => state.card.enemyRevealedCards ?? []
+  );
   const reduxCounterField = useSelector((state) => state.card.counterField);
   const reduxExPlayCostField = useSelector((state) => state.card.exPlayCostField);
   const reduxEnemyExPlayCostField = useSelector(
@@ -203,6 +209,16 @@ export default function Field({
   const reduxEnemyBaneField = useSelector((state) => state.card.enemyBaneField);
   const reduxWardField = useSelector((state) => state.card.wardField);
   const reduxEnemyWardField = useSelector((state) => state.card.enemyWardField);
+  const reduxRushField = useSelector((state) => state.card.rushField);
+  const reduxEnemyRushField = useSelector((state) => state.card.enemyRushField);
+  const reduxStormField = useSelector((state) => state.card.stormField);
+  const reduxEnemyStormField = useSelector((state) => state.card.enemyStormField);
+  const reduxDrainField = useSelector((state) => state.card.drainField);
+  const reduxEnemyDrainField = useSelector((state) => state.card.enemyDrainField);
+  const reduxIntimidateField = useSelector((state) => state.card.intimidateField);
+  const reduxEnemyIntimidateField = useSelector(
+    (state) => state.card.enemyIntimidateField,
+  );
   const reduxEnemyCardBack = useSelector((state) => state.card.enemyCardback);
   const reduxCardSelectedInHand = useSelector(
     (state) => state.card.cardSelectedInHand,
@@ -231,7 +247,9 @@ export default function Field({
   const { sendAction } = useEngineSync();
   const chromeVisible = useUiChromeVisible();
   const enemyHandModalOpen = useUiModalOpen(reduxShowEnemyHand);
-  const enemyCardModalOpen = useUiModalOpen(reduxShowEnemyCard);
+  const enemyCardModalOpen = useUiModalOpen(
+    reduxShowEnemyCard || reduxEnemyRevealedCards.length > 0
+  );
 
   // useState
   const [cardback, setCardback] = useState();
@@ -383,6 +401,16 @@ export default function Field({
           break;
         case "cardRevealed":
           dispatch(setEnemyCard(update.data));
+          if (update.data) {
+            dispatch(
+              queueEnemyRevealedCards([
+                {
+                  id: `socket-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                  name: update.data,
+                },
+              ])
+            );
+          }
           break;
         case "transfer":
           dispatch(setField(update.data));
@@ -642,17 +670,12 @@ export default function Field({
   };
 
   const handleShowCardModalClose = () => {
-    dispatch(setShowEnemyCard(false));
+    dispatch(clearEnemyRevealedCards());
   };
 
-  // Auto-dismiss opponent reveal after a short beat so it does not linger.
-  useEffect(() => {
-    if (!reduxShowEnemyCard) return undefined;
-    const t = setTimeout(() => {
-      dispatch(setShowEnemyCard(false));
-    }, 2200);
-    return () => clearTimeout(t);
-  }, [reduxShowEnemyCard, reduxEnemyCard, dispatch]);
+  const handleDismissRevealedCard = (id) => {
+    dispatch(dismissEnemyRevealedCard(id));
+  };
 
   const cardPos = (idx) => {
     if (idx === -1) return -1;
@@ -1180,6 +1203,14 @@ export default function Field({
   const canPlayFromExArea = (instanceId) =>
     canPlayCard(instanceId) || canQuickPlayCard(instanceId);
 
+  const canActivateExArea = (instanceId) =>
+    automated &&
+    leaderActive &&
+    !pendingChoices &&
+    instanceId &&
+    (legalActions.includes(`ACTIVATE_EXAREA:${instanceId}`) ||
+      legalActions.some((a) => a.startsWith(`ACTIVATE_EXAREA:${instanceId}:`)));
+
   const canAttackWith = (instanceId) =>
     automated &&
     leaderActive &&
@@ -1199,6 +1230,10 @@ export default function Field({
       : fieldInstanceIds[idx];
     if (!isEnemy && instanceId && selectedAttackerId === instanceId) {
       return { outline: "3px solid #ff9800", borderRadius: "8px", cursor: "pointer" };
+    }
+    if (!isEnemy && idx >= 5 && canActivateExArea(instanceId)) {
+      // Outline/glow via .ex-activate-ready; keep cursor here as fallback.
+      return { cursor: "pointer" };
     }
     if (!isEnemy && idx >= 5 && canPlayFromExArea(instanceId)) {
       return {
@@ -1220,16 +1255,7 @@ export default function Field({
     const instanceId = fieldInstanceIds[idx];
     if (!instanceId || reduxField[idx] === 0) return;
     if (idx >= 5) {
-      if (canQuickPlayCard(instanceId)) {
-        sendAction({ type: "QUICK_PLAY", handInstanceId: instanceId });
-        return;
-      }
-      if (canPlayCard(instanceId)) {
-        sendAction({ type: "PLAY_CARD", handInstanceId: instanceId });
-        return;
-      }
-      if (legalActions.includes(`ACTIVATE_EXAREA:${instanceId}`) ||
-          legalActions.some((a) => a.startsWith(`ACTIVATE_EXAREA:${instanceId}:`))) {
+      if (canActivateExArea(instanceId)) {
         const exOpts = getActivateOptionsForExAreaCard(instanceId);
         if (exOpts.length === 1) {
           sendAction({
@@ -1238,6 +1264,14 @@ export default function Field({
             abilityKey: exOpts[0].abilityKey,
           });
         }
+        return;
+      }
+      if (canQuickPlayCard(instanceId)) {
+        sendAction({ type: "QUICK_PLAY", handInstanceId: instanceId });
+        return;
+      }
+      if (canPlayCard(instanceId)) {
+        sendAction({ type: "PLAY_CARD", handInstanceId: instanceId });
         return;
       }
       return;
@@ -1724,7 +1758,7 @@ export default function Field({
         </Box>
       </Modal>
 
-      {/* Opponent reveal — centered, large enough to read, not full-viewport. */}
+      {/* Opponent reveal — show all at once; click each card to dismiss. */}
       <Modal
         open={enemyCardModalOpen}
         onClose={handleShowCardModalClose}
@@ -1746,6 +1780,7 @@ export default function Field({
             left: "50%",
             transform: "translate(-50%, -50%)",
             width: "auto",
+            maxWidth: "96vw",
             outline: "none",
             pointerEvents: "auto",
             display: "flex",
@@ -1765,27 +1800,52 @@ export default function Field({
           >
             Revealed
           </Typography>
-          <motion.div
-            key={reduxEnemyCard}
-            initial={{ opacity: 0, y: 24, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 0.35 }}
+          <Box
+            id="reveal-card-description"
+            sx={{
+              display: "flex",
+              flexDirection: "row",
+              flexWrap: "wrap",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: 2,
+            }}
           >
-            <img
-              id="reveal-card-description"
-              className={"cardStyle"}
-              src={cardImage(reduxEnemyCard)}
-              alt={reduxEnemyCard}
-              style={{
-                height: "min(42vh, 420px)",
-                width: "auto",
-                borderRadius: 10,
-                boxShadow: "0 12px 36px rgba(0,0,0,0.6)",
-                cursor: "pointer",
-              }}
-              onClick={handleShowCardModalClose}
-            />
-          </motion.div>
+            {(reduxEnemyRevealedCards.length > 0
+              ? reduxEnemyRevealedCards
+              : reduxEnemyCard
+                ? [{ id: "legacy", name: reduxEnemyCard }]
+                : []
+            ).map((card) => (
+              <motion.div
+                key={card.id}
+                initial={{ opacity: 0, y: 24, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.35 }}
+              >
+                <img
+                  className={"cardStyle"}
+                  src={cardImage(card.name)}
+                  alt={card.name}
+                  style={{
+                    height:
+                      reduxEnemyRevealedCards.length > 1
+                        ? "min(34vh, 340px)"
+                        : "min(42vh, 420px)",
+                    width: "auto",
+                    borderRadius: 10,
+                    boxShadow: "0 12px 36px rgba(0,0,0,0.6)",
+                    cursor: "pointer",
+                  }}
+                  onClick={() =>
+                    card.id === "legacy"
+                      ? handleShowCardModalClose()
+                      : handleDismissRevealedCard(card.id)
+                  }
+                />
+              </motion.div>
+            ))}
+          </Box>
         </Box>
       </Modal>
 
@@ -1997,6 +2057,10 @@ export default function Field({
                     aura={reduxEnemyAuraField[cardPos(idx)]}
                     bane={reduxEnemyBaneField[cardPos(idx)]}
                     ward={reduxEnemyWardField[cardPos(idx)]}
+                    rush={reduxEnemyRushField[cardPos(idx)]}
+                    storm={reduxEnemyStormField[cardPos(idx)]}
+                    drain={reduxEnemyDrainField[cardPos(idx)]}
+                    intimidate={reduxEnemyIntimidateField[cardPos(idx)]}
                     opponentField={true}
                     onField={true}
                     idx={idx}
@@ -2017,6 +2081,10 @@ export default function Field({
                   aura={reduxEnemyAuraField[cardPos(idx)]}
                   bane={reduxEnemyBaneField[cardPos(idx)]}
                   ward={reduxEnemyWardField[cardPos(idx)]}
+                  rush={reduxEnemyRushField[cardPos(idx)]}
+                  storm={reduxEnemyStormField[cardPos(idx)]}
+                  drain={reduxEnemyDrainField[cardPos(idx)]}
+                  intimidate={reduxEnemyIntimidateField[cardPos(idx)]}
                   opponentField={true}
                   onField={true}
                   idx={idx}
@@ -2181,6 +2249,10 @@ export default function Field({
                       aura={reduxAuraField[idx]}
                       bane={reduxBaneField[idx]}
                       ward={reduxWardField[idx]}
+                      rush={reduxRushField[idx]}
+                      storm={reduxStormField[idx]}
+                      drain={reduxDrainField[idx]}
+                      intimidate={reduxIntimidateField[idx]}
                       idx={idx}
                       onField={true}
                       key={`card1-${idx}`}
@@ -2225,7 +2297,18 @@ export default function Field({
                   }}
                   key={`player2-${idx}`}
                   style={fieldCombatStyle(idx, false)}
-                  className={"cardStyle"}
+                  className={
+                    idx >= 5 && canActivateExArea(fieldInstanceIds[idx])
+                      ? "cardStyle ex-activate-ready"
+                      : "cardStyle"
+                  }
+                  title={
+                    idx >= 5 && canActivateExArea(fieldInstanceIds[idx])
+                      ? getActivateOptionsForExAreaCard(fieldInstanceIds[idx]).length > 1
+                        ? "Right-click to choose Activate"
+                        : "Click to activate"
+                      : undefined
+                  }
                 >
                   {reduxField[idx] !== 0 && reduxEvoField[idx] === 0 && (
                     <Card
@@ -2239,6 +2322,10 @@ export default function Field({
                       aura={reduxAuraField[idx]}
                       bane={reduxBaneField[idx]}
                       ward={reduxWardField[idx]}
+                      rush={reduxRushField[idx]}
+                      storm={reduxStormField[idx]}
+                      drain={reduxDrainField[idx]}
+                      intimidate={reduxIntimidateField[idx]}
                       idx={idx}
                       onField={true}
                       key={`card2-${idx}`}
@@ -2259,6 +2346,10 @@ export default function Field({
                       aura={reduxAuraField[idx]}
                       bane={reduxBaneField[idx]}
                       ward={reduxWardField[idx]}
+                      rush={reduxRushField[idx]}
+                      storm={reduxStormField[idx]}
+                      drain={reduxDrainField[idx]}
+                      intimidate={reduxIntimidateField[idx]}
                       idx={idx}
                       onField={true}
                       key={`evo2-${idx}`}

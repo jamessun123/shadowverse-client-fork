@@ -159,6 +159,7 @@ function markTriggerAbilityUsed(state: GameState, trigger: PendingTrigger): void
     "onCardFused",
     "onAllyFollowerEnter",
     "onOpponentDeckToCemetery",
+    "onAbilityDamageTaken",
   ];
   if (!markableTimings.includes(trigger.timing)) return;
   const found = findInstance(state, trigger.sourceInstanceId);
@@ -177,7 +178,8 @@ export function resolveOneTrigger(state: GameState, trigger: PendingTrigger): Ga
   next.pendingTriggers = next.pendingTriggers.filter((t) => t.id !== trigger.id);
   next.resolutionContext = {
     ...contextForTriggerResolution(next, trigger.sourceInstanceId, trigger.ability.effect),
-    forcedTargetId: trigger.forcedTargetId,
+    // Only auto-target the entered follower when the ability opts in.
+    forcedTargetId: trigger.ability.useEnteredTarget ? trigger.forcedTargetId : undefined,
   };
   next = resolveEffect(next, trigger.ability.effect, trigger.controller);
   markTriggerAbilityUsed(next, trigger);

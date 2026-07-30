@@ -334,20 +334,47 @@ function handleChoiceResponse(state: GameState, player: PlayerId, payload: Recor
   }
 
   if (choice.type === "selectTarget") {
-    const targetId = String(payload.targetId);
     const allowed = (choice.candidates ?? []).map((c) =>
       typeof c === "string" ? c : c.instanceId,
     );
-    if (!allowed.includes(targetId)) {
-      return fail(state, "Invalid target");
+    const minCount = choice.minCount ?? choice.count ?? 1;
+    const maxCount = choice.maxCount ?? choice.count ?? 1;
+    const isMulti = maxCount > 1 || minCount !== maxCount;
+
+    let targetIds: string[] = [];
+    if (isMulti) {
+      targetIds = Array.isArray(payload.targetIds)
+        ? (payload.targetIds as string[]).map(String)
+        : payload.targetId
+          ? [String(payload.targetId)]
+          : [];
+      if (targetIds.length < minCount || targetIds.length > maxCount) {
+        return fail(
+          state,
+          minCount === maxCount
+            ? `Must select exactly ${minCount} card(s)`
+            : `Must select between ${minCount} and ${maxCount} card(s)`,
+        );
+      }
+      for (const id of targetIds) {
+        if (!allowed.includes(id)) return fail(state, "Invalid target");
+      }
+    } else {
+      const targetId = String(payload.targetId);
+      if (!allowed.includes(targetId)) {
+        return fail(state, "Invalid target");
+      }
+      targetIds = [targetId];
     }
+
     const resume = next.resolutionContext?.resumeAfterChoice;
     const prev = next.resolutionContext;
     const sourceId = prev?.sourceInstanceId ?? next.combat?.attackerId;
     next.resolutionContext = {
       sourceInstanceId: sourceId,
       effectStack: [choice.effect],
-      forcedTargetId: targetId,
+      forcedTargetId: targetIds[0],
+      forcedTargetIds: isMulti ? targetIds : undefined,
       resumeAfterChoice: resume,
       buriedCosts: prev?.buriedCosts,
       lastDiscardedCardName: prev?.lastDiscardedCardName,
@@ -486,21 +513,28 @@ function handleChoiceResponse(state: GameState, player: PlayerId, payload: Recor
     if (to === "field") {
       const slots = p.fieldLimit - p.zones.field.length;
       if (ids.length > slots) return fail(state, "Not enough field space");
-    } else {
+    } else if (to === "exArea") {
       const slots = p.exLimit - p.zones.exArea.length;
       if (ids.length > slots) return fail(state, "Not enough EX space");
+    } else if (to === "hand") {
+      // hand has no hard limit for this search
     }
     for (const id of ids) {
-      const idx = p.zones.deck.findIndex((c) => c.instanceId === id);
+      const idx = next.players[player].zones.deck.findIndex((c) => c.instanceId === id);
       if (idx < 0) continue;
-      const [card] = p.zones.deck.splice(idx, 1);
+      const [card] = next.players[player].zones.deck.splice(idx, 1);
       if (to === "exArea") {
-        if (p.zones.exArea.length >= p.exLimit) break;
-        p.zones.exArea.push(card);
+        if (next.players[player].zones.exArea.length >= next.players[player].exLimit) break;
+        next.players[player].zones.exArea.push(card);
         onCardEntersExArea(next, card.instanceId, player);
+      } else if (to === "hand") {
+        next.players[player].zones.hand.push(card);
+        if (shouldRevealBeforeHand("hand", "deck", choice.reveal)) {
+          next = revealCard(next, player, id, card.name);
+        }
       } else {
-        if (p.zones.field.length >= p.fieldLimit) break;
-        p.zones.field.push(card);
+        if (next.players[player].zones.field.length >= next.players[player].fieldLimit) break;
+        next.players[player].zones.field.push(card);
         onFollowerEntersField(next, card.instanceId, player);
       }
     }
@@ -587,8 +621,10 @@ function handleChoiceResponse(state: GameState, player: PlayerId, payload: Recor
       ) {
         return fail(state, "Field full");
       }
+      // Spells with no legal targets: accept the cemetery choice and close the
+      // prompt, but do not play the card (it stays in the cemetery).
       if (def.cardType === "spell" && !canPlayCardFromZones(next, player, found.card.name)) {
-        return fail(state, "No valid targets");
+        return ok(finishChoiceResolution(next, player));
       }
       next = playCardForFree(next, player, instanceId);
       return ok(finishChoiceResolution(next, player));
@@ -641,7 +677,11 @@ function handleChoiceResponse(state: GameState, player: PlayerId, payload: Recor
     next = moveZoneCardTo(next, player, instanceId, "deck", choice.to);
     if (choice.to === "exArea" && choice.playCostReduction) {
       const moved = findInstance(next, instanceId);
-      if (moved) {
+      if (
+        moved &&
+        (!choice.playCostReductionFilter ||
+          cardMatchesFilter(moved.card.name, choice.playCostReductionFilter))
+      ) {
         moved.card.playCostReduction += choice.playCostReduction;
       }
     }
@@ -906,6 +946,10 @@ function playCard(
   const def = getCardDef(found.card.name);
   if (!def) return fail(state, "Unknown card");
 
+  if (def.cardType === "crest") {
+    return fail(state, "Crests cannot be played");
+  }
+
   if (inQuickWindow && !def.abilities?.some((a) => a.quick)) {
     return fail(state, "Not a quick card");
   }
@@ -923,9 +967,7 @@ function playCard(
   p.flags.cardsPlayedThisTurn += 1;
   consumeGrantedPlayCostReductions(next, player, found.card.name);
 
-  if (def.cardType === "crest") {
-    if (p.zones.exArea.length >= p.exLimit) return fail(state, "EX area full");
-  } else if (p.zones.field.length >= p.fieldLimit && def.cardType !== "spell") {
+  if (p.zones.field.length >= p.fieldLimit && def.cardType !== "spell") {
     return fail(state, "Field full");
   }
 
@@ -953,8 +995,6 @@ function playCard(
         next.resolutionContext = null;
       }
     }
-  } else if (def.cardType === "crest") {
-    next = moveCard(next, handInstanceId, "exArea", player);
   } else if (def.cardType === "follower" || def.cardType === "amulet") {
     next = moveCard(next, handInstanceId, "field", player);
   }

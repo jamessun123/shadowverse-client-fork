@@ -24,23 +24,32 @@ function upsertStats(stats, card) {
   };
 }
 
+function loadCardDefOverlays(dir, stats) {
+  if (!fs.existsSync(dir)) return;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      loadCardDefOverlays(full, stats);
+      continue;
+    }
+    if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
+    const chunk = JSON.parse(fs.readFileSync(full, "utf8"));
+    for (const card of Object.values(chunk)) {
+      // Prefer cards.json when both exist; overlay only fills gaps.
+      if (card?.cardNo && !stats[card.cardNo]) {
+        upsertStats(stats, card);
+      }
+    }
+  }
+}
+
 function main() {
   const cards = JSON.parse(fs.readFileSync(CARDS_DB, "utf8"));
   const stats = {};
   for (const card of Object.values(cards)) {
     upsertStats(stats, card);
   }
-  if (fs.existsSync(CARD_DEFS_DIR)) {
-    for (const file of fs.readdirSync(CARD_DEFS_DIR).filter((f) => f.endsWith(".json"))) {
-      const chunk = JSON.parse(fs.readFileSync(path.join(CARD_DEFS_DIR, file), "utf8"));
-      for (const card of Object.values(chunk)) {
-        // Prefer cards.json when both exist; overlay only fills gaps.
-        if (card?.cardNo && !stats[card.cardNo]) {
-          upsertStats(stats, card);
-        }
-      }
-    }
-  }
+  loadCardDefOverlays(CARD_DEFS_DIR, stats);
   fs.writeFileSync(OUTPUT, JSON.stringify(stats));
   console.log(`Wrote ${OUTPUT} (${Object.keys(stats).length} cards)`);
 }

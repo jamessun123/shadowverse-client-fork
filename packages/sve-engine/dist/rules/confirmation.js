@@ -144,6 +144,7 @@ function markTriggerAbilityUsed(state, trigger) {
         "onCardFused",
         "onAllyFollowerEnter",
         "onOpponentDeckToCemetery",
+        "onAbilityDamageTaken",
     ];
     if (!markableTimings.includes(trigger.timing))
         return;
@@ -163,7 +164,8 @@ function resolveOneTrigger(state, trigger) {
     next.pendingTriggers = next.pendingTriggers.filter((t) => t.id !== trigger.id);
     next.resolutionContext = {
         ...(0, effect_utils_1.contextForTriggerResolution)(next, trigger.sourceInstanceId, trigger.ability.effect),
-        forcedTargetId: trigger.forcedTargetId,
+        // Only auto-target the entered follower when the ability opts in.
+        forcedTargetId: trigger.ability.useEnteredTarget ? trigger.forcedTargetId : undefined,
     };
     next = (0, resolver_1.resolveEffect)(next, trigger.ability.effect, trigger.controller);
     markTriggerAbilityUsed(next, trigger);

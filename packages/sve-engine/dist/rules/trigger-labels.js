@@ -53,6 +53,8 @@ function describeAbility(sourceCardNo, ability) {
                                 ? "When an ally enters the field"
                                 : ability.timing === "onOpponentDeckToCemetery"
                                     ? "When an opponent mills"
-                                    : ability.timing;
+                                    : ability.timing === "onAbilityDamageTaken"
+                                        ? "When this takes ability damage"
+                                        : ability.timing;
     return `${name} — ${timingLabel}: ${describeEffect(ability.effect)}`;
 }

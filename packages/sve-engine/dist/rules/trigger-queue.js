@@ -9,6 +9,7 @@ exports.queueStartOfMainAbilities = queueStartOfMainAbilities;
 exports.queueOnOpponentDeckToCemetery = queueOnOpponentDeckToCemetery;
 exports.queueAllyFollowerEnterTriggers = queueAllyFollowerEnterTriggers;
 exports.queueCemeteryOnAllyFollowerEnter = queueCemeteryOnAllyFollowerEnter;
+exports.queueOnAbilityDamageTaken = queueOnAbilityDamageTaken;
 exports.onCardEntersExAreaTriggers = onCardEntersExAreaTriggers;
 const registry_1 = require("../cards/registry");
 const trigger_labels_1 = require("./trigger-labels");
@@ -263,6 +264,27 @@ function queueCemeteryOnAllyFollowerEnter(state, enteredInstanceId, player) {
                 continue;
             pushTrigger(state, cemCard.instanceId, player, cardNo, ability, "onAllyFollowerEnter", "cafe", `cafe:${idx}`, enteredInstanceId);
         }
+    }
+}
+/** Queue onAbilityDamageTaken for a follower that just took ability damage and survived. */
+function queueOnAbilityDamageTaken(state, instanceId) {
+    const found = (0, queries_1.findInstance)(state, instanceId);
+    if (!found || found.zone !== "field")
+        return;
+    // Most Disdain texts are "During your turn, whenever this takes ability damage…"
+    if (state.activePlayer !== found.player)
+        return;
+    if ((0, passives_1.isBoxed)(found.card, state))
+        return;
+    const cardNo = (0, queries_1.resolveCardNo)(state, found.card);
+    const def = (0, registry_1.getCardDef)(cardNo);
+    for (const [idx, ability] of (def?.abilities ?? []).entries()) {
+        if (ability.timing !== "onAbilityDamageTaken")
+            continue;
+        const key = `onAbilityDamageTaken:${idx}`;
+        if (!canFireLimitedTrigger(found.card, key, ability))
+            continue;
+        pushTrigger(state, found.card.instanceId, found.player, cardNo, ability, "onAbilityDamageTaken", "adt", key);
     }
 }
 function onCardEntersExAreaTriggers(state, instanceId, player) {

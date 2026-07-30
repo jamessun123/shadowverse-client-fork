@@ -18,6 +18,10 @@ export const CardSlice = createSlice({
     enemyHand: [],
     showDice: false,
     showEnemyHand: false,
+    showEnemyCard: false,
+    enemyCard: "",
+    /** Opponent reveals still on screen; click to dismiss each. */
+    enemyRevealedCards: [],
     cardSelectedInHand: -1,
     enemyCardSelectedInHand: -1,
     enemyArrow: { idx: -1, show: false },
@@ -58,6 +62,14 @@ export const CardSlice = createSlice({
     enemyBaneField: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     wardField: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     enemyWardField: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    rushField: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    enemyRushField: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    stormField: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    enemyStormField: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    drainField: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    enemyDrainField: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    intimidateField: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    enemyIntimidateField: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     currentCard: "",
     currentCardIndex: -1,
     currentEvo: "",
@@ -303,9 +315,46 @@ export const CardSlice = createSlice({
     },
     setShowEnemyCard: (state, action) => {
       state.showEnemyCard = action.payload;
+      if (!action.payload) {
+        state.enemyRevealedCards = [];
+        state.enemyCard = "";
+      }
     },
     setEnemyCard: (state, action) => {
       state.enemyCard = action.payload;
+    },
+    queueEnemyRevealedCards: (state, action) => {
+      const items = action.payload ?? [];
+      for (const item of items) {
+        if (!item?.name) continue;
+        state.enemyRevealedCards.push({
+          id: item.id || `reveal-${Date.now()}-${state.enemyRevealedCards.length}`,
+          name: item.name,
+        });
+      }
+      if (state.enemyRevealedCards.length > 0) {
+        state.showEnemyCard = true;
+        state.enemyCard =
+          state.enemyRevealedCards[state.enemyRevealedCards.length - 1].name;
+      }
+    },
+    dismissEnemyRevealedCard: (state, action) => {
+      const id = action.payload;
+      state.enemyRevealedCards = state.enemyRevealedCards.filter(
+        (c) => c.id !== id
+      );
+      if (state.enemyRevealedCards.length === 0) {
+        state.showEnemyCard = false;
+        state.enemyCard = "";
+      } else {
+        state.enemyCard =
+          state.enemyRevealedCards[state.enemyRevealedCards.length - 1].name;
+      }
+    },
+    clearEnemyRevealedCards: (state) => {
+      state.enemyRevealedCards = [];
+      state.showEnemyCard = false;
+      state.enemyCard = "";
     },
     setViewingDeck: (state, action) => {
       socket.emit("send msg", {
@@ -2474,6 +2523,19 @@ export const CardSlice = createSlice({
       if (s.wardField !== undefined) state.wardField = s.wardField;
       if (s.baneField !== undefined) state.baneField = s.baneField;
       if (s.auraField !== undefined) state.auraField = s.auraField;
+      if (s.rushField !== undefined) state.rushField = s.rushField;
+      if (s.stormField !== undefined) state.stormField = s.stormField;
+      if (s.drainField !== undefined) state.drainField = s.drainField;
+      if (s.intimidateField !== undefined) state.intimidateField = s.intimidateField;
+      if (s.enemyWardField !== undefined) state.enemyWardField = s.enemyWardField;
+      if (s.enemyBaneField !== undefined) state.enemyBaneField = s.enemyBaneField;
+      if (s.enemyAuraField !== undefined) state.enemyAuraField = s.enemyAuraField;
+      if (s.enemyRushField !== undefined) state.enemyRushField = s.enemyRushField;
+      if (s.enemyStormField !== undefined) state.enemyStormField = s.enemyStormField;
+      if (s.enemyDrainField !== undefined) state.enemyDrainField = s.enemyDrainField;
+      if (s.enemyIntimidateField !== undefined) {
+        state.enemyIntimidateField = s.enemyIntimidateField;
+      }
       if (s.exPlayCostField !== undefined) state.exPlayCostField = s.exPlayCostField;
       if (s.enemyExPlayCostField !== undefined) {
         state.enemyExPlayCostField = s.enemyExPlayCostField;
@@ -2604,6 +2666,7 @@ export const CardSlice = createSlice({
       state.showEnemyHand = false;
       state.showEnemyCard = false;
       state.enemyCard = "";
+      state.enemyRevealedCards = [];
       state.enemyDeckSize = 0;
       state.enemyLeader = "";
       state.leaderActive = false;
@@ -2706,6 +2769,7 @@ export const CardSlice = createSlice({
       state.showEnemyHand = false;
       state.showEnemyCard = false;
       state.enemyCard = "";
+      state.enemyRevealedCards = [];
       state.cardSelectedInHand = -1;
       state.enemyCardSelectedInHand = -1;
       state.cardSelectedOnField = -1;
@@ -2935,6 +2999,9 @@ export const {
   setEnemyCardSelectedOnField,
   setShowEnemyCard,
   setEnemyCard,
+  queueEnemyRevealedCards,
+  dismissEnemyRevealedCard,
+  clearEnemyRevealedCards,
   setDice,
   setShowDice,
   setEnemyDice,

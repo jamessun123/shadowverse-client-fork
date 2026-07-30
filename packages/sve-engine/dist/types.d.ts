@@ -30,7 +30,9 @@ export type TriggerTiming = "fanfare" | "lastWords" | "onEvolve" | "onSuperEvolv
 /** Fires on either play or fuse of a matching card. */
  | "onCardPlayedOrFused" | "strike" | "startOfMain" | "startOfEnd" | "passive" | "aura" | "onExAreaEntry" | "onAllyFollowerEnter"
 /** Fires when a card moves from an opponent's deck to cemetery during your turn. */
- | "onOpponentDeckToCemetery" | "evolve";
+ | "onOpponentDeckToCemetery"
+/** Fires on a follower during its controller's turn after it takes ability damage and survives. */
+ | "onAbilityDamageTaken" | "evolve";
 export interface AbilityDefinition {
     timing: TriggerTiming | "activated" | "spell";
     cost?: {
@@ -62,6 +64,12 @@ export interface AbilityDefinition {
     condition?: Condition;
     filter?: DeckFilter;
     activateFrom?: "field" | "cemetery" | "exArea" | "hand";
+    /**
+     * When true, onAllyFollowerEnter supplies the entered follower as
+     * forcedTargetId (e.g. "give that follower +1/+1"). Leave false when the
+     * effect should prompt (e.g. "select a follower and deal damage").
+     */
+    useEnteredTarget?: boolean;
     /** Human-readable label for trigger ordering UI. */
     label?: string;
     oncePerTurn?: boolean;
@@ -86,6 +94,8 @@ export type TargetSelector = {
 } | {
     type: "enemyFollower";
     count?: number;
+    minCount?: number;
+    maxCount?: number;
     trait?: string;
     cardType?: CardType;
     excludeSelf?: boolean;
@@ -94,29 +104,39 @@ export type TargetSelector = {
  | {
     type: "enemyLeaderOrFollower";
     count?: number;
+    minCount?: number;
+    maxCount?: number;
     trait?: string;
     cardType?: CardType;
     excludeSelf?: boolean;
 } | {
     type: "anyFollower";
     count?: number;
+    minCount?: number;
+    maxCount?: number;
     trait?: string;
     cardType?: CardType;
     excludeSelf?: boolean;
 } | {
     type: "selfFollower";
     count?: number;
+    minCount?: number;
+    maxCount?: number;
     trait?: string;
     cardType?: CardType;
     excludeSelf?: boolean;
+    includeSelf?: boolean;
 }
 /** Ally field card (follower or amulet), optionally trait-filtered. */
  | {
     type: "selfFieldCard";
     count?: number;
+    minCount?: number;
+    maxCount?: number;
     trait?: string;
     cardType?: CardType;
     excludeSelf?: boolean;
+    includeSelf?: boolean;
 };
 export type DeckFilter = {
     /** Exact card name (gameplay identity). */
@@ -286,6 +306,12 @@ export type Effect = {
     op: "grantKeyword";
     keyword: Keyword;
     targets: TargetSelector;
+}
+/** Grant a keyword to every ally field card matching filter. */
+ | {
+    op: "grantKeywordMatching";
+    keyword: Keyword;
+    filter: DeckFilter;
 } | {
     op: "destroy";
     targets: TargetSelector;
@@ -302,6 +328,11 @@ export type Effect = {
     amount: number;
 } | {
     op: "spendPp";
+    amount: number;
+}
+/** Increase max PP (capped at 10). Does not fill current PP — pair with recoverPp. */
+ | {
+    op: "increaseMaxPp";
     amount: number;
 } | {
     op: "rollDie";
@@ -383,6 +414,11 @@ export type Effect = {
     /** Select a card in an opponent's cemetery and play it for 0 PP. */
     op: "playFromOpponentCemetery";
     filter?: DeckFilter;
+}
+/** Select a card in your cemetery and play it for 0 PP. */
+ | {
+    op: "playFromCemetery";
+    filter?: DeckFilter;
 } | {
     op: "addPersistentCounter";
     key: string;
@@ -428,6 +464,8 @@ export type Effect = {
     to: "hand" | "exArea" | "field";
     optional?: boolean;
     playCostReduction?: number;
+    /** Only apply playCostReduction when the chosen card matches this filter. */
+    playCostReductionFilter?: DeckFilter;
     /** Where unchosen cards from the search go (default cemetery). */
     remainderTo?: "cemetery" | "deckBottom";
     /** Reveal to opponent before adding to hand (default true for deck → hand). */
@@ -490,8 +528,10 @@ export type Effect = {
     /** Cap how many cards may be chosen (default unlimited within cost). */
     maxCount?: number;
     /** Destination zone (default field). */
-    to?: "field" | "exArea";
+    to?: "field" | "exArea" | "hand";
     remainderTo?: "cemetery" | "deckBottom";
+    /** Reveal when adding to hand (default true). */
+    reveal?: boolean;
 } | {
     op: "buryFieldFollowers";
     filter?: DeckFilter;
@@ -503,6 +543,11 @@ export type Effect = {
     amount: DamageAmount;
     followersOnly?: boolean;
     leadersOnly?: boolean;
+}
+/** Deal damage to every follower on both fields. */
+ | {
+    op: "dealDamageAllFollowers";
+    amount: DamageAmount;
 } | {
     op: "grantOnCardPlayed";
     filter?: DeckFilter;
@@ -655,7 +700,13 @@ export type ChoicePrompt = ChoiceSourceContext & ({
         instanceId: string;
         label: string;
         name?: string;
+        /** Relative to the choosing player. */
+        side?: "ally" | "enemy";
     }[];
+    /** Exact count when minCount/maxCount are omitted. Defaults to 1. */
+    count?: number;
+    minCount?: number;
+    maxCount?: number;
 } | {
     type: "selectZoneCard";
     player: PlayerId;
@@ -730,6 +781,7 @@ export type ChoicePrompt = ChoiceSourceContext & ({
         eligible: boolean;
     }[];
     playCostReduction?: number;
+    playCostReductionFilter?: DeckFilter;
     remainderTo?: "cemetery" | "deckBottom";
     reveal?: boolean;
 } | {
@@ -784,10 +836,11 @@ export type ChoicePrompt = ChoiceSourceContext & ({
     player: PlayerId;
     maxTotalCost?: number;
     maxCount?: number;
-    to?: "field" | "exArea";
+    to?: "field" | "exArea" | "hand";
     filter: DeckFilter;
     topInstanceIds: string[];
     remainderTo: "cemetery" | "deckBottom";
+    reveal?: boolean;
     options: {
         instanceId: string;
         label: string;
@@ -825,6 +878,8 @@ export interface ResolutionContext {
     sourceInstanceId?: string;
     effectStack: Effect[];
     forcedTargetId?: string;
+    /** Multi-target selection (e.g. deal damage to up to N allies). */
+    forcedTargetIds?: string[];
     resumeAfterChoice?: Effect[];
     /** While true, queued fanfare/LW/etc. wait until the current effect sequence finishes. */
     deferTriggers?: boolean;

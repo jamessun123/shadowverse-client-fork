@@ -59,11 +59,18 @@ function CardChoiceButton({
   onClick,
   selected,
   disabled = false,
+  side,
   onPreviewStart,
   onPreviewEnd,
 }) {
   const name = resolveChoiceCardName(cardName, cardNo, label);
   const imgSrc = cardImage(name);
+  const sideOutline =
+    side === "ally"
+      ? "2px solid #42a5f5"
+      : side === "enemy"
+        ? "2px solid #ef5350"
+        : "none";
 
   return (
     <Button
@@ -76,40 +83,51 @@ function CardChoiceButton({
         p: 1,
         minWidth: 130,
         textTransform: "none",
-        outline: selected ? "3px solid #f44336" : "none",
+        outline: selected ? "3px solid #f44336" : sideOutline,
         borderRadius: 2,
         opacity: disabled ? 0.45 : 1,
+        backgroundColor:
+          side === "ally"
+            ? "rgba(66, 165, 245, 0.08)"
+            : side === "enemy"
+              ? "rgba(239, 83, 80, 0.08)"
+              : "transparent",
       }}
     >
+      {side && (
+        <Typography
+          variant="caption"
+          sx={{
+            mb: 0.5,
+            px: 0.75,
+            py: 0.15,
+            borderRadius: 1,
+            fontWeight: 700,
+            letterSpacing: 0.3,
+            color: side === "ally" ? "#1565c0" : "#c62828",
+            backgroundColor:
+              side === "ally" ? "rgba(66, 165, 245, 0.2)" : "rgba(239, 83, 80, 0.2)",
+          }}
+        >
+          {side === "ally" ? "Ally" : "Enemy"}
+        </Typography>
+      )}
 
       {imgSrc ? (
-
         <Box
-
           component="img"
-
           src={imgSrc}
-
           alt={name}
-
           title={name}
-
           sx={{ height: 140, borderRadius: 1, boxShadow: 2, mb: 0.5 }}
-
         />
-
       ) : null}
 
       <Typography variant="caption" sx={{ maxWidth: 120, textAlign: "center" }}>
-
         {label}
-
       </Typography>
-
     </Button>
-
   );
-
 }
 
 
@@ -126,6 +144,10 @@ export default function ChoiceModal({ setHovering }) {
   const hand = useSelector((s) => s.card.hand);
 
   const handInstanceIds = useSelector((s) => s.card.handInstanceIds);
+
+  const fieldInstanceIds = useSelector((s) => s.card.fieldInstanceIds);
+
+  const enemyFieldInstanceIds = useSelector((s) => s.card.enemyFieldInstanceIds);
 
   const { sendAction } = useEngineSync();
 
@@ -223,11 +245,19 @@ export default function ChoiceModal({ setHovering }) {
 
     pending.type === "selectTarget"
 
-      ? pending.candidates.map((c) =>
+      ? pending.candidates.map((c) => {
 
-          typeof c === "string" ? { instanceId: c, label: c } : c,
+          const base = typeof c === "string" ? { instanceId: c, label: c } : c;
+          let side = base.side;
+          if (!side) {
+            if (base.instanceId === "leader") side = "enemy";
+            else if (base.instanceId === "selfLeader") side = "ally";
+            else if (fieldInstanceIds?.includes(base.instanceId)) side = "ally";
+            else if (enemyFieldInstanceIds?.includes(base.instanceId)) side = "enemy";
+          }
+          return { ...base, side };
 
-        )
+        })
 
       : [];
 
@@ -302,7 +332,9 @@ export default function ChoiceModal({ setHovering }) {
       const maxSelectable =
         pending.type === "selectZoneCards"
           ? (pending.maxCount ?? pending.count)
-          : pending.count;
+          : pending.type === "selectTarget"
+            ? (pending.maxCount ?? pending.count ?? 1)
+            : pending.count;
       if (prev.length >= maxSelectable) return prev;
 
       return [...prev, instanceId];
@@ -389,7 +421,16 @@ export default function ChoiceModal({ setHovering }) {
 
                   title={name}
 
-                  sx={{ height: 160, borderRadius: 1, boxShadow: 2 }}
+                  onMouseEnter={() => handleChoicePreviewStart(name)}
+
+                  onMouseLeave={() => handleChoicePreviewEnd(name)}
+
+                  sx={{
+                    height: 160,
+                    borderRadius: 1,
+                    boxShadow: 2,
+                    cursor: "pointer",
+                  }}
 
                 />
 
@@ -408,9 +449,19 @@ export default function ChoiceModal({ setHovering }) {
         )}
 
         {pending.type === "selectTarget" && (
-
-          <Typography sx={{ mb: 1 }}>Select a target:</Typography>
-
+          <Typography sx={{ mb: 1 }}>
+            {pending.minCount != null &&
+            pending.maxCount != null &&
+            pending.minCount !== pending.maxCount
+              ? `Select ${pending.minCount}-${pending.maxCount} target${
+                  pending.maxCount === 1 ? "" : "s"
+                } (${selectedDiscardIds.length}/${pending.maxCount}):`
+              : pending.maxCount != null && pending.maxCount > 1
+                ? `Select ${pending.maxCount} target${
+                    pending.maxCount === 1 ? "" : "s"
+                  } (${selectedDiscardIds.length}/${pending.maxCount}):`
+                : "Select a target:"}
+          </Typography>
         )}
 
         {(pending.type === "selectZoneCard" || pending.type === "selectDeckCard") && (
@@ -579,33 +630,83 @@ export default function ChoiceModal({ setHovering }) {
 
 
 
-        {pending.type === "selectTarget" && (
-
-          <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", justifyContent: "center", mt: 1 }}>
-
-            {targetCandidates.map((c) => (
-
-              <CardChoiceButton {...choicePreviewProps}
-
-                key={c.instanceId}
-
-                name={c.name} cardNo={c.cardNo}
-
-                label={c.label}
-
-                onClick={() =>
-
-                  sendAction({ type: "CHOICE_RESPONSE", payload: { targetId: c.instanceId } })
-
+        {pending.type === "selectTarget" && (() => {
+          const multi =
+            (pending.maxCount ?? pending.count ?? 1) > 1 ||
+            (pending.minCount != null &&
+              pending.maxCount != null &&
+              pending.minCount !== pending.maxCount);
+          const allies = targetCandidates.filter((c) => c.side === "ally");
+          const enemies = targetCandidates.filter((c) => c.side === "enemy");
+          const mixed =
+            allies.length > 0 &&
+            enemies.length > 0 &&
+            targetCandidates.some((c) => c.side);
+          const renderTargetButton = (c) => (
+            <CardChoiceButton
+              {...choicePreviewProps}
+              key={c.instanceId}
+              name={c.name}
+              cardNo={c.cardNo}
+              label={c.label}
+              side={mixed ? c.side : undefined}
+              selected={multi && selectedDiscardIds.includes(c.instanceId)}
+              onClick={() => {
+                if (multi) {
+                  toggleDiscard(c.instanceId);
+                  return;
                 }
+                sendAction({
+                  type: "CHOICE_RESPONSE",
+                  payload: { targetId: c.instanceId },
+                });
+              }}
+            />
+          );
 
-              />
+          if (mixed) {
+            return (
+              <Box sx={{ width: "100%" }}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{ mt: 1, mb: 0.5, color: "#c62828", fontWeight: 700 }}
+                >
+                  Enemy
+                </Typography>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{ flexWrap: "wrap", justifyContent: "center" }}
+                >
+                  {enemies.map(renderTargetButton)}
+                </Stack>
+                <Typography
+                  variant="subtitle2"
+                  sx={{ mt: 2, mb: 0.5, color: "#1565c0", fontWeight: 700 }}
+                >
+                  Allied
+                </Typography>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{ flexWrap: "wrap", justifyContent: "center" }}
+                >
+                  {allies.map(renderTargetButton)}
+                </Stack>
+              </Box>
+            );
+          }
 
-            ))}
-
-          </Stack>
-
-        )}
+          return (
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ flexWrap: "wrap", justifyContent: "center", mt: 1 }}
+            >
+              {targetCandidates.map(renderTargetButton)}
+            </Stack>
+          );
+        })()}
 
 
 
@@ -1003,6 +1104,41 @@ export default function ChoiceModal({ setHovering }) {
 
         )}
 
+        {pending.type === "selectTarget" &&
+          ((pending.maxCount ?? pending.count ?? 1) > 1 ||
+            (pending.minCount != null &&
+              pending.maxCount != null &&
+              pending.minCount !== pending.maxCount)) && (
+
+          <Button
+
+            variant="contained"
+
+            disabled={
+              selectedDiscardIds.length < (pending.minCount ?? 0) ||
+              selectedDiscardIds.length > (pending.maxCount ?? pending.count ?? 1)
+            }
+
+            onClick={() =>
+
+              sendAction({
+
+                type: "CHOICE_RESPONSE",
+
+                payload: { targetIds: selectedDiscardIds },
+
+              })
+
+            }
+
+          >
+
+            Confirm
+
+          </Button>
+
+        )}
+
         {pending.type === "selectTrigger" &&
 
           pending.options.map((o) => (
@@ -1203,7 +1339,11 @@ export default function ChoiceModal({ setHovering }) {
 
             >
 
-              {pending.to === "exArea" ? "Confirm selected" : "Summon selected"}
+              {pending.to === "hand"
+                ? "Add to hand"
+                : pending.to === "exArea"
+                  ? "Confirm selected"
+                  : "Summon selected"}
 
             </Button>
 
@@ -1213,7 +1353,11 @@ export default function ChoiceModal({ setHovering }) {
 
             >
 
-              {pending.to === "exArea" ? "Select none" : "Summon none"}
+              {pending.to === "hand"
+                ? "Add none"
+                : pending.to === "exArea"
+                  ? "Select none"
+                  : "Summon none"}
 
             </Button>
 
