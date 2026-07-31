@@ -68,6 +68,7 @@ export default function Home() {
   const [contextMenu, setContextMenu] = useState(null);
   const [roomNumber, setRoomNumber] = useState("");
   const [waitingRoom, setWaitingRoom] = useState("");
+  const [awaitingTurnOrder, setAwaitingTurnOrder] = useState(false);
   const [openRooms, setOpenRooms] = useState([]);
   const [name, setName] = useState("");
   const [open, setOpen] = useState(false);
@@ -80,6 +81,7 @@ export default function Home() {
 
   const reduxDecks = useSelector((state) => state.deck.decks);
   const reduxActiveUsers = useSelector((state) => state.card.activeUsers);
+  const playerSlot = useSelector((state) => state.gameState.playerSlot);
   const deckListRef = useRef(null);
   useEffect(() => {
     const el = deckListRef.current;
@@ -103,6 +105,7 @@ export default function Home() {
       const slot = store.getState().gameState.playerSlot;
       applyEnginePayload(dispatch, views, slot);
       setWaitingRoom("");
+      setAwaitingTurnOrder(false);
       handleNavigateToGame();
     };
 
@@ -117,12 +120,17 @@ export default function Home() {
       socket.emit("request_engine_state");
     };
 
+    const onAwaitingTurnOrder = () => {
+      setAwaitingTurnOrder(true);
+    };
+
     const onOpenRooms = (rooms) => {
       setOpenRooms(Array.isArray(rooms) ? rooms : []);
     };
 
     const onJoinError = ({ error }) => {
       setWaitingRoom("");
+      setAwaitingTurnOrder(false);
       setSnackMessage(error || "Could not join room");
       setOpenSnack(true);
     };
@@ -130,6 +138,7 @@ export default function Home() {
     socket.on("start_game", onStartGame);
     socket.on("engine_state", onEngineState);
     socket.on("joined", onJoined);
+    socket.on("awaiting_turn_order", onAwaitingTurnOrder);
     socket.on("open_rooms", onOpenRooms);
     socket.on("join_error", onJoinError);
     socket.on("active_users", (data) => {
@@ -141,6 +150,7 @@ export default function Home() {
       socket.off("start_game", onStartGame);
       socket.off("engine_state", onEngineState);
       socket.off("joined", onJoined);
+      socket.off("awaiting_turn_order", onAwaitingTurnOrder);
       socket.off("open_rooms", onOpenRooms);
       socket.off("join_error", onJoinError);
     };
@@ -239,7 +249,12 @@ export default function Home() {
   const handleCancelWaiting = () => {
     socket.emit("leave_room");
     setWaitingRoom("");
+    setAwaitingTurnOrder(false);
     setRoomNumber("");
+  };
+
+  const handleChooseTurnOrder = (choice) => {
+    socket.emit("choose_turn_order", { choice });
   };
 
   const handleDeleteDeck = () => {
@@ -779,31 +794,77 @@ export default function Home() {
             fontSize: "28px",
             fontFamily: "Noto Serif JP, serif",
             display: "flex",
+            flexDirection: "column",
             alignItems: "center",
-            gap: "0.75em",
+            gap: "0.5em",
             backgroundColor: "rgba(10, 14, 20, 0.8)",
             border: "1px solid rgba(72, 171, 224, 0.5)",
             borderRadius: "10px",
-            padding: "0.4em 0.9em",
+            padding: "0.5em 1em",
             zIndex: 5,
           }}
         >
-          <span>
-            Waiting in room {waitingRoom} — 1/2 players
-          </span>
-          <Button
-            onClick={handleCancelWaiting}
-            sx={{
-              color: "#daf6ff",
-              textTransform: "none",
-              fontFamily: "Noto Serif JP, serif",
-              minWidth: 0,
-              padding: "2px 10px",
-              border: "1px solid rgba(72, 171, 224, 0.45)",
-            }}
-          >
-            Cancel
-          </Button>
+          {awaitingTurnOrder ? (
+            playerSlot === 0 ? (
+              <>
+                <span>Choose who goes first</span>
+                <div style={{ display: "flex", gap: "0.5em", flexWrap: "wrap", justifyContent: "center" }}>
+                  <Button
+                    onClick={() => handleChooseTurnOrder("first")}
+                    sx={{
+                      color: "#daf6ff",
+                      textTransform: "none",
+                      fontFamily: "Noto Serif JP, serif",
+                      border: "1px solid rgba(72, 171, 224, 0.45)",
+                    }}
+                  >
+                    Go First
+                  </Button>
+                  <Button
+                    onClick={() => handleChooseTurnOrder("second")}
+                    sx={{
+                      color: "#daf6ff",
+                      textTransform: "none",
+                      fontFamily: "Noto Serif JP, serif",
+                      border: "1px solid rgba(72, 171, 224, 0.45)",
+                    }}
+                  >
+                    Go Second
+                  </Button>
+                  <Button
+                    onClick={() => handleChooseTurnOrder("random")}
+                    sx={{
+                      color: "#daf6ff",
+                      textTransform: "none",
+                      fontFamily: "Noto Serif JP, serif",
+                      border: "1px solid rgba(72, 171, 224, 0.45)",
+                    }}
+                  >
+                    Random
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <span>Waiting for host to choose turn order…</span>
+            )
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75em" }}>
+              <span>Waiting in room {waitingRoom} — 1/2 players</span>
+              <Button
+                onClick={handleCancelWaiting}
+                sx={{
+                  color: "#daf6ff",
+                  textTransform: "none",
+                  fontFamily: "Noto Serif JP, serif",
+                  minWidth: 0,
+                  padding: "2px 10px",
+                  border: "1px solid rgba(72, 171, 224, 0.45)",
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
         </div>
       )}
       <div

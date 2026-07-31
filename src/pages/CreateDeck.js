@@ -22,6 +22,7 @@ import {
   DialogTitle, Snackbar, SnackbarContent, IconButton,
 } from "@mui/material";
 import { matchesFilters, hasActiveFilters, getCost } from "../decks/cardDetails";
+import { isAutomatedCard } from "../decks/automatedCards";
 import FilterBar from "../components/deckbuilder/FilterBar";
 import CardGrid from "../components/deckbuilder/CardGrid";
 import CardInspector from "../components/deckbuilder/CardInspector";
@@ -58,6 +59,7 @@ export default function CreateDeck() {
   const [costs, setCosts] = useState([]);
   const [attacks, setAttacks] = useState([]);
   const [defenses, setDefenses] = useState([]);
+  const [automatedOnly, setAutomatedOnly] = useState(true);
 
   const [visibleCount, setVisibleCount] = useState(CARD_PAGE_SIZE);
 
@@ -233,9 +235,10 @@ export default function CreateDeck() {
     if (q) list = list.filter((n) => n.toLowerCase().includes(q));
     const filters = { types, traits, rarities, costs, attacks, defenses };
     if (hasActiveFilters(filters)) list = list.filter((n) => matchesFilters(n, filters));
+    if (automatedOnly) list = list.filter((n) => isAutomatedCard(n));
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mainSelected, buttonFilterSet, buttonFilterClass, search, types, traits, rarities, costs, attacks, defenses]);
+  }, [mainSelected, buttonFilterSet, buttonFilterClass, search, types, traits, rarities, costs, attacks, defenses, automatedOnly]);
 
   useEffect(() => setVisibleCount(CARD_PAGE_SIZE), [displayed]);
 
@@ -371,6 +374,7 @@ export default function CreateDeck() {
             costs={costs} onCosts={setCosts}
             attacks={attacks} onAttacks={setAttacks}
             defenses={defenses} onDefenses={setDefenses}
+            automatedOnly={automatedOnly} onAutomatedOnly={setAutomatedOnly}
             onClear={clearFilters}
           />
           <div id="poolScroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", background: COLORS.inset }}>
@@ -386,6 +390,7 @@ export default function CreateDeck() {
               onRemove={mainSelected ? handleCardRemove : handleEvoCardRemove}
               isAtLimit={mainSelected ? mainAtLimit : evoAtLimit}
               countOf={mainSelected ? (n) => deckMap.get(n) || 0 : (n) => evoDeckMap.get(n) || 0}
+              isAutomated={isAutomatedCard}
             />
           </div>
         </main>

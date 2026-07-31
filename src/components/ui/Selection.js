@@ -91,6 +91,7 @@ import {
   reset,
   exitGame,
   setRematchStatus,
+  setEnemyRematchStatus,
 } from "../../redux/CardSlice";
 
 export default function Selection({ setSelectedOption }) {
@@ -121,6 +122,7 @@ export default function Selection({ setSelectedOption }) {
   const [openDialog, setOpenDialog] = useState(false);
 
   const [rematchOpenDialog, setRematchOpenDialog] = useState(false);
+  const [awaitingTurnOrder, setAwaitingTurnOrder] = useState(false);
 
   // const [rematchNotify, setRematchNotify] = useState(false);
   const reduxRoom = useSelector((state) => state.card.room);
@@ -146,12 +148,8 @@ export default function Selection({ setSelectedOption }) {
 
   const handleRematch = () => {
     if (acceptRematch && reduxEnemyRematchStatus) {
-      // Both sides have accepted. The server starts a new game (with randomized
-      // turn order) once both request_rematch votes arrive — engine_state will
-      // replace the board. Only clear local rematch UI / card chrome here.
-      if (gameMode === "automated") {
-        clearSavedState(reduxRoom?.toString?.() || String(reduxRoom || ""));
-      }
+      // Automated: server waits for host turn-order choice before starting.
+      if (gameMode === "automated") return;
       dispatch(reset());
       setAcceptRematch(false);
       setRematchOpenDialog(false);
@@ -174,19 +172,23 @@ export default function Selection({ setSelectedOption }) {
   const handleAcceptRematchUI = () => {
     setAcceptRematch(true);
     dispatch(setRematchStatus(true));
-    // Vote immediately so the server can start when both players have accepted
-    // (and re-roll who goes first).
+    // Vote immediately so the server can prompt turn order when both accept.
     if (gameMode === "automated") {
       socket.emit("request_rematch");
     }
   };
   const handleDeclineRematchUI = () => {
     setAcceptRematch(false);
+    setAwaitingTurnOrder(false);
     handleCloseRematchDialog();
     dispatch(setRematchStatus(false));
     if (gameMode === "automated") {
       socket.emit("cancel_rematch");
     }
+  };
+
+  const handleChooseTurnOrder = (choice) => {
+    socket.emit("choose_turn_order", { choice });
   };
 
   const handleOpenDialog = () => {
@@ -202,6 +204,7 @@ export default function Selection({ setSelectedOption }) {
   };
 
   const handleCloseRematchDialog = () => {
+    if (awaitingTurnOrder) return;
     setRematchOpenDialog(false);
   };
 
@@ -217,8 +220,8 @@ export default function Selection({ setSelectedOption }) {
 
   useEffect(() => {
     if (reduxEnemyRematchStatus) setRematchOpenDialog(true);
-    else setRematchOpenDialog(false);
-  }, [reduxEnemyRematchStatus]);
+    else if (!awaitingTurnOrder) setRematchOpenDialog(false);
+  }, [reduxEnemyRematchStatus, awaitingTurnOrder]);
 
   useEffect(() => {
     handleRematch();
@@ -227,6 +230,46 @@ export default function Selection({ setSelectedOption }) {
   useEffect(() => {
     handleRematch();
   }, [reduxEnemyRematchStatus]);
+
+  useEffect(() => {
+    if (gameMode !== "automated") return undefined;
+
+    const onAwaitingTurnOrder = ({ rematch } = {}) => {
+      if (!rematch) return;
+      setAwaitingTurnOrder(true);
+      setRematchOpenDialog(true);
+    };
+
+    const onTurnOrderCancelled = () => {
+      setAwaitingTurnOrder(false);
+      setAcceptRematch(false);
+      setRematchOpenDialog(false);
+      dispatch(setRematchStatus(false));
+    };
+
+    const onEngineState = () => {
+      setAwaitingTurnOrder((wasAwaiting) => {
+        if (wasAwaiting) {
+          clearSavedState(reduxRoom?.toString?.() || String(reduxRoom || ""));
+          setAcceptRematch(false);
+          setRematchOpenDialog(false);
+          dispatch(setRematchStatus(false));
+          dispatch(setEnemyRematchStatus(false));
+        }
+        return false;
+      });
+    };
+
+    socket.on("awaiting_turn_order", onAwaitingTurnOrder);
+    socket.on("turn_order_cancelled", onTurnOrderCancelled);
+    socket.on("engine_state", onEngineState);
+
+    return () => {
+      socket.off("awaiting_turn_order", onAwaitingTurnOrder);
+      socket.off("turn_order_cancelled", onTurnOrderCancelled);
+      socket.off("engine_state", onEngineState);
+    };
+  }, [dispatch, gameMode, reduxRoom]);
 
   return (
     <>
@@ -362,99 +405,148 @@ export default function Selection({ setSelectedOption }) {
         onClose={handleCloseRematchDialog}
         aria-labelledby="responsive-dialog-title"
       >
-        {/* has not sent or received a rematch request */}
-        {!acceptRematch && !reduxEnemyRematchStatus && (
-          <DialogTitle id="responsive-dialog-title">
-            {"Rematch Request"}
-          </DialogTitle>
+        {awaitingTurnOrder ? (
+          <>
+            <DialogTitle id="responsive-dialog-title">
+              {playerSlot === 0 ? "Choose Turn Order" : "Waiting for Host"}
+            </DialogTitle>
+            <DialogContent>
+              {playerSlot === 0 ? (
+                <DialogContentText>
+                  Both players accepted the rematch. Choose who goes first.
+                </DialogContentText>
+              ) : (
+                <DialogContentText>
+                  Waiting for the host to choose turn order…
+                </DialogContentText>
+              )}
+              {playerSlot !== 0 && (
+                <motion.div
+                  transition={{ duration: 7, repeat: Infinity }}
+                  animate={{ rotateY: 360 }}
+                >
+                  <img height={"160px"} src={img} alt={"bellringer"} />
+                </motion.div>
+              )}
+            </DialogContent>
+            <DialogActions>
+              {playerSlot === 0 ? (
+                <>
+                  <Button onClick={handleDeclineRematchUI}>Cancel</Button>
+                  <Button onClick={() => handleChooseTurnOrder("first")} autoFocus>
+                    Go First
+                  </Button>
+                  <Button onClick={() => handleChooseTurnOrder("second")}>
+                    Go Second
+                  </Button>
+                  <Button onClick={() => handleChooseTurnOrder("random")}>
+                    Random
+                  </Button>
+                </>
+              ) : (
+                <Button onClick={handleDeclineRematchUI} autoFocus>
+                  Cancel
+                </Button>
+              )}
+            </DialogActions>
+          </>
+        ) : (
+          <>
+            {/* has not sent or received a rematch request */}
+            {!acceptRematch && !reduxEnemyRematchStatus && (
+              <DialogTitle id="responsive-dialog-title">
+                {"Rematch Request"}
+              </DialogTitle>
+            )}
+
+            {/* has sent a rematch request */}
+            {acceptRematch && !reduxEnemyRematchStatus && (
+              <DialogTitle id="responsive-dialog-title">
+                {"Sent Rematch Request"}
+              </DialogTitle>
+            )}
+
+            {/* has received a rematch request */}
+            {!acceptRematch && reduxEnemyRematchStatus && (
+              <DialogTitle id="responsive-dialog-title">
+                {"Rematch Request Received"}
+              </DialogTitle>
+            )}
+            <DialogContent>
+              {/* has not sent or received a rematch request */}
+              {!acceptRematch && !reduxEnemyRematchStatus && (
+                <DialogContentText>
+                  Send a Rematch Request to your Opponent?
+                </DialogContentText>
+              )}
+
+              {/* has sent a rematch request */}
+              {acceptRematch && !reduxEnemyRematchStatus && (
+                <DialogContentText>
+                  Waiting for Opponent to accept Rematch Request...
+                </DialogContentText>
+              )}
+
+              {/* has received a rematch request */}
+              {!acceptRematch && reduxEnemyRematchStatus && (
+                <DialogContentText>
+                  Opponent has asked for a Rematch
+                </DialogContentText>
+              )}
+
+              {/* has sent a rematch request */}
+              {acceptRematch && !reduxEnemyRematchStatus && (
+                <motion.div
+                  transition={{ duration: 7, repeat: Infinity }}
+                  animate={{ rotateY: 360 }}
+                >
+                  <img height={"160px"} src={img} alt={"bellringer"} />
+                </motion.div>
+              )}
+
+              {/* has received a rematch request */}
+              {!acceptRematch && reduxEnemyRematchStatus && (
+                <motion.div
+                  transition={{ duration: 7, repeat: Infinity }}
+                  animate={{ rotateY: 360 }}
+                >
+                  <img height={"160px"} src={img} alt={"bellringer"} />
+                </motion.div>
+              )}
+            </DialogContent>
+
+            <DialogActions>
+              {/* has not sent or received a rematch request */}
+              {!acceptRematch && !reduxEnemyRematchStatus && (
+                <Button autoFocus onClick={handleCloseRematchDialog}>
+                  No
+                </Button>
+              )}
+              {!acceptRematch && !reduxEnemyRematchStatus && (
+                <Button onClick={handleAcceptRematchUI} autoFocus>
+                  Yes
+                </Button>
+              )}
+              {/* has sent a rematch request */}
+              {acceptRematch && !reduxEnemyRematchStatus && (
+                <Button onClick={handleDeclineRematchUI} autoFocus>
+                  Cancel
+                </Button>
+              )}
+              {/* has received a rematch request */}
+              {!acceptRematch && reduxEnemyRematchStatus && (
+                <Button autoFocus onClick={handleCloseRematchDialog}>
+                  No
+                </Button>
+              )}
+              {!acceptRematch && reduxEnemyRematchStatus && (
+                <Button autoFocus onClick={handleAcceptRematchUI}>
+                  Yes
+                </Button>
+              )}
+            </DialogActions>
+          </>
         )}
-
-        {/* has sent a rematch request */}
-        {acceptRematch && !reduxEnemyRematchStatus && (
-          <DialogTitle id="responsive-dialog-title">
-            {"Sent Rematch Request"}
-          </DialogTitle>
-        )}
-
-        {/* has received a rematch request */}
-        {!acceptRematch && reduxEnemyRematchStatus && (
-          <DialogTitle id="responsive-dialog-title">
-            {"Rematch Request Received"}
-          </DialogTitle>
-        )}
-        <DialogContent>
-          {/* has not sent or received a rematch request */}
-          {!acceptRematch && !reduxEnemyRematchStatus && (
-            <DialogContentText>
-              Send a Rematch Request to your Opponent?
-            </DialogContentText>
-          )}
-
-          {/* has sent a rematch request */}
-          {acceptRematch && !reduxEnemyRematchStatus && (
-            <DialogContentText>
-              Waiting for Opponent to accept Rematch Request...
-            </DialogContentText>
-          )}
-
-          {/* has received a rematch request */}
-          {!acceptRematch && reduxEnemyRematchStatus && (
-            <DialogContentText>
-              Opponent has asked for a Rematch
-            </DialogContentText>
-          )}
-
-          {/* has sent a rematch request */}
-          {acceptRematch && !reduxEnemyRematchStatus && (
-            <motion.div
-              transition={{ duration: 7, repeat: Infinity }}
-              animate={{ rotateY: 360 }}
-            >
-              <img height={"160px"} src={img} alt={"bellringer"} />
-            </motion.div>
-          )}
-
-          {/* has received a rematch request */}
-          {!acceptRematch && reduxEnemyRematchStatus && (
-            <motion.div
-              transition={{ duration: 7, repeat: Infinity }}
-              animate={{ rotateY: 360 }}
-            >
-              <img height={"160px"} src={img} alt={"bellringer"} />
-            </motion.div>
-          )}
-        </DialogContent>
-
-        <DialogActions>
-          {/* has not sent or received a rematch request */}
-          {!acceptRematch && !reduxEnemyRematchStatus && (
-            <Button autoFocus onClick={handleCloseRematchDialog}>
-              No
-            </Button>
-          )}
-          {!acceptRematch && !reduxEnemyRematchStatus && (
-            <Button onClick={handleAcceptRematchUI} autoFocus>
-              Yes
-            </Button>
-          )}
-          {/* has sent a rematch request */}
-          {acceptRematch && !reduxEnemyRematchStatus && (
-            <Button onClick={handleDeclineRematchUI} autoFocus>
-              Cancel
-            </Button>
-          )}
-          {/* has received a rematch request */}
-          {!acceptRematch && reduxEnemyRematchStatus && (
-            <Button autoFocus onClick={handleCloseRematchDialog}>
-              No
-            </Button>
-          )}
-          {!acceptRematch && reduxEnemyRematchStatus && (
-            <Button autoFocus onClick={handleAcceptRematchUI}>
-              Yes
-            </Button>
-          )}
-        </DialogActions>
       </Dialog>
 
       <Dialog

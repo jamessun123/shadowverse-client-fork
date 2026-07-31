@@ -1257,6 +1257,14 @@ export function resolveEffect(
 
         next.eventLog.push({ type: "millOpponent", player, data: { name: card.name } });
 
+        // Track for follow-up conditions (e.g. Arsène Lupin fanfare loot).
+        next.resolutionContext = {
+          ...next.resolutionContext,
+          sourceInstanceId: next.resolutionContext?.sourceInstanceId,
+          effectStack: next.resolutionContext?.effectStack ?? [],
+          lastDiscardedCardName: card.name,
+        };
+
         queueOnOpponentDeckToCemetery(next);
 
       }
@@ -1446,10 +1454,8 @@ export function resolveEffect(
 
       fieldOnNext.card.evolvedThisTurn = true;
 
-      // Preserve prior leader-attack eligibility; Rush comes from evolvedThisTurn.
-
-      next.players[player].flags.evolvedThisTurn = true;
-
+      // Effect evolves (e.g. Adherent of Hollowness fanfare) grant Rush via
+      // card.evolvedThisTurn but must not consume the once-per-turn evolve action.
       next.players[player].zones.evolveZone.push({
 
         fieldInstanceId: sourceId,

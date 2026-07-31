@@ -110,6 +110,125 @@
       }
     ]
   },
+  "Arsène Lupin": {
+    "name": "Arsène Lupin",
+    "cardNo": "BP15-024EN",
+    "class": "sword",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 1,
+    "cardType": "follower",
+    "traits": [
+      "Officer",
+      "Thief"
+    ],
+    "keywords": [
+      "fanfare",
+      "evolve"
+    ],
+    "evolveCost": 1,
+    "evolvesTo": "Arsène Lupin Evolved",
+    "cardText": "[evolve] [cost01]: Evolve this. [fanfare] Each opponent buries the top card of their deck. If a follower was buried this way, put a Gilded Blade token into your EX area. If a spell or amulet was buried this way, put a Gilded Goblet token into your EX area.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "millOpponent",
+              "count": 1
+            },
+            {
+              "op": "if",
+              "condition": {
+                "type": "discardedCardType",
+                "cardType": "follower"
+              },
+              "then": {
+                "op": "summon",
+                "tokenName": "Gilded Blade",
+                "count": 1,
+                "zone": "exArea"
+              }
+            },
+            {
+              "op": "if",
+              "condition": {
+                "type": "discardedCardType",
+                "cardType": "spell"
+              },
+              "then": {
+                "op": "summon",
+                "tokenName": "Gilded Goblet",
+                "count": 1,
+                "zone": "exArea"
+              }
+            },
+            {
+              "op": "if",
+              "condition": {
+                "type": "discardedCardType",
+                "cardType": "amulet"
+              },
+              "then": {
+                "op": "summon",
+                "tokenName": "Gilded Goblet",
+                "count": 1,
+                "zone": "exArea"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "timing": "evolve",
+        "cost": {
+          "pp": 1
+        },
+        "effect": {
+          "op": "noop"
+        }
+      }
+    ]
+  },
+  "Arsène Lupin Evolved": {
+    "name": "Arsène Lupin Evolved",
+    "cardNo": "BP15-025EN",
+    "class": "sword",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 3,
+    "defense": 2,
+    "cardType": "follower",
+    "traits": [
+      "Officer",
+      "Thief"
+    ],
+    "keywords": [
+      "onEvolve"
+    ],
+    "evolvesFrom": "Arsène Lupin",
+    "cardText": "On Evolve - Look at the top 4 cards of your deck. You may reveal a Thief card from among them and add it to your hand. Put the rest on the bottom of your deck in any order.",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "effect": {
+          "op": "searchDeckChoose",
+          "filter": {
+            "trait": "Thief"
+          },
+          "lookAt": 4,
+          "to": "hand",
+          "optional": true,
+          "remainderTo": "deckBottom",
+          "reveal": true
+        }
+      }
+    ]
+  },
   "Ultimate Hollow": {
     "name": "Ultimate Hollow",
     "cardNo": "BP15-026EN",

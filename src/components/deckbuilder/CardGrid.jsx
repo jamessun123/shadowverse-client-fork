@@ -6,6 +6,7 @@ import { Skeleton } from "@mui/material";
 import { motion } from "framer-motion";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
+import VerifiedIcon from "@mui/icons-material/Verified";
 import { cardImage } from "../../decks/getCards";
 import { COLORS, FONT } from "./theme";
 
@@ -14,7 +15,7 @@ const H = 173;
 
 export default function CardGrid({
   names, visibleCount, onLoadMore, hasMore, scrollTargetId,
-  onInspect, onAdd, onRemove, isAtLimit, countOf, inspectedName,
+  onInspect, onAdd, onRemove, isAtLimit, countOf, inspectedName, isAutomated,
 }) {
   return (
     <InfiniteScroll
@@ -25,7 +26,7 @@ export default function CardGrid({
       scrollThreshold={0.85}
       scrollableTarget={scrollTargetId}
       style={{
-        display: "flex", flexWrap: "wrap", gap: 9, justifyContent: "flex-start",
+        display: "flex", flexWrap: "wrap", gap: 9, alignContent: "flex-start",
         alignItems: "flex-start", padding: "14px 14px 80px",
       }}
     >
@@ -36,6 +37,7 @@ export default function CardGrid({
           count={countOf ? countOf(name) : 0}
           maxed={isAtLimit ? isAtLimit(name) : false}
           selected={name === inspectedName}
+          automated={isAutomated ? isAutomated(name) : false}
           onInspect={onInspect}
           onAdd={onAdd}
           onRemove={onRemove}
@@ -50,7 +52,7 @@ export default function CardGrid({
   );
 }
 
-function CardTile({ name, count, maxed, selected, onInspect, onAdd, onRemove }) {
+function CardTile({ name, count, maxed, selected, automated, onInspect, onAdd, onRemove }) {
   const [hover, setHover] = React.useState(false);
   const btnBase = {
     position: "absolute", bottom: 6, width: 28, height: 28, borderRadius: "50%",
@@ -82,6 +84,27 @@ function CardTile({ name, count, maxed, selected, onInspect, onAdd, onRemove }) 
       />
 
       {count > 0 && <div style={countBadge}>{count}</div>}
+
+      {automated && (
+        <div
+          title="Automated — playable in Rules Enforced"
+          style={{
+            position: "absolute",
+            top: 4,
+            right: 4,
+            width: 26,
+            height: 26,
+            borderRadius: "50%",
+            background: "rgba(0,0,0,0.65)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 1px 4px rgba(0,0,0,0.45)",
+          }}
+        >
+          <VerifiedIcon sx={{ fontSize: 18, color: "#66bb6a" }} />
+        </div>
+      )}
 
       <button
         onClick={(e) => { e.stopPropagation(); if (count > 0 && onRemove) onRemove(name); }}

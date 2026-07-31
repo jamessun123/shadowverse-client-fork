@@ -20,6 +20,8 @@ class GameRoom {
     this.hostDeckName = null;
     /** Slots that have voted for a rematch (cleared when a new game starts). */
     this.rematchVotes = new Set();
+    /** True while both decks are ready and the host must pick turn order. */
+    this.awaitingTurnOrder = false;
   }
 
   addPlayer(socketId, playerId) {
@@ -63,6 +65,7 @@ class GameRoom {
     this.state = state;
     this.seq += 1;
     this.rematchVotes = new Set();
+    this.awaitingTurnOrder = false;
     return this.broadcastViews();
   }
 

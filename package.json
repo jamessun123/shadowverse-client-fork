@@ -49,8 +49,9 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "npm run build:engine && react-scripts build",
-    "build:engine": "npm run build -w sve-engine && node src/scripts/sync-card-stats.js",
+    "build:engine": "npm run build -w sve-engine && node src/scripts/sync-card-stats.js && node src/scripts/generate-automated-cards.js",
     "sync:cards": "node src/scripts/backfill-reprints.js",
+    "generate:automated-cards": "node src/scripts/generate-automated-cards.js",
     "test": "react-scripts test",
     "test:engine": "npm run test -w sve-engine",
     "server": "npm run start -w shadowverse-server",

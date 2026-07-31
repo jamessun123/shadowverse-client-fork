@@ -158,20 +158,40 @@ io.on("connection", (socket) => {
     if (deck) {
       gameRoom.pendingDecks = gameRoom.pendingDecks || {};
       gameRoom.pendingDecks[slot] = deck;
-      if (gameRoom.pendingDecks[0] && gameRoom.pendingDecks[1]) {
-        const firstPlayer = Math.random() < 0.5 ? 0 : 1;
-        const views = gameRoom.startAutomatedGame(
-          [gameRoom.pendingDecks[0], gameRoom.pendingDecks[1]],
-          firstPlayer,
-        );
-        io.to(room).emit("engine_state", views);
-        broadcastOpenRooms();
+      if (gameRoom.pendingDecks[0] && gameRoom.pendingDecks[1] && !gameRoom.state) {
+        gameRoom.awaitingTurnOrder = true;
+        io.to(room).emit("awaiting_turn_order", { rematch: false });
       }
     }
   });
 
   socket.on("leave_room", () => {
     leaveWaitingRoom(socket);
+  });
+
+  socket.on("choose_turn_order", (payload) => {
+    const roomId = socket.data.room;
+    if (!roomId) return;
+    const gameRoom = rooms.get(roomId);
+    if (!gameRoom?.awaitingTurnOrder) return;
+    const slot = gameRoom.getSlot(socket.id);
+    if (slot !== 0) {
+      socket.emit("engine_error", { error: "Only the room host can choose turn order" });
+      return;
+    }
+    const decks = gameRoom.pendingDecks;
+    if (!decks?.[0] || !decks?.[1]) return;
+
+    const choice = payload?.choice;
+    let firstPlayer;
+    if (choice === "first") firstPlayer = 0;
+    else if (choice === "second") firstPlayer = 1;
+    else firstPlayer = Math.random() < 0.5 ? 0 : 1;
+
+    gameRoom.awaitingTurnOrder = false;
+    const views = gameRoom.startAutomatedGame([decks[0], decks[1]], firstPlayer);
+    io.to(roomId).emit("engine_state", views);
+    broadcastOpenRooms();
   });
 
   socket.on("request_rematch", () => {
@@ -190,10 +210,9 @@ io.on("connection", (socket) => {
 
     if (gameRoom.rematchVotes.size < 2) return;
 
-    // Fresh coin flip each rematch — do not reuse the previous first player.
-    const firstPlayer = Math.random() < 0.5 ? 0 : 1;
-    const views = gameRoom.startAutomatedGame([decks[0], decks[1]], firstPlayer);
-    io.to(roomId).emit("engine_state", views);
+    // Both accepted — host picks turn order before the new match starts.
+    gameRoom.awaitingTurnOrder = true;
+    io.to(roomId).emit("awaiting_turn_order", { rematch: true });
   });
 
   socket.on("cancel_rematch", () => {
@@ -204,6 +223,12 @@ io.on("connection", (socket) => {
     const slot = gameRoom.getSlot(socket.id);
     if (slot == null) return;
     gameRoom.rematchVotes?.delete(slot);
+    // If we were waiting on turn order for a rematch, cancel that too.
+    if (gameRoom.awaitingTurnOrder && gameRoom.state) {
+      gameRoom.awaitingTurnOrder = false;
+      gameRoom.rematchVotes = new Set();
+      io.to(roomId).emit("turn_order_cancelled");
+    }
   });
 
   socket.on("engine_action", ({ actionId, action }) => {

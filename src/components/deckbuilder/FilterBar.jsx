@@ -6,6 +6,7 @@ import {
 import TuneIcon from "@mui/icons-material/Tune";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import VerifiedIcon from "@mui/icons-material/Verified";
 import {
   CARD_TYPES, TRAITS, RARITIES, COST_BUCKETS, STAT_BUCKETS, hasActiveFilters,
 } from "../../decks/cardDetails";
@@ -74,6 +75,7 @@ export default function FilterBar({
   costs, onCosts,
   attacks, onAttacks,
   defenses, onDefenses,
+  automatedOnly, onAutomatedOnly,
   onClear,
 }) {
   const filters = { types, traits, rarities, costs, attacks, defenses };
@@ -100,6 +102,15 @@ export default function FilterBar({
           <ToggleButton value="main">Main</ToggleButton>
           <ToggleButton value="evo">Evolve</ToggleButton>
         </ToggleButtonGroup>
+
+        <Pill
+          active={automatedOnly}
+          accent="#2e7d32"
+          onClick={() => onAutomatedOnly(!automatedOnly)}
+        >
+          <VerifiedIcon sx={{ fontSize: 16 }} />
+          Automated
+        </Pill>
 
         <TextField size="small" placeholder="Search cards…" value={search}
           onChange={(e) => onSearch(e.target.value)} sx={{ ...fieldSx, flex: "1 1 200px" }} />
