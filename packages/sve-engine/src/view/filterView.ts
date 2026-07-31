@@ -1,7 +1,7 @@
 import { applyAction } from "../actions/applyAction";
 import { getCardDef } from "../cards/registry";
 import { canPlayCardFromZones } from "../effects/resolver";
-import { AbilityDefinition, GameState, PlayerId, PlayerView } from "../types";
+import { AbilityDefinition, GameState, Keyword, PlayerId, PlayerView } from "../types";
 import { isAdvanceAbility } from "../rules/effect-utils";
 import { describeEffect } from "../rules/trigger-labels";
 import {
@@ -282,6 +282,28 @@ export function createPlayerView(state: GameState, self: PlayerId): PlayerView {
     );
   }
 
+  const combatKeywordList: Keyword[] = [
+    "ward",
+    "bane",
+    "aura",
+    "rush",
+    "storm",
+    "drain",
+    "intimidate",
+  ];
+  const activeKeywords: Record<string, Keyword[]> = {};
+  const collectActiveKeywords = (owner: PlayerId, card: (typeof state.players)[0]["zones"]["field"][0]) => {
+    activeKeywords[card.instanceId] = combatKeywordList.filter((kw) =>
+      hasKeyword(card, kw, state, owner),
+    );
+  };
+  for (const card of state.players[self].zones.field) collectActiveKeywords(self, card);
+  for (const card of state.players[self].zones.exArea) collectActiveKeywords(self, card);
+  for (const card of state.players[opponent].zones.field) collectActiveKeywords(opponent, card);
+  for (const card of state.players[opponent].zones.exArea) {
+    collectActiveKeywords(opponent, card);
+  }
+
   return {
     self,
     state: view,
@@ -294,6 +316,7 @@ export function createPlayerView(state: GameState, self: PlayerId): PlayerView {
     activateOptions,
     exPlayCosts,
     opponentExPlayCosts,
+    activeKeywords,
   };
 }
 

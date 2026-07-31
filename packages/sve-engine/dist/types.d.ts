@@ -587,6 +587,8 @@ export interface CardInstance {
     persistentCounters?: Record<string, number>;
     /** Option indices chosen this turn for choose effects, keyed by trackKey. */
     chosenChooseOptionsThisTurn?: Record<string, number[]>;
+    /** Option labels chosen this turn for choose effects, keyed by trackKey. */
+    chosenChooseOptionLabelsThisTurn?: Record<string, string[]>;
     enteredFieldTurn: number;
     evolvedThisTurn: boolean;
     superEvolved: boolean;
@@ -651,6 +653,11 @@ export interface PlayerFlags {
      * effects, keyed by trackKey (e.g. Barbaros loot modes).
      */
     chosenChooseOptionTracksThisTurn?: Record<string, number[]>;
+    /**
+     * Choose-option labels already taken this turn (same keys as index tracks).
+     * Labels survive any index remapping edge cases.
+     */
+    chosenChooseOptionLabelsThisTurn?: Record<string, string[]>;
 }
 export interface PlayerState {
     leaderDef: number;
@@ -865,6 +872,7 @@ export interface GameEvent {
 /** One player action taken during a match (authoritative action history). */
 export interface ActionLogEntry {
     seq: number;
+    /** Acting player's personal turn count (1 on their first turn, even if they go second). */
     turnNumber: number;
     phase: Phase;
     player: PlayerId;
@@ -876,10 +884,20 @@ export interface ActionLogEntry {
 }
 export interface ResolutionContext {
     sourceInstanceId?: string;
+    /**
+     * Owner of a paused multi-step sequence (e.g. the spell in resolution).
+     * Preserved when nested triggers temporarily replace sourceInstanceId.
+     */
+    resumeOwnerInstanceId?: string;
     effectStack: Effect[];
     forcedTargetId?: string;
     /** Multi-target selection (e.g. deal damage to up to N allies). */
     forcedTargetIds?: string[];
+    /**
+     * Last follower/target chosen in this resolution (survives resume steps).
+     * Used by conditions like selectedTargetHasTraits; does not auto-target later effects.
+     */
+    lastSelectedTargetId?: string;
     resumeAfterChoice?: Effect[];
     /** While true, queued fanfare/LW/etc. wait until the current effect sequence finishes. */
     deferTriggers?: boolean;
@@ -991,6 +1009,11 @@ export interface PlayerView {
     exPlayCosts: Record<string, number>;
     /** Effective play cost from EX area, keyed by instance id (opponent). */
     opponentExPlayCosts: Record<string, number>;
+    /**
+     * Currently active combat keywords per field/EX instance id (self + opponent).
+     * Reflects printed / granted / passive keywords (e.g. Storm only while Overflow).
+     */
+    activeKeywords?: Record<string, Keyword[]>;
     /** Auto-detected leader portrait for this player. */
     selfLeader?: string;
     /** Auto-detected leader portrait for the opponent. */

@@ -282,6 +282,14 @@ export default function Field({
   const boardRef = useRef(null);
   const [boardScale, setBoardScale] = useState(1);
 
+  const CARD_WIDTH = 115;
+  const HAND_FIT_COUNT = 7;
+  const enemyHandCount = reduxEnemyHand.length;
+  const enemyHandScale =
+    enemyHandCount > HAND_FIT_COUNT ? HAND_FIT_COUNT / enemyHandCount : 1;
+  const enemyHandNaturalWidth = Math.max(enemyHandCount, 1) * CARD_WIDTH;
+  const enemyHandLayoutWidth = enemyHandNaturalWidth * enemyHandScale;
+
   useEffect(() => {
     const wrapper = boardWrapperRef.current;
     const board = boardRef.current;
@@ -1881,26 +1889,46 @@ export default function Field({
               justifyContent: "center",
               alignItems: "center",
               paddingBottom: "2em",
+              overflow: "visible",
             }}
           >
-            {reduxEnemyHand.map((_, idx) => (
-              <img
-                style={
-                  reduxCardSelectedInHand === idx
-                    ? {
-                        filter:
-                          "sepia() saturate(4) hue-rotate(315deg) brightness(100%) opacity(5)",
-                        cursor: `url(${img}) 55 55, auto`,
-                      }
-                    : { cursor: `url(${img}) 55 55, auto` }
-                }
-                key={idx}
-                className={"cardStyle"}
-                src={cardback}
-                alt={"cardback"}
-                onClick={() => handleSelectEnemyCardInHand(idx)}
-              />
-            ))}
+            <div
+              style={{
+                width: enemyHandLayoutWidth,
+                display: "flex",
+                justifyContent: "center",
+                overflow: "visible",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  width: enemyHandNaturalWidth,
+                  transform:
+                    enemyHandScale < 1 ? `scale(${enemyHandScale})` : undefined,
+                  transformOrigin: "top center",
+                }}
+              >
+                {reduxEnemyHand.map((_, idx) => (
+                  <img
+                    style={
+                      reduxCardSelectedInHand === idx
+                        ? {
+                            filter:
+                              "sepia() saturate(4) hue-rotate(315deg) brightness(100%) opacity(5)",
+                            cursor: `url(${img}) 55 55, auto`,
+                          }
+                        : { cursor: `url(${img}) 55 55, auto` }
+                    }
+                    key={idx}
+                    className={"cardStyle"}
+                    src={cardback}
+                    alt={"cardback"}
+                    onClick={() => handleSelectEnemyCardInHand(idx)}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 

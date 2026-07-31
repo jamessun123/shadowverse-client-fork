@@ -35,9 +35,15 @@ function loadCardDefOverlays(dir, stats) {
     if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
     const chunk = JSON.parse(fs.readFileSync(full, "utf8"));
     for (const card of Object.values(chunk)) {
-      // Prefer cards.json when both exist; overlay only fills gaps.
-      if (card?.cardNo && !stats[card.cardNo]) {
+      if (!card?.cardNo) continue;
+      if (!stats[card.cardNo]) {
         upsertStats(stats, card);
+        continue;
+      }
+      // Prefer authored gameplay keywords — scraped cards.json often marks
+      // conditional keywords (e.g. "give this Storm") as always-on.
+      if (Array.isArray(card.keywords)) {
+        stats[card.cardNo].keywords = card.keywords;
       }
     }
   }

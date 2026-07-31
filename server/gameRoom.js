@@ -91,6 +91,13 @@ class GameRoom {
       if (this.deckIdentities?.[opponent]) {
         view.opponentLeader = this.deckIdentities[opponent].leader;
       }
+      const registered = this.pendingDecks?.[slot];
+      if (registered) {
+        view.registeredDecklist = {
+          mainDeck: [...(registered.mainDeck || [])],
+          evolveDeck: [...(registered.evolveDeck || [])],
+        };
+      }
       return view;
     };
     return {

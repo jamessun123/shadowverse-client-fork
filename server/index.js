@@ -190,6 +190,7 @@ io.on("connection", (socket) => {
 
     if (gameRoom.rematchVotes.size < 2) return;
 
+    // Fresh coin flip each rematch — do not reuse the previous first player.
     const firstPlayer = Math.random() < 0.5 ? 0 : 1;
     const views = gameRoom.startAutomatedGame([decks[0], decks[1]], firstPlayer);
     io.to(roomId).emit("engine_state", views);

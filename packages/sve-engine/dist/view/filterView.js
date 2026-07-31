@@ -213,6 +213,28 @@ function createPlayerView(state, self) {
             continue;
         opponentExPlayCosts[card.instanceId] = (0, queries_1.getEffectivePlayCost)(card, card.name, state, opponent, "exArea");
     }
+    const combatKeywordList = [
+        "ward",
+        "bane",
+        "aura",
+        "rush",
+        "storm",
+        "drain",
+        "intimidate",
+    ];
+    const activeKeywords = {};
+    const collectActiveKeywords = (owner, card) => {
+        activeKeywords[card.instanceId] = combatKeywordList.filter((kw) => (0, queries_1.hasKeyword)(card, kw, state, owner));
+    };
+    for (const card of state.players[self].zones.field)
+        collectActiveKeywords(self, card);
+    for (const card of state.players[self].zones.exArea)
+        collectActiveKeywords(self, card);
+    for (const card of state.players[opponent].zones.field)
+        collectActiveKeywords(opponent, card);
+    for (const card of state.players[opponent].zones.exArea) {
+        collectActiveKeywords(opponent, card);
+    }
     return {
         self,
         state: view,
@@ -224,6 +246,7 @@ function createPlayerView(state, self) {
         activateOptions,
         exPlayCosts,
         opponentExPlayCosts,
+        activeKeywords,
     };
 }
 function tryAction(state, player, action) {

@@ -17,7 +17,10 @@ import {
   contextForTriggerResolution,
   canAdvanceActivate,
   finishDeferredTriggers,
+  getChosenChooseIndices,
+  getChosenChooseLabels,
   isAdvanceAbility,
+  recordChosenChooseOption,
   shouldClearResolutionContext,
   shouldDeferTriggers,
   withChoiceContext,
@@ -137,11 +140,13 @@ function preserveResumeContext(
 ): GameState {
   const prev = next.resolutionContext;
   const appended = prev?.resumeAfterChoice ?? [];
+  const owner = prev?.resumeOwnerInstanceId ?? sourceId;
   next.resolutionContext = {
     sourceInstanceId: sourceId,
+    resumeOwnerInstanceId: owner,
     effectStack: stack,
     resumeAfterChoice: appended.length > 0 ? appended : tail,
-    forcedTargetId: prev?.forcedTargetId,
+    lastSelectedTargetId: prev?.lastSelectedTargetId,
     buriedCosts: prev?.buriedCosts,
     lastDiscardedCardName: prev?.lastDiscardedCardName,
     engagedAsCostCount: prev?.engagedAsCostCount,
@@ -153,9 +158,13 @@ function preserveResumeContext(
 function continueAfterChoice(state: GameState, player: PlayerId): GameState {
   if (state.pendingChoices) return state;
   let next = state;
-  const sourceId = next.resolutionContext?.sourceInstanceId;
+  const resumeOwner =
+    next.resolutionContext?.resumeOwnerInstanceId ?? next.resolutionContext?.sourceInstanceId;
+  const sourceId = resumeOwner;
   const stack = next.resolutionContext?.effectStack ?? [];
 
+  // Do not resolve queued triggers while a multi-step effect still has resume work
+  // (e.g. Disdainful Rending must finish both damages before Galmieux's ping trigger).
   const hasResume = (next.resolutionContext?.resumeAfterChoice?.length ?? 0) > 0;
   if (!hasResume && !shouldDeferTriggers(next) && next.pendingTriggers.length > 0) {
     next = runConfirmationTiming(next);
@@ -167,9 +176,12 @@ function continueAfterChoice(state: GameState, player: PlayerId): GameState {
     const prev = next.resolutionContext;
     next.resolutionContext = {
       sourceInstanceId: sourceId,
+      resumeOwnerInstanceId: resumeOwner ?? sourceId,
       effectStack: stack,
       resumeAfterChoice: tail,
-      forcedTargetId: prev?.forcedTargetId,
+      // Do not carry forcedTargetId into the next step (would auto-resolve unrelated
+      // damage). Keep lastSelectedTargetId for conditions like Flag's Condemned check.
+      lastSelectedTargetId: prev?.lastSelectedTargetId,
       buriedCosts: prev?.buriedCosts,
       lastDiscardedCardName: prev?.lastDiscardedCardName,
       engagedAsCostCount: prev?.engagedAsCostCount,
@@ -372,16 +384,20 @@ function handleChoiceResponse(state: GameState, player: PlayerId, payload: Recor
     const sourceId = prev?.sourceInstanceId ?? next.combat?.attackerId;
     next.resolutionContext = {
       sourceInstanceId: sourceId,
+      resumeOwnerInstanceId: prev?.resumeOwnerInstanceId ?? sourceId,
       effectStack: [choice.effect],
       forcedTargetId: targetIds[0],
       forcedTargetIds: isMulti ? targetIds : undefined,
+      lastSelectedTargetId: targetIds[0],
       resumeAfterChoice: resume,
       buriedCosts: prev?.buriedCosts,
       lastDiscardedCardName: prev?.lastDiscardedCardName,
       engagedAsCostCount: prev?.engagedAsCostCount,
-      deferTriggers: prev?.deferTriggers,
+      deferTriggers: true,
     };
-    next = resolveEffect(next, choice.effect, player);
+    // Defer confirmation so multi-step spells (e.g. Disdainful Rending) finish
+    // their resume queue before queued ability-damage triggers resolve.
+    next = resolveEffect(next, choice.effect, player, { deferConfirmation: true });
     return ok(finishChoiceResolution(next, player));
   }
 
@@ -675,10 +691,13 @@ function handleChoiceResponse(state: GameState, player: PlayerId, payload: Recor
       next = revealCard(next, player, instanceId, option.name);
     }
     next = moveZoneCardTo(next, player, instanceId, "deck", choice.to);
-    if (choice.to === "exArea" && choice.playCostReduction) {
+    if (choice.to === "exArea") {
       const moved = findInstance(next, instanceId);
+      if (!moved || moved.zone !== "exArea") {
+        return fail(state, "EX area full");
+      }
       if (
-        moved &&
+        choice.playCostReduction &&
         (!choice.playCostReductionFilter ||
           cardMatchesFilter(moved.card.name, choice.playCostReductionFilter))
       ) {
@@ -722,29 +741,23 @@ function handleChoiceResponse(state: GameState, player: PlayerId, payload: Recor
       }
       next.players[player].pp -= opt.additionalPpCost;
     }
-    if (choice.trackChosenKey) {
-      const sourceId =
-        choice.sourceInstanceId ?? next.resolutionContext?.sourceInstanceId;
-      const source = sourceId ? findInstance(next, sourceId) : null;
-      if (source) {
-        if (!source.card.chosenChooseOptionsThisTurn) {
-          source.card.chosenChooseOptionsThisTurn = {};
-        }
-        const list = source.card.chosenChooseOptionsThisTurn[choice.trackChosenKey] ?? [];
-        if (!list.includes(index)) {
-          source.card.chosenChooseOptionsThisTurn[choice.trackChosenKey] = [...list, index];
-        }
-      }
-      const flags = next.players[player].flags;
-      if (!flags.chosenChooseOptionTracksThisTurn) {
-        flags.chosenChooseOptionTracksThisTurn = {};
-      }
-      const playerList = flags.chosenChooseOptionTracksThisTurn[choice.trackChosenKey] ?? [];
-      if (!playerList.includes(index)) {
-        flags.chosenChooseOptionTracksThisTurn[choice.trackChosenKey] = [...playerList, index];
+    const trackKey = choice.trackChosenKey;
+    const sourceId =
+      choice.sourceInstanceId ?? next.resolutionContext?.sourceInstanceId;
+    if (trackKey) {
+      const sourceCard = sourceId ? findInstance(next, sourceId)?.card : undefined;
+      const usedIdx = getChosenChooseIndices(next, player, trackKey, sourceCard, sourceId);
+      const usedLabels = getChosenChooseLabels(next, player, trackKey, sourceCard, sourceId);
+      if (usedIdx.has(index) || usedLabels.has(opt.label)) {
+        return fail(state, "Already chose that option this turn");
       }
     }
-    next = resolveEffect(next, opt.effect, player);
+    // Defer confirmation so nested target prompts don't race with turn cleanup.
+    next = resolveEffect(next, opt.effect, player, { deferConfirmation: true });
+    // Record after the option effect so tracking lands on the final state clone.
+    if (trackKey) {
+      recordChosenChooseOption(next, player, trackKey, index, opt.label, sourceId);
+    }
     return ok(finishChoiceResolution(next, player));
   }
 
@@ -895,11 +908,13 @@ function endTurn(state: GameState): GameState {
   for (const p of next.players) {
     p.flags.endStartAbilitiesQueued = false;
     p.flags.chosenChooseOptionTracksThisTurn = {};
+    p.flags.chosenChooseOptionLabelsThisTurn = {};
     for (const cards of [p.zones.field, p.zones.hand, p.zones.exArea, p.zones.cemetery]) {
       for (const card of cards) {
         card.modifiers = card.modifiers.filter((m) => !m.untilEndOfTurn);
         card.abilitiesActivatedThisTurn = [];
         card.chosenChooseOptionsThisTurn = {};
+        card.chosenChooseOptionLabelsThisTurn = {};
       }
     }
   }
@@ -980,6 +995,7 @@ function playCard(
   if (def.cardType === "spell") {
     next.resolutionContext = {
       sourceInstanceId: handInstanceId,
+      resumeOwnerInstanceId: handInstanceId,
       effectStack: [],
       deferTriggers: true,
     };
@@ -996,6 +1012,11 @@ function playCard(
       }
     }
   } else if (def.cardType === "follower" || def.cardType === "amulet") {
+    // Drop orphaned resolution context so field-entry triggers (e.g. cemetery
+    // Sneer of Disdain) are not permanently deferred by a leftover resume queue.
+    if (!next.pendingChoices) {
+      next.resolutionContext = null;
+    }
     next = moveCard(next, handInstanceId, "field", player);
   }
 

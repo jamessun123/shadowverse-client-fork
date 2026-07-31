@@ -22,4 +22,5 @@ export function resetCardInstanceState(card: CardInstance): void {
   card.counters = {};
   card.persistentCounters = {};
   card.chosenChooseOptionsThisTurn = {};
+  card.chosenChooseOptionLabelsThisTurn = {};
 }

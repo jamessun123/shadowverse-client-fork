@@ -86,9 +86,23 @@ export default function Deck({
   const reduxCardBack = useSelector((state) => state.card.cardback);
 
   const reduxDeck = useSelector((state) => state.card.deck);
+  const reduxInitialDeck = useSelector((state) => state.card.initialDeck);
+  const reduxInitialEvoDeck = useSelector((state) => state.card.initialEvoDeck);
   const reduxRoom = useSelector((state) => state.card.room);
   const gameMode = useSelector((state) => state.gameState.gameMode);
   const automated = gameMode === "automated";
+
+  const registeredMainDeck = React.useMemo(() => {
+    const list = Array.isArray(reduxInitialDeck) ? [...reduxInitialDeck] : [];
+    return list.sort((a, b) => String(a).localeCompare(String(b)));
+  }, [reduxInitialDeck]);
+
+  const registeredEvoDeck = React.useMemo(() => {
+    const list = Array.isArray(reduxInitialEvoDeck)
+      ? reduxInitialEvoDeck.map((c) => (typeof c === "string" ? c : c?.card)).filter(Boolean)
+      : [];
+    return list.sort((a, b) => String(a).localeCompare(String(b)));
+  }, [reduxInitialEvoDeck]);
 
   // popover
   const [anchorEl, setAnchorEl] = React.useState(null);
@@ -107,6 +121,12 @@ export default function Deck({
     dispatch(setViewingDeck(true));
   };
 
+  const handleRegisteredDecklistOpen = () => {
+    if (!automated || ready) return;
+    if (registeredMainDeck.length === 0 && registeredEvoDeck.length === 0) return;
+    setOpen(true);
+  };
+
   const handleModalRevealOpen = () => {
     if (automated || reduxDeck.length === 0 || ready) return;
     setOpen(true);
@@ -115,6 +135,8 @@ export default function Deck({
 
   const handleModalClose = () => {
     setOpen(false);
+    setHovering?.(false);
+    if (automated) return;
     if (reveal) {
       setReveal(false);
       setTextInput("");
@@ -389,13 +411,21 @@ export default function Deck({
         onMouseEnter={automated ? undefined : (event) => handlePopoverOpen(event)}
         onClick={
           automated
-            ? undefined
+            ? () => {
+                if (!ready) handleRegisteredDecklistOpen();
+              }
             : () => {
                 if (!ready) dispatch(drawFromDeck());
               }
         }
         style={{
-          cursor: automated ? "default" : `url(${img}) 55 55, auto`,
+          cursor:
+            automated &&
+            (registeredMainDeck.length > 0 || registeredEvoDeck.length > 0)
+              ? `url(${img}) 55 55, auto`
+              : automated
+                ? "default"
+                : `url(${img}) 55 55, auto`,
         }}
       >
         <img className={"cardStyle"} src={cardback} alt={"cardback"} />
@@ -616,6 +646,115 @@ export default function Deck({
           </CardMUI>
         </Box>
       </Modal>
+      )}
+
+      {automated && (
+        <Modal
+          open={modalOpen}
+          onClose={handleModalClose}
+          aria-labelledby="registered-decklist-title"
+          sx={{
+            "& > .MuiBackdrop-root": {
+              backgroundColor: "rgba(0, 0, 0, 0.45)",
+            },
+          }}
+        >
+          <Box sx={{ ...style, width: "55%" }}>
+            <ModalHideUiRow onHide={handleModalClose} />
+            <CardMUI
+              sx={{
+                backgroundColor: "rgba(0, 0, 0, 0.7)",
+                minHeight: "250px",
+                padding: "4%",
+                height: "560px",
+                overflowY: "scroll",
+                width: "100%",
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px",
+              }}
+              variant="outlined"
+            >
+              <div
+                style={{
+                  color: "white",
+                  fontFamily: "Noto Serif JP, serif",
+                  fontSize: "20px",
+                  textAlign: "center",
+                }}
+              >
+                Your decklist
+              </div>
+              {registeredMainDeck.length > 0 && (
+                <>
+                  <div
+                    style={{
+                      color: "rgba(255,255,255,0.85)",
+                      fontFamily: "Noto Serif JP, serif",
+                      fontSize: "14px",
+                    }}
+                  >
+                    Main deck ({registeredMainDeck.length})
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      flexWrap: "wrap",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                  >
+                    {registeredMainDeck.map((card, idx) => (
+                      <div key={`reg-main-${card}-${idx}`}>
+                        <Card
+                          ready={ready}
+                          name={card}
+                          setHovering={setHovering}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              {registeredEvoDeck.length > 0 && (
+                <>
+                  <div
+                    style={{
+                      color: "rgba(255,255,255,0.85)",
+                      fontFamily: "Noto Serif JP, serif",
+                      fontSize: "14px",
+                      marginTop: "8px",
+                    }}
+                  >
+                    Evolve deck ({registeredEvoDeck.length})
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      flexWrap: "wrap",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                  >
+                    {registeredEvoDeck.map((card, idx) => (
+                      <div key={`reg-evo-${card}-${idx}`}>
+                        <Card
+                          ready={ready}
+                          name={card}
+                          setHovering={setHovering}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </CardMUI>
+          </Box>
+        </Modal>
       )}
     </>
   );

@@ -92,7 +92,6 @@ import {
   exitGame,
   setRematchStatus,
 } from "../../redux/CardSlice";
-import { resetEngine } from "../../redux/GameStateSlice";
 
 export default function Selection({ setSelectedOption }) {
   // redux state
@@ -147,9 +146,10 @@ export default function Selection({ setSelectedOption }) {
 
   const handleRematch = () => {
     if (acceptRematch && reduxEnemyRematchStatus) {
+      // Both sides have accepted. The server starts a new game (with randomized
+      // turn order) once both request_rematch votes arrive — engine_state will
+      // replace the board. Only clear local rematch UI / card chrome here.
       if (gameMode === "automated") {
-        socket.emit("request_rematch");
-        dispatch(resetEngine());
         clearSavedState(reduxRoom?.toString?.() || String(reduxRoom || ""));
       }
       dispatch(reset());
@@ -174,6 +174,11 @@ export default function Selection({ setSelectedOption }) {
   const handleAcceptRematchUI = () => {
     setAcceptRematch(true);
     dispatch(setRematchStatus(true));
+    // Vote immediately so the server can start when both players have accepted
+    // (and re-roll who goes first).
+    if (gameMode === "automated") {
+      socket.emit("request_rematch");
+    }
   };
   const handleDeclineRematchUI = () => {
     setAcceptRematch(false);

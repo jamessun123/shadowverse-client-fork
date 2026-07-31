@@ -166,7 +166,17 @@ export const CardSlice = createSlice({
     },
     setDeck: (state, action) => {
       state.deck = action.payload;
-      state.initialDeck = action.payload;
+    },
+    /** Registered main/evo lists for the current match (not live remaining order). */
+    setInitialDecklist: (state, action) => {
+      const deck = action.payload?.deck;
+      const evoDeck = action.payload?.evoDeck;
+      if (Array.isArray(deck)) state.initialDeck = [...deck];
+      if (Array.isArray(evoDeck)) {
+        state.initialEvoDeck = evoDeck.map((card) =>
+          typeof card === "string" ? { card, status: false } : card,
+        );
+      }
     },
     setPlayPoints: (state, action) => {
       state.playPoints = action.payload;
@@ -421,7 +431,6 @@ export const CardSlice = createSlice({
     },
     setEvoDeck: (state, action) => {
       state.evoDeck = action.payload;
-      state.initialEvoDeck = action.payload;
     },
     setEnemyHand: (state, action) => {
       state.enemyHand = action.payload;
@@ -2655,6 +2664,8 @@ export const CardSlice = createSlice({
       state.lastChatMessage = "";
       state.deck = [];
       state.evoDeck = [];
+      state.initialDeck = [];
+      state.initialEvoDeck = [];
       state.hand = [];
       state.enemyHand = [];
       state.cardSelectedInHand = -1;
@@ -2944,6 +2955,7 @@ export const {
   setActiveUsers,
   setLeaderActive,
   setDeck,
+  setInitialDecklist,
   setEvoDeck,
   setField,
   setEnemyField,

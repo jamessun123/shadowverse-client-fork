@@ -158,21 +158,20 @@
         },
         "label": "Sneer of Disdain — banish: deal 1 to ally",
         "effect": {
-          "op": "sequence",
-          "steps": [
-            {
-              "op": "banishSelf"
-            },
-            {
-              "op": "dealDamage",
-              "amount": 1,
-              "targets": {
-                "type": "selfFollower",
-                "count": 1,
-                "includeSelf": true
-              }
+          "op": "optionalCost",
+          "label": "Banish Sneer of Disdain: deal 1 to an allied follower",
+          "cost": {
+            "op": "banishSelf"
+          },
+          "then": {
+            "op": "dealDamage",
+            "amount": 1,
+            "targets": {
+              "type": "selfFollower",
+              "count": 1,
+              "includeSelf": true
             }
-          ]
+          }
         }
       },
       {

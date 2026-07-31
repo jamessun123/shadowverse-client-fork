@@ -45,7 +45,13 @@ export function canAdvanceActivate(state: GameState, player: PlayerId, effect: E
 }
 
 export function shouldDeferTriggers(state: GameState): boolean {
-  return (state.resolutionContext?.resumeAfterChoice?.length ?? 0) > 0;
+  // Only defer while a player choice is open. An orphaned resumeAfterChoice
+  // queue (resume left behind with no pendingChoices) must not permanently
+  // softlock pending triggers such as cemetery onAllyFollowerEnter (Sneer).
+  // Resume is drained by continueAfterChoice before confirmation on the choice
+  // path; runConfirmationTiming already returns early when pendingChoices is set.
+  if (state.pendingChoices && state.pendingChoices.type !== "mulligan") return true;
+  return false;
 }
 
 export function finishDeferredTriggers(state: GameState): GameState {
@@ -72,6 +78,7 @@ export function contextForTriggerResolution(
   const prev = state.resolutionContext;
   return {
     sourceInstanceId,
+    resumeOwnerInstanceId: prev?.resumeOwnerInstanceId ?? prev?.sourceInstanceId,
     effectStack: [effect],
     resumeAfterChoice: prev?.resumeAfterChoice,
     deferTriggers: prev?.deferTriggers,
@@ -104,4 +111,96 @@ export function withChoiceContext<T extends ChoicePrompt>(
   const ctx = getChoiceContext(state);
   if (!ctx.sourceLabel) return choice;
   return { ...choice, ...ctx };
+}
+
+/** Track keys for excludeChosenThisTurn: global + per-source. */
+export function chooseTrackKeys(trackKey: string, sourceInstanceId?: string): string[] {
+  const keys = [trackKey];
+  if (sourceInstanceId) keys.push(`${trackKey}@${sourceInstanceId}`);
+  return keys;
+}
+
+export function getChosenChooseIndices(
+  state: GameState,
+  player: PlayerId,
+  trackKey: string,
+  sourceCard?: { chosenChooseOptionsThisTurn?: Record<string, number[]> },
+  sourceInstanceId?: string,
+): Set<number> {
+  const out = new Set<number>();
+  const flags = state.players[player].flags;
+  for (const key of chooseTrackKeys(trackKey, sourceInstanceId)) {
+    for (const i of sourceCard?.chosenChooseOptionsThisTurn?.[key] ?? []) out.add(i);
+    for (const i of flags.chosenChooseOptionTracksThisTurn?.[key] ?? []) out.add(i);
+  }
+  return out;
+}
+
+export function getChosenChooseLabels(
+  state: GameState,
+  player: PlayerId,
+  trackKey: string,
+  sourceCard?: { chosenChooseOptionLabelsThisTurn?: Record<string, string[]> },
+  sourceInstanceId?: string,
+): Set<string> {
+  const out = new Set<string>();
+  const flags = state.players[player].flags;
+  for (const key of chooseTrackKeys(trackKey, sourceInstanceId)) {
+    for (const label of sourceCard?.chosenChooseOptionLabelsThisTurn?.[key] ?? []) {
+      out.add(label);
+    }
+    for (const label of flags.chosenChooseOptionLabelsThisTurn?.[key] ?? []) {
+      out.add(label);
+    }
+  }
+  return out;
+}
+
+function pushUnique<T>(list: T[] | undefined, value: T): T[] {
+  if (!list) return [value];
+  return list.includes(value) ? list : [...list, value];
+}
+
+/** Record a chosen mode on the source card and player for the rest of the turn. */
+export function recordChosenChooseOption(
+  state: GameState,
+  player: PlayerId,
+  trackKey: string,
+  optionIndex: number,
+  optionLabel: string,
+  sourceInstanceId?: string,
+): void {
+  const keys = chooseTrackKeys(trackKey, sourceInstanceId);
+  const flags = state.players[player].flags;
+  if (!flags.chosenChooseOptionTracksThisTurn) flags.chosenChooseOptionTracksThisTurn = {};
+  if (!flags.chosenChooseOptionLabelsThisTurn) flags.chosenChooseOptionLabelsThisTurn = {};
+
+  const source = sourceInstanceId ? findInstance(state, sourceInstanceId) : null;
+  if (source) {
+    if (!source.card.chosenChooseOptionsThisTurn) source.card.chosenChooseOptionsThisTurn = {};
+    if (!source.card.chosenChooseOptionLabelsThisTurn) {
+      source.card.chosenChooseOptionLabelsThisTurn = {};
+    }
+  }
+
+  for (const key of keys) {
+    flags.chosenChooseOptionTracksThisTurn[key] = pushUnique(
+      flags.chosenChooseOptionTracksThisTurn[key],
+      optionIndex,
+    );
+    flags.chosenChooseOptionLabelsThisTurn[key] = pushUnique(
+      flags.chosenChooseOptionLabelsThisTurn[key],
+      optionLabel,
+    );
+    if (source) {
+      source.card.chosenChooseOptionsThisTurn![key] = pushUnique(
+        source.card.chosenChooseOptionsThisTurn![key],
+        optionIndex,
+      );
+      source.card.chosenChooseOptionLabelsThisTurn![key] = pushUnique(
+        source.card.chosenChooseOptionLabelsThisTurn![key],
+        optionLabel,
+      );
+    }
+  }
 }

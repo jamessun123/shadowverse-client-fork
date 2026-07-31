@@ -12,3 +12,13 @@ export declare function getChoiceContext(state: GameState): {
     sourceLabel?: string;
 };
 export declare function withChoiceContext<T extends ChoicePrompt>(state: GameState, choice: T): T;
+/** Track keys for excludeChosenThisTurn: global + per-source. */
+export declare function chooseTrackKeys(trackKey: string, sourceInstanceId?: string): string[];
+export declare function getChosenChooseIndices(state: GameState, player: PlayerId, trackKey: string, sourceCard?: {
+    chosenChooseOptionsThisTurn?: Record<string, number[]>;
+}, sourceInstanceId?: string): Set<number>;
+export declare function getChosenChooseLabels(state: GameState, player: PlayerId, trackKey: string, sourceCard?: {
+    chosenChooseOptionLabelsThisTurn?: Record<string, string[]>;
+}, sourceInstanceId?: string): Set<string>;
+/** Record a chosen mode on the source card and player for the rest of the turn. */
+export declare function recordChosenChooseOption(state: GameState, player: PlayerId, trackKey: string, optionIndex: number, optionLabel: string, sourceInstanceId?: string): void;

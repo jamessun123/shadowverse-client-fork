@@ -26,9 +26,12 @@ function appendResumeEffects(state, effects) {
     const prev = next.resolutionContext;
     next.resolutionContext = {
         sourceInstanceId: prev?.sourceInstanceId,
+        resumeOwnerInstanceId: prev?.resumeOwnerInstanceId ?? prev?.sourceInstanceId,
         effectStack: prev?.effectStack ?? [],
         resumeAfterChoice: [...existing, ...effects],
         forcedTargetId: prev?.forcedTargetId,
+        forcedTargetIds: prev?.forcedTargetIds,
+        lastSelectedTargetId: prev?.lastSelectedTargetId,
         buriedCosts: prev?.buriedCosts,
         lastDiscardedCardName: prev?.lastDiscardedCardName,
         engagedAsCostCount: prev?.engagedAsCostCount,
@@ -156,7 +159,7 @@ function pickTargetFromCandidates(forced, candidates, shouldPrompt) {
 function dealDamageToFollower(state, instanceId, amount) {
     const next = structuredClone(state);
     const found = (0, queries_1.findInstance)(next, instanceId);
-    if (!found)
+    if (!found || found.zone !== "field")
         return state;
     // Damage only applies to followers — amulets have no defense and cannot be damaged.
     if (!(0, queries_1.isFollowerCard)(found.card, next))
@@ -165,13 +168,10 @@ function dealDamageToFollower(state, instanceId, amount) {
     if (dmg <= 0)
         return next;
     found.card.modifiers.push({ atk: 0, def: -dmg, sourceId: "effect" });
-    // Fire "whenever this takes ability damage" even if this damage destroys it.
+    // Queue "whenever this takes ability damage" before destroy. Leave 0-def followers
+    // on the field so confirmation can resolve those triggers first (dig/buff/Storm),
+    // then destroyAtZeroDef handles destruction + last words.
     (0, trigger_queue_1.queueOnAbilityDamageTaken)(next, instanceId);
-    const { def } = (0, queries_1.getEffectiveStats)(found.card, next);
-    if (def <= 0) {
-        (0, confirmation_1.queueLastWords)(next, instanceId, found.player);
-        return (0, zones_1.destroyFollower)(next, instanceId);
-    }
     return next;
 }
 function resolveDamageAmount(state, player, amount) {
@@ -402,7 +402,12 @@ function moveZoneCardTo(state, player, instanceId, fromZone, to) {
     if (to === "hand") {
         p.zones.hand.push(card);
     }
-    else if (to === "exArea" && p.zones.exArea.length < p.exLimit) {
+    else if (to === "exArea") {
+        if (p.zones.exArea.length >= p.exLimit) {
+            // Restore original deck order — do not orphan or shuffle on a failed move.
+            list.splice(idx, 0, card);
+            return state;
+        }
         p.zones.exArea.push(card);
         (0, confirmation_1.onCardEntersExArea)(next, card.instanceId, player);
     }
@@ -493,9 +498,13 @@ function resolveEffect(state, effect, player, options) {
     if (options?.deferConfirmation) {
         next.resolutionContext = {
             sourceInstanceId: next.resolutionContext?.sourceInstanceId,
+            resumeOwnerInstanceId: next.resolutionContext?.resumeOwnerInstanceId ??
+                next.resolutionContext?.sourceInstanceId,
             effectStack: next.resolutionContext?.effectStack ?? [],
             resumeAfterChoice: next.resolutionContext?.resumeAfterChoice,
             forcedTargetId: next.resolutionContext?.forcedTargetId,
+            forcedTargetIds: next.resolutionContext?.forcedTargetIds,
+            lastSelectedTargetId: next.resolutionContext?.lastSelectedTargetId,
             buriedCosts: next.resolutionContext?.buriedCosts,
             lastDiscardedCardName: next.resolutionContext?.lastDiscardedCardName,
             engagedAsCostCount: next.resolutionContext?.engagedAsCostCount,
@@ -762,9 +771,13 @@ function resolveEffect(state, effect, player, options) {
         case "sequence": {
             next.resolutionContext = {
                 sourceInstanceId: next.resolutionContext?.sourceInstanceId,
+                resumeOwnerInstanceId: next.resolutionContext?.resumeOwnerInstanceId ??
+                    next.resolutionContext?.sourceInstanceId,
                 effectStack: next.resolutionContext?.effectStack ?? [],
                 resumeAfterChoice: next.resolutionContext?.resumeAfterChoice,
                 forcedTargetId: next.resolutionContext?.forcedTargetId,
+                forcedTargetIds: next.resolutionContext?.forcedTargetIds,
+                lastSelectedTargetId: next.resolutionContext?.lastSelectedTargetId,
                 buriedCosts: next.resolutionContext?.buriedCosts,
                 lastDiscardedCardName: next.resolutionContext?.lastDiscardedCardName,
                 engagedAsCostCount: next.resolutionContext?.engagedAsCostCount,
@@ -785,13 +798,12 @@ function resolveEffect(state, effect, player, options) {
                 const trackKey = effect.excludeChosenThisTurn
                     ? (effect.trackKey ?? "default")
                     : undefined;
-                const fromCard = trackKey
-                    ? (sourceCard?.chosenChooseOptionsThisTurn?.[trackKey] ?? [])
-                    : [];
-                const fromPlayer = trackKey
-                    ? (next.players[player].flags.chosenChooseOptionTracksThisTurn?.[trackKey] ?? [])
-                    : [];
-                const alreadyChosen = trackKey ? new Set([...fromCard, ...fromPlayer]) : null;
+                const alreadyChosen = trackKey
+                    ? (0, effect_utils_1.getChosenChooseIndices)(next, player, trackKey, sourceCard, sourceId)
+                    : null;
+                const alreadyChosenLabels = trackKey
+                    ? (0, effect_utils_1.getChosenChooseLabels)(next, player, trackKey, sourceCard, sourceId)
+                    : null;
                 const affordableOptions = effect.options
                     .map((o, i) => ({
                     index: i,
@@ -799,7 +811,7 @@ function resolveEffect(state, effect, player, options) {
                     effect: o.effect,
                     additionalPpCost: o.additionalPpCost,
                 }))
-                    .filter((o) => !(alreadyChosen?.has(o.index)))
+                    .filter((o) => !(alreadyChosen?.has(o.index) || alreadyChosenLabels?.has(o.label)))
                     .filter((o) => (!o.additionalPpCost || next.players[player].pp >= o.additionalPpCost) &&
                     canEffectResolve(next, player, o.effect));
                 if (affordableOptions.length === 0)
@@ -1348,7 +1360,7 @@ function resolveEffect(state, effect, player, options) {
             ];
             for (const id of ids) {
                 const found = (0, queries_1.findInstance)(next, id);
-                if (!found)
+                if (!found || found.zone !== "field")
                     continue;
                 const def = (0, registry_1.getCardDef)(found.card.name);
                 if (def?.cardType !== "follower")

@@ -1,7 +1,7 @@
 import { getCardDef } from "../cards/registry";
 import { destinationForDestroyedCard } from "../cards/tokens";
 import { resetCardInstanceState } from "../state/card-reset";
-import { resolveEffect } from "../effects/resolver";
+import { canEffectResolve, resolveEffect } from "../effects/resolver";
 import { isBoxed } from "../state/passives";
 import {
   contextForTriggerResolution,
@@ -176,11 +176,20 @@ function markTriggerAbilityUsed(state: GameState, trigger: PendingTrigger): void
 export function resolveOneTrigger(state: GameState, trigger: PendingTrigger): GameState {
   let next = structuredClone(state);
   next.pendingTriggers = next.pendingTriggers.filter((t) => t.id !== trigger.id);
+  // Set source before canEffectResolve — self-target effects (e.g. Apostle of Disdain
+  // buff/Storm) need sourceInstanceId to see any candidates.
   next.resolutionContext = {
     ...contextForTriggerResolution(next, trigger.sourceInstanceId, trigger.ability.effect),
     // Only auto-target the entered follower when the ability opts in.
     forcedTargetId: trigger.ability.useEnteredTarget ? trigger.forcedTargetId : undefined,
   };
+  // Comprehensive Rules 10.7.3.2: if it cannot be played, remove pending status only.
+  if (!canEffectResolve(next, trigger.controller, trigger.ability.effect)) {
+    if (shouldClearResolutionContext(next)) {
+      next.resolutionContext = null;
+    }
+    return next;
+  }
   next = resolveEffect(next, trigger.ability.effect, trigger.controller);
   markTriggerAbilityUsed(next, trigger);
   if (shouldClearResolutionContext(next)) {
@@ -206,6 +215,52 @@ export function runConfirmationTiming(state: GameState): GameState {
 
     next = capPlayPoints(next);
     next = resolveBane(next);
+
+    // Resolve "whenever this takes ability damage" before destroyAtZeroDef so dig/buff
+    // effects (e.g. Galmieux, Ardent Disdain) still see the damaged follower on the field.
+    if (shouldDeferTriggers(next)) return next;
+    const adtActive = next.pendingTriggers.filter(
+      (t) => t.timing === "onAbilityDamageTaken" && t.controller === next.activePlayer,
+    );
+    const adtInactive = next.pendingTriggers.filter(
+      (t) => t.timing === "onAbilityDamageTaken" && t.controller !== next.activePlayer,
+    );
+    if (adtActive.length > 1) {
+      next.pendingChoices = {
+        type: "selectTrigger",
+        player: next.activePlayer,
+        options: adtActive.map((t) => ({
+          triggerId: t.id,
+          label: t.label,
+        })),
+      };
+      return next;
+    }
+    if (adtActive.length === 1) {
+      next = resolveOneTrigger(next, adtActive[0]);
+      resolutions += 1;
+      loop = true;
+      continue;
+    }
+    if (adtInactive.length > 1) {
+      const opp = next.activePlayer === 0 ? 1 : 0;
+      next.pendingChoices = {
+        type: "selectTrigger",
+        player: opp,
+        options: adtInactive.map((t) => ({
+          triggerId: t.id,
+          label: t.label,
+        })),
+      };
+      return next;
+    }
+    if (adtInactive.length === 1) {
+      next = resolveOneTrigger(next, adtInactive[0]);
+      resolutions += 1;
+      loop = true;
+      continue;
+    }
+
     next = destroyAtZeroDef(next);
     next = enforceFieldLimits(next);
     next = checkLosses(next);

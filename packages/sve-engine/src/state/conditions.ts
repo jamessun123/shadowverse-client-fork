@@ -80,7 +80,9 @@ export function evalCondition(state: GameState, player: PlayerId, condition: Con
       });
     }
     case "selectedTargetHasTraits": {
-      const targetId = state.resolutionContext?.forcedTargetId;
+      const targetId =
+        state.resolutionContext?.lastSelectedTargetId ??
+        state.resolutionContext?.forcedTargetId;
       if (!targetId || targetId === "leader" || targetId === "selfLeader") return false;
       const found = findInstance(state, targetId);
       if (!found) return false;

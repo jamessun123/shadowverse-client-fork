@@ -8,6 +8,8 @@ import { queueOnOpponentDeckToCemetery, queueOnAbilityDamageTaken } from "../rul
 import {
   contextForTriggerResolution,
   finishDeferredTriggers,
+  getChosenChooseIndices,
+  getChosenChooseLabels,
   withChoiceContext,
 } from "../rules/effect-utils";
 
@@ -46,9 +48,12 @@ export function appendResumeEffects(state: GameState, effects: Effect[]): GameSt
   const prev = next.resolutionContext;
   next.resolutionContext = {
     sourceInstanceId: prev?.sourceInstanceId,
+    resumeOwnerInstanceId: prev?.resumeOwnerInstanceId ?? prev?.sourceInstanceId,
     effectStack: prev?.effectStack ?? [],
     resumeAfterChoice: [...existing, ...effects],
     forcedTargetId: prev?.forcedTargetId,
+    forcedTargetIds: prev?.forcedTargetIds,
+    lastSelectedTargetId: prev?.lastSelectedTargetId,
     buriedCosts: prev?.buriedCosts,
     lastDiscardedCardName: prev?.lastDiscardedCardName,
     engagedAsCostCount: prev?.engagedAsCostCount,
@@ -197,7 +202,7 @@ function dealDamageToFollower(state: GameState, instanceId: string, amount: numb
 
   const found = findInstance(next, instanceId);
 
-  if (!found) return state;
+  if (!found || found.zone !== "field") return state;
 
   // Damage only applies to followers — amulets have no defense and cannot be damaged.
   if (!isFollowerCard(found.card, next)) return state;
@@ -207,18 +212,10 @@ function dealDamageToFollower(state: GameState, instanceId: string, amount: numb
 
   found.card.modifiers.push({ atk: 0, def: -dmg, sourceId: "effect" });
 
-  // Fire "whenever this takes ability damage" even if this damage destroys it.
+  // Queue "whenever this takes ability damage" before destroy. Leave 0-def followers
+  // on the field so confirmation can resolve those triggers first (dig/buff/Storm),
+  // then destroyAtZeroDef handles destruction + last words.
   queueOnAbilityDamageTaken(next, instanceId);
-
-  const { def } = getEffectiveStats(found.card, next);
-
-  if (def <= 0) {
-
-    queueLastWords(next, instanceId, found.player);
-
-    return destroyFollower(next, instanceId);
-
-  }
 
   return next;
 
@@ -599,7 +596,13 @@ export function moveZoneCardTo(
 
     p.zones.hand.push(card);
 
-  } else if (to === "exArea" && p.zones.exArea.length < p.exLimit) {
+  } else if (to === "exArea") {
+
+    if (p.zones.exArea.length >= p.exLimit) {
+      // Restore original deck order — do not orphan or shuffle on a failed move.
+      list.splice(idx, 0, card);
+      return state;
+    }
 
     p.zones.exArea.push(card);
 
@@ -733,9 +736,14 @@ export function resolveEffect(
   if (options?.deferConfirmation) {
     next.resolutionContext = {
       sourceInstanceId: next.resolutionContext?.sourceInstanceId,
+      resumeOwnerInstanceId:
+        next.resolutionContext?.resumeOwnerInstanceId ??
+        next.resolutionContext?.sourceInstanceId,
       effectStack: next.resolutionContext?.effectStack ?? [],
       resumeAfterChoice: next.resolutionContext?.resumeAfterChoice,
       forcedTargetId: next.resolutionContext?.forcedTargetId,
+      forcedTargetIds: next.resolutionContext?.forcedTargetIds,
+      lastSelectedTargetId: next.resolutionContext?.lastSelectedTargetId,
       buriedCosts: next.resolutionContext?.buriedCosts,
       lastDiscardedCardName: next.resolutionContext?.lastDiscardedCardName,
       engagedAsCostCount: next.resolutionContext?.engagedAsCostCount,
@@ -1108,9 +1116,14 @@ export function resolveEffect(
     case "sequence": {
       next.resolutionContext = {
         sourceInstanceId: next.resolutionContext?.sourceInstanceId,
+        resumeOwnerInstanceId:
+          next.resolutionContext?.resumeOwnerInstanceId ??
+          next.resolutionContext?.sourceInstanceId,
         effectStack: next.resolutionContext?.effectStack ?? [],
         resumeAfterChoice: next.resolutionContext?.resumeAfterChoice,
         forcedTargetId: next.resolutionContext?.forcedTargetId,
+        forcedTargetIds: next.resolutionContext?.forcedTargetIds,
+        lastSelectedTargetId: next.resolutionContext?.lastSelectedTargetId,
         buriedCosts: next.resolutionContext?.buriedCosts,
         lastDiscardedCardName: next.resolutionContext?.lastDiscardedCardName,
         engagedAsCostCount: next.resolutionContext?.engagedAsCostCount,
@@ -1136,13 +1149,12 @@ export function resolveEffect(
         const trackKey = effect.excludeChosenThisTurn
           ? (effect.trackKey ?? "default")
           : undefined;
-        const fromCard = trackKey
-          ? (sourceCard?.chosenChooseOptionsThisTurn?.[trackKey] ?? [])
-          : [];
-        const fromPlayer = trackKey
-          ? (next.players[player].flags.chosenChooseOptionTracksThisTurn?.[trackKey] ?? [])
-          : [];
-        const alreadyChosen = trackKey ? new Set([...fromCard, ...fromPlayer]) : null;
+        const alreadyChosen = trackKey
+          ? getChosenChooseIndices(next, player, trackKey, sourceCard, sourceId)
+          : null;
+        const alreadyChosenLabels = trackKey
+          ? getChosenChooseLabels(next, player, trackKey, sourceCard, sourceId)
+          : null;
 
         const affordableOptions = effect.options
           .map((o, i) => ({
@@ -1151,7 +1163,10 @@ export function resolveEffect(
             effect: o.effect,
             additionalPpCost: o.additionalPpCost,
           }))
-          .filter((o) => !(alreadyChosen?.has(o.index)))
+          .filter(
+            (o) =>
+              !(alreadyChosen?.has(o.index) || alreadyChosenLabels?.has(o.label)),
+          )
           .filter(
             (o) =>
               (!o.additionalPpCost || next.players[player].pp >= o.additionalPpCost) &&
@@ -2096,7 +2111,7 @@ export function resolveEffect(
       ];
       for (const id of ids) {
         const found = findInstance(next, id);
-        if (!found) continue;
+        if (!found || found.zone !== "field") continue;
         const def = getCardDef(found.card.name);
         if (def?.cardType !== "follower") continue;
         next = dealDamageToFollower(next, id, amount);

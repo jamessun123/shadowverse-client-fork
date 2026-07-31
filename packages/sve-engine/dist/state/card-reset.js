@@ -23,4 +23,5 @@ function resetCardInstanceState(card) {
     card.counters = {};
     card.persistentCounters = {};
     card.chosenChooseOptionsThisTurn = {};
+    card.chosenChooseOptionLabelsThisTurn = {};
 }

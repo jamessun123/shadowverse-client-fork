@@ -204,6 +204,16 @@ export default function Hand({
     if (!ready) handleContextMenu(event, name, index);
   };
 
+  // Keep oversized hands within the bottom strip by shrinking so the row is
+  // no wider than a 7-card hand (layout width matches the scaled visual width).
+  const CARD_WIDTH = 115;
+  const HAND_FIT_COUNT = 7;
+  const handCount = items.length;
+  const handScale =
+    handCount > HAND_FIT_COUNT ? HAND_FIT_COUNT / handCount : 1;
+  const naturalWidth = Math.max(handCount, 1) * CARD_WIDTH;
+  const layoutWidth = naturalWidth * handScale;
+
   return (
     <>
       <Menu
@@ -261,38 +271,48 @@ export default function Hand({
       <div
         style={{
           zIndex: 100,
+          width: layoutWidth,
+          maxWidth: "100%",
           display: "flex",
-          // height: "20em",
-          width: "50vw",
-          alignItems: "start",
           justifyContent: "center",
-          // justifyContent: "flex-start",
-          overflowX: reduxHand.length > 9 ? "scroll" : "visible",
-          overflowY: reduxHand.length > 9 ? "clip" : "visible",
+          alignItems: "flex-end",
+          overflow: "visible",
         }}
       >
-        {items.map((card, index) => (
-          <div
-            onContextMenu={(e) => handleHandContextMenu(e, card.name, index)}
-            onClick={() => {
-              if (automated) handleAutomatedHandClick(index);
-            }}
-            key={card.idx}
-            value={card}
-            style={automated ? getAutomatedHandStyle(index) : undefined}
-            title={automated ? getAutomatedHandTitle(index) : undefined}
-          >
-            <Card
-              name={card.name}
-              inHandIndex={index}
-              handLength={items.length}
-              constraintsRef={constraintsRef}
-              setHovering={setHovering}
-              ready={ready}
-              inHand={true}
-            />
-          </div>
-        ))}
+        <div
+          style={{
+            display: "flex",
+            width: naturalWidth,
+            alignItems: "start",
+            justifyContent: "center",
+            transform: handScale < 1 ? `scale(${handScale})` : undefined,
+            transformOrigin: "bottom center",
+            overflow: "visible",
+          }}
+        >
+          {items.map((card, index) => (
+            <div
+              onContextMenu={(e) => handleHandContextMenu(e, card.name, index)}
+              onClick={() => {
+                if (automated) handleAutomatedHandClick(index);
+              }}
+              key={card.idx}
+              value={card}
+              style={automated ? getAutomatedHandStyle(index) : undefined}
+              title={automated ? getAutomatedHandTitle(index) : undefined}
+            >
+              <Card
+                name={card.name}
+                inHandIndex={index}
+                handLength={items.length}
+                constraintsRef={constraintsRef}
+                setHovering={setHovering}
+                ready={ready}
+                inHand={true}
+              />
+            </div>
+          ))}
+        </div>
       </div>
     </>
   );

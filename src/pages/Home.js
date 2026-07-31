@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Stack from "@mui/material/Stack";
 import Button from "@mui/material/Button";
 import wallpaper from "../../src/assets/wallpapers/3.png";
@@ -21,6 +21,7 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   setDeck,
   setEvoDeck,
+  setInitialDecklist,
   setRoom,
   setActiveUsers,
 } from "../redux/CardSlice";
@@ -79,6 +80,19 @@ export default function Home() {
 
   const reduxDecks = useSelector((state) => state.deck.decks);
   const reduxActiveUsers = useSelector((state) => state.card.activeUsers);
+  const deckListRef = useRef(null);
+  useEffect(() => {
+    const el = deckListRef.current;
+    if (!el) return;
+    const onWheel = (e) => {
+      if (Math.abs(e.deltaY) < Math.abs(e.deltaX)) return;
+      if (el.scrollWidth <= el.clientWidth) return;
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
   const numLeaders = 7;
   useEffect(() => {
     dispatch(setGameMode("automated"));
@@ -181,11 +195,19 @@ export default function Home() {
     setWaitingRoom(String(room));
     dispatch(resetEngine());
     dispatch(setGameMode("automated"));
+    const engineDeck = buildEngineDeck();
+    // Snapshot the registered list for in-match decklist viewing (not live remaining).
+    dispatch(
+      setInitialDecklist({
+        deck: engineDeck.mainDeck,
+        evoDeck: engineDeck.evolveDeck,
+      }),
+    );
     socket.emit("join_room", {
       room,
       playerId,
       automated: true,
-      deck: buildEngineDeck(),
+      deck: engineDeck,
       deckName: selectedDeck.name || null,
     });
   };
@@ -320,6 +342,12 @@ export default function Home() {
     }
     setShowSelected(res);
 
+    dispatch(
+      setInitialDecklist({
+        deck: newDeck.deck,
+        evoDeck: newDeck.evoDeck,
+      }),
+    );
     dispatch(setDeck(newDeck.deck.toSorted(() => Math.random() - 0.5)));
 
     dispatch(
@@ -587,6 +615,7 @@ export default function Home() {
           }}
         >
           <div
+            ref={deckListRef}
             style={{
               // backgroundColor: "yellow",
               display: "flex",
@@ -613,6 +642,7 @@ export default function Home() {
                     cursor: "pointer",
                     height: "160px",
                     width: "115px",
+                    flexShrink: 0,
                     borderRadius: "10px",
                     border: "50px solid #0000",
                     backgroundColor: showSelected[idx]

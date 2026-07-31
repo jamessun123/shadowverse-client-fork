@@ -21,6 +21,13 @@ function targetLabel(state: GameState, targetId: string | undefined): string {
   return cardName(state, targetId) ?? "a follower";
 }
 
+/** This player's turn count (going second: first action turn is 1, not global 2). */
+function playerTurnNumber(state: GameState, player: PlayerId): number {
+  const global = state.turnNumber;
+  if (global <= 0) return global;
+  return player === state.firstPlayer ? Math.ceil(global / 2) : Math.floor(global / 2);
+}
+
 function describeChoice(
   state: GameState,
   payload: Record<string, unknown>,
@@ -34,6 +41,15 @@ function describeChoice(
     const id = String(payload.targetId);
     const name = targetLabel(state, id);
     return { text: `selected target: ${name}`, cardName: cardName(state, id) };
+  }
+
+  if (Array.isArray(payload.targetIds)) {
+    const ids = (payload.targetIds as string[]).map(String);
+    const names = ids.map((id) => targetLabel(state, id));
+    return {
+      text: ids.length ? `selected targets: ${names.join(", ")}` : "selected no targets",
+      cardName: ids.length === 1 ? cardName(state, ids[0]) : undefined,
+    };
   }
 
   if (payload.instanceId != null) {
@@ -86,7 +102,7 @@ export function buildActionLogEntry(
 ): ActionLogEntry {
   const base = {
     seq: (state.actionLog?.length ?? 0) + 1,
-    turnNumber: state.turnNumber,
+    turnNumber: playerTurnNumber(state, player),
     phase: state.phase,
     player,
     actionType: action.type,

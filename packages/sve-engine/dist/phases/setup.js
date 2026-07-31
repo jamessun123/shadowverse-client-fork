@@ -26,6 +26,7 @@ function clearTurnScopedCardState(card) {
     card.abilitiesActivatedThisTurn = [];
     card.counters = {};
     card.chosenChooseOptionsThisTurn = {};
+    card.chosenChooseOptionLabelsThisTurn = {};
     card.modifiers = card.modifiers.filter((m) => !m.untilEndOfTurn);
     card.playCostReduction = 0;
     card.evolveCostOverride = undefined;
@@ -106,6 +107,7 @@ function beginStartPhase(state) {
     p.flags.cardsPlayedThisTurn = 0;
     p.flags.leaderLostDefThisTurn = false;
     p.flags.chosenChooseOptionTracksThisTurn = {};
+    p.flags.chosenChooseOptionLabelsThisTurn = {};
     for (const card of p.zones.field) {
         refreshFieldCard(card, next);
     }

@@ -4,6 +4,7 @@ import {
   setLeaderSilent,
   setEnemyLeader,
   queueEnemyRevealedCards,
+  setInitialDecklist,
 } from "../redux/CardSlice";
 import { engineViewToRedux } from "./adapter";
 import { getNameByCardNoClient } from "./cardLookup";
@@ -53,6 +54,14 @@ export function applyEnginePayload(dispatch, payload, knownSlot = null) {
   }
 
   dispatch(setEngineView({ view, seq, force: freshGame }));
+  if (view.registeredDecklist) {
+    dispatch(
+      setInitialDecklist({
+        deck: view.registeredDecklist.mainDeck || [],
+        evoDeck: view.registeredDecklist.evolveDeck || [],
+      }),
+    );
+  }
   const mapped = engineViewToRedux(view, view.self);
   if (!mapped) return false;
   dispatch(syncFromEngine(mapped));

@@ -78,7 +78,8 @@ function evalCondition(state, player, condition) {
             });
         }
         case "selectedTargetHasTraits": {
-            const targetId = state.resolutionContext?.forcedTargetId;
+            const targetId = state.resolutionContext?.lastSelectedTargetId ??
+                state.resolutionContext?.forcedTargetId;
             if (!targetId || targetId === "leader" || targetId === "selfLeader")
                 return false;
             const found = (0, queries_1.findInstance)(state, targetId);

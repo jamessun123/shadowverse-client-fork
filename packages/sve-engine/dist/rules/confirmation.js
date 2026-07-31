@@ -162,11 +162,20 @@ function markTriggerAbilityUsed(state, trigger) {
 function resolveOneTrigger(state, trigger) {
     let next = structuredClone(state);
     next.pendingTriggers = next.pendingTriggers.filter((t) => t.id !== trigger.id);
+    // Set source before canEffectResolve — self-target effects (e.g. Apostle of Disdain
+    // buff/Storm) need sourceInstanceId to see any candidates.
     next.resolutionContext = {
         ...(0, effect_utils_1.contextForTriggerResolution)(next, trigger.sourceInstanceId, trigger.ability.effect),
         // Only auto-target the entered follower when the ability opts in.
         forcedTargetId: trigger.ability.useEnteredTarget ? trigger.forcedTargetId : undefined,
     };
+    // Comprehensive Rules 10.7.3.2: if it cannot be played, remove pending status only.
+    if (!(0, resolver_1.canEffectResolve)(next, trigger.controller, trigger.ability.effect)) {
+        if ((0, effect_utils_1.shouldClearResolutionContext)(next)) {
+            next.resolutionContext = null;
+        }
+        return next;
+    }
     next = (0, resolver_1.resolveEffect)(next, trigger.ability.effect, trigger.controller);
     markTriggerAbilityUsed(next, trigger);
     if ((0, effect_utils_1.shouldClearResolutionContext)(next)) {
@@ -190,6 +199,47 @@ function runConfirmationTiming(state) {
             return next;
         next = capPlayPoints(next);
         next = resolveBane(next);
+        // Resolve "whenever this takes ability damage" before destroyAtZeroDef so dig/buff
+        // effects (e.g. Galmieux, Ardent Disdain) still see the damaged follower on the field.
+        if ((0, effect_utils_1.shouldDeferTriggers)(next))
+            return next;
+        const adtActive = next.pendingTriggers.filter((t) => t.timing === "onAbilityDamageTaken" && t.controller === next.activePlayer);
+        const adtInactive = next.pendingTriggers.filter((t) => t.timing === "onAbilityDamageTaken" && t.controller !== next.activePlayer);
+        if (adtActive.length > 1) {
+            next.pendingChoices = {
+                type: "selectTrigger",
+                player: next.activePlayer,
+                options: adtActive.map((t) => ({
+                    triggerId: t.id,
+                    label: t.label,
+                })),
+            };
+            return next;
+        }
+        if (adtActive.length === 1) {
+            next = resolveOneTrigger(next, adtActive[0]);
+            resolutions += 1;
+            loop = true;
+            continue;
+        }
+        if (adtInactive.length > 1) {
+            const opp = next.activePlayer === 0 ? 1 : 0;
+            next.pendingChoices = {
+                type: "selectTrigger",
+                player: opp,
+                options: adtInactive.map((t) => ({
+                    triggerId: t.id,
+                    label: t.label,
+                })),
+            };
+            return next;
+        }
+        if (adtInactive.length === 1) {
+            next = resolveOneTrigger(next, adtInactive[0]);
+            resolutions += 1;
+            loop = true;
+            continue;
+        }
         next = destroyAtZeroDef(next);
         next = enforceFieldLimits(next);
         next = checkLosses(next);

@@ -50,11 +50,14 @@ export function engineViewToRedux(view, playerSlot) {
   const exPlayCostField = Array(10).fill(null);
   const counterField = Array(10).fill(0);
 
-  const hasKeywordFlag = (stats, inst, kw) =>
-    Boolean(
+  const hasKeywordFlag = (stats, inst, kw) => {
+    const active = view.activeKeywords?.[inst.instanceId];
+    if (active) return active.includes(kw);
+    return Boolean(
       (stats.keywords || []).includes(kw) ||
         (inst.grantedKeywords || []).includes(kw),
     );
+  };
 
   const visibleCounter = (inst) => {
     const persistent = inst?.persistentCounters || {};
