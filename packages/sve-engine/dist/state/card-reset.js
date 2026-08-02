@@ -6,6 +6,7 @@ function resetCardInstanceState(card) {
     card.modifiers = [];
     card.grantedKeywords = [];
     card.grantedLastWords = [];
+    card.grantedStartOfEnd = [];
     card.grantedOnCardPlayed = [];
     card.playCostReduction = 0;
     card.persistentPlayCostReduction = 0;
@@ -24,4 +25,10 @@ function resetCardInstanceState(card) {
     card.persistentCounters = {};
     card.chosenChooseOptionsThisTurn = {};
     card.chosenChooseOptionLabelsThisTurn = {};
+    card.equippedInstanceIds = undefined;
+    card.equippedToInstanceId = undefined;
+    card.skipRefreshNextStart = undefined;
+    card.damageDealtBonus = undefined;
+    card.damageTakenReduction = undefined;
+    card.cannotAttack = undefined;
 }

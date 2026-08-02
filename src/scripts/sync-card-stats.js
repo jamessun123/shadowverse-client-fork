@@ -13,14 +13,17 @@ const OUTPUT = path.join(__dirname, "..", "engine", "card-stats.json");
 
 function upsertStats(stats, card) {
   if (!card?.cardNo || !card?.name) return;
+  const prev = stats[card.cardNo] || {};
   stats[card.cardNo] = {
-    attack: card.attack ?? null,
-    defense: card.defense ?? null,
-    cost: card.cost ?? null,
-    keywords: card.keywords || [],
-    cardType: card.cardType || card.type || "follower",
-    name: card.name,
-    reprintOf: card.reprintOf || undefined,
+    attack: card.attack ?? prev.attack ?? null,
+    defense: card.defense ?? prev.defense ?? null,
+    cost: card.cost ?? prev.cost ?? null,
+    // Prefer authored keywords when provided — scraped cards.json often marks
+    // conditional keywords (e.g. "give this Storm") as always-on.
+    keywords: Array.isArray(card.keywords) ? card.keywords : prev.keywords || [],
+    cardType: card.cardType || card.type || prev.cardType || "follower",
+    name: card.name || prev.name,
+    reprintOf: card.reprintOf || prev.reprintOf || undefined,
   };
 }
 
@@ -36,15 +39,8 @@ function loadCardDefOverlays(dir, stats) {
     const chunk = JSON.parse(fs.readFileSync(full, "utf8"));
     for (const card of Object.values(chunk)) {
       if (!card?.cardNo) continue;
-      if (!stats[card.cardNo]) {
-        upsertStats(stats, card);
-        continue;
-      }
-      // Prefer authored gameplay keywords — scraped cards.json often marks
-      // conditional keywords (e.g. "give this Storm") as always-on.
-      if (Array.isArray(card.keywords)) {
-        stats[card.cardNo].keywords = card.keywords;
-      }
+      // Authored card-defs win for attack/defense/cardType/cost/name (merge-safe).
+      upsertStats(stats, card);
     }
   }
 }

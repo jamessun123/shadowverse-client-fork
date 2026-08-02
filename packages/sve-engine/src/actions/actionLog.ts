@@ -1,4 +1,5 @@
-import { findInstance } from "../state/queries";
+import { getCardDef } from "../cards/registry";
+import { findInstance, resolveCardNo } from "../state/queries";
 import {
   ActionLogEntry,
   ActionResult,
@@ -22,10 +23,35 @@ function targetLabel(state: GameState, targetId: string | undefined): string {
 }
 
 /** This player's turn count (going second: first action turn is 1, not global 2). */
-function playerTurnNumber(state: GameState, player: PlayerId): number {
+export function playerTurnNumber(state: GameState, player: PlayerId): number {
   const global = state.turnNumber;
   if (global <= 0) return global;
   return player === state.firstPlayer ? Math.ceil(global / 2) : Math.floor(global / 2);
+}
+
+/** True when this activate action's selected ability is marked Union Burst. */
+function activateIsUnionBurst(
+  state: GameState,
+  instanceId: string | undefined,
+  abilityKey: string | undefined,
+): boolean {
+  if (!instanceId) return false;
+  const found = findInstance(state, instanceId);
+  if (!found) return false;
+  const equipMatch = abilityKey ? /^equipActivated:([^:]+):(\d+)$/.exec(abilityKey) : null;
+  if (equipMatch) {
+    const eqFound = findInstance(state, equipMatch[1]);
+    const eqDef = eqFound ? getCardDef(resolveCardNo(state, eqFound.card)) : undefined;
+    return Boolean(eqDef?.abilities?.[Number(equipMatch[2])]?.unionBurst);
+  }
+  const def = getCardDef(resolveCardNo(state, found.card));
+  if (!def?.abilities?.length) return false;
+  if (abilityKey) {
+    const match = /^activated:(\d+)$/.exec(abilityKey);
+    if (match) return Boolean(def.abilities[Number(match[1])]?.unionBurst);
+  }
+  const activated = def.abilities.filter((a) => a.timing === "activated");
+  return activated.length === 1 && Boolean(activated[0].unionBurst);
 }
 
 function describeChoice(
@@ -94,12 +120,35 @@ function describeChoice(
   return { text: `responded to ${choice.type}` };
 }
 
+/** Append a Union Burst activation to the action log with the running turn count. */
+export function appendUnionBurstLogEntry(
+  state: GameState,
+  player: PlayerId,
+  sourceInstanceId: string,
+  count: number,
+): void {
+  const name = cardName(state, sourceInstanceId);
+  if (!state.actionLog) state.actionLog = [];
+  state.actionLog.push({
+    seq: state.actionLog.length + 1,
+    turnNumber: playerTurnNumber(state, player),
+    phase: state.phase,
+    player,
+    actionType: "UNION_BURST",
+    text: name
+      ? `Union Burst: ${name} (${count} this turn)`
+      : `Union Burst (${count} this turn)`,
+    cardName: name,
+    unionBurstCount: count,
+  });
+}
+
 /** Build a human-readable action log entry from pre-action state. */
 export function buildActionLogEntry(
   state: GameState,
   player: PlayerId,
   action: GameAction,
-): ActionLogEntry {
+): ActionLogEntry | null {
   const base = {
     seq: (state.actionLog?.length ?? 0) + 1,
     turnNumber: playerTurnNumber(state, player),
@@ -151,6 +200,10 @@ export function buildActionLogEntry(
       };
     }
     case "ACTIVATE": {
+      // Union Burst activates are logged in recordUnionBurstActivated.
+      if (activateIsUnionBurst(state, action.fieldInstanceId, action.abilityKey)) {
+        return null;
+      }
       const name = cardName(state, action.fieldInstanceId);
       return {
         ...base,
@@ -159,6 +212,9 @@ export function buildActionLogEntry(
       };
     }
     case "ACTIVATE_CEMETERY": {
+      if (activateIsUnionBurst(state, action.cemeteryInstanceId, action.abilityKey)) {
+        return null;
+      }
       const name = cardName(state, action.cemeteryInstanceId);
       return {
         ...base,
@@ -167,6 +223,9 @@ export function buildActionLogEntry(
       };
     }
     case "ACTIVATE_EXAREA": {
+      if (activateIsUnionBurst(state, action.exAreaInstanceId, action.abilityKey)) {
+        return null;
+      }
       const name = cardName(state, action.exAreaInstanceId);
       return {
         ...base,
@@ -175,6 +234,9 @@ export function buildActionLogEntry(
       };
     }
     case "ACTIVATE_HAND": {
+      if (activateIsUnionBurst(state, action.handInstanceId, action.abilityKey)) {
+        return null;
+      }
       const name = cardName(state, action.handInstanceId);
       return {
         ...base,
@@ -207,6 +269,19 @@ export function appendActionLog(
   const entry = buildActionLogEntry(before, player, action);
   const next = result.state;
   if (!next.actionLog) next.actionLog = [];
-  next.actionLog.push(entry);
+
+  // Union Burst lines are appended during apply (fanfare/evolve/strike/activate).
+  // Re-order so the primary player action (play/evolve/attack/…) comes first.
+  const beforeLen = before.actionLog?.length ?? 0;
+  const addedDuring = next.actionLog.slice(beforeLen);
+  next.actionLog.length = beforeLen;
+  if (entry) {
+    entry.seq = next.actionLog.length + 1;
+    next.actionLog.push(entry);
+  }
+  for (const e of addedDuring) {
+    e.seq = next.actionLog.length + 1;
+    next.actionLog.push(e);
+  }
   return result;
 }

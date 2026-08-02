@@ -10,6 +10,7 @@ const card_reset_1 = require("../state/card-reset");
 const resolver_1 = require("../effects/resolver");
 const effect_utils_1 = require("./effect-utils");
 const trigger_queue_1 = require("./trigger-queue");
+const union_burst_1 = require("./union-burst");
 const queries_1 = require("../state/queries");
 const zones_1 = require("../state/zones");
 function checkLosses(state) {
@@ -91,17 +92,20 @@ function enforceFieldLimits(state) {
     let next = structuredClone(state);
     for (const pid of [0, 1]) {
         const p = next.players[pid];
-        while (p.zones.field.length > p.fieldLimit) {
-            const excess = p.zones.field.pop();
-            const dest = (0, tokens_1.destinationForDestroyedCard)(excess.name);
+        while ((0, queries_1.fieldOccupancy)(p.zones.field) > p.fieldLimit) {
+            let idx = p.zones.field.length - 1;
+            while (idx >= 0 && (0, queries_1.isEquippedAttachment)(p.zones.field[idx]))
+                idx -= 1;
+            if (idx < 0)
+                break;
+            const [excess] = p.zones.field.splice(idx, 1);
             (0, card_reset_1.resetCardInstanceState)(excess);
-            p.zones[dest].push(excess);
+            (0, tokens_1.placeLeavingPlay)(p.zones, excess, "cemetery");
         }
         while (p.zones.exArea.length > p.exLimit) {
             const excess = p.zones.exArea.pop();
-            const dest = (0, tokens_1.destinationForDestroyedCard)(excess.name);
             (0, card_reset_1.resetCardInstanceState)(excess);
-            p.zones[dest].push(excess);
+            (0, tokens_1.placeLeavingPlay)(p.zones, excess, "cemetery");
         }
     }
     return next;
@@ -145,6 +149,8 @@ function markTriggerAbilityUsed(state, trigger) {
         "onAllyFollowerEnter",
         "onOpponentDeckToCemetery",
         "onAbilityDamageTaken",
+        "onAbilityDamageDealt",
+        "onUnionBurstActivated",
     ];
     if (!markableTimings.includes(trigger.timing))
         return;
@@ -164,10 +170,12 @@ function resolveOneTrigger(state, trigger) {
     next.pendingTriggers = next.pendingTriggers.filter((t) => t.id !== trigger.id);
     // Set source before canEffectResolve — self-target effects (e.g. Apostle of Disdain
     // buff/Storm) need sourceInstanceId to see any candidates.
+    const enteredId = trigger.ability.useEnteredTarget ? trigger.forcedTargetId : undefined;
     next.resolutionContext = {
         ...(0, effect_utils_1.contextForTriggerResolution)(next, trigger.sourceInstanceId, trigger.ability.effect),
-        // Only auto-target the entered follower when the ability opts in.
-        forcedTargetId: trigger.ability.useEnteredTarget ? trigger.forcedTargetId : undefined,
+        // Auto-target the entered/activator follower when the ability opts in.
+        forcedTargetId: enteredId,
+        lastSelectedTargetId: enteredId,
     };
     // Comprehensive Rules 10.7.3.2: if it cannot be played, remove pending status only.
     if (!(0, resolver_1.canEffectResolve)(next, trigger.controller, trigger.ability.effect)) {
@@ -178,6 +186,7 @@ function resolveOneTrigger(state, trigger) {
     }
     next = (0, resolver_1.resolveEffect)(next, trigger.ability.effect, trigger.controller);
     markTriggerAbilityUsed(next, trigger);
+    (0, union_burst_1.recordUnionBurstActivated)(next, trigger.controller, trigger.sourceInstanceId, trigger.ability);
     if ((0, effect_utils_1.shouldClearResolutionContext)(next)) {
         next.resolutionContext = null;
     }

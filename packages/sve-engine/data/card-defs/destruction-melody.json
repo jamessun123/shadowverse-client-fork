@@ -844,5 +844,40 @@
         }
       }
     ]
+  },
+  "Safira, Synthetic Beast": {
+    "name": "Safira, Synthetic Beast",
+    "cardNo": "BP05-040EN",
+    "class": "rune",
+    "printingType": "base",
+    "cost": 4,
+    "attack": 2,
+    "defense": 6,
+    "cardType": "follower",
+    "traits": ["Arcanaform", "Forbidden"],
+    "keywords": ["rush", "fanfare"],
+    "cardText": "Rush. [fanfare] Give this follower [attack]+X. X equals the number of [runecraft] followers in your cemetery. [act] [cost05]: Give this follower Storm.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "buff",
+          "atk": {
+            "op": "cemeteryFilterCount",
+            "filter": { "cardClass": "rune", "cardType": "follower" }
+          },
+          "targets": { "type": "self" }
+        }
+      },
+      {
+        "timing": "activated",
+        "cost": { "pp": 5 },
+        "effect": {
+          "op": "grantKeyword",
+          "keyword": "storm",
+          "targets": { "type": "self" }
+        }
+      }
+    ]
   }
 }

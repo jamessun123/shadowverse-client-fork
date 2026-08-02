@@ -33,6 +33,11 @@ function clearTurnScopedCardState(card) {
     if (card.grantedOnCardPlayed?.length) {
         card.grantedOnCardPlayed = card.grantedOnCardPlayed.filter((g) => !g.untilEndOfTurn);
     }
+    // Clear until-end-of-turn attack lock when modifiers expire; also clear explicit flag
+    // that was set without a modifier.
+    if (card.cannotAttack && !card.modifiers.some((m) => m.cannotAttack)) {
+        card.cannotAttack = undefined;
+    }
 }
 function refreshFieldCard(card, state) {
     card.evolvedThisTurn = false;
@@ -42,6 +47,13 @@ function refreshFieldCard(card, state) {
     if ((0, passives_1.isBoxed)(card, state)) {
         card.engaged = true;
         card.onFieldSinceTurnStart = false;
+        return;
+    }
+    if (card.skipRefreshNextStart) {
+        card.skipRefreshNextStart = undefined;
+        card.engaged = true;
+        card.onFieldSinceTurnStart = false;
+        card.boxedUntilTurn = undefined;
         return;
     }
     card.boxedUntilTurn = undefined;
@@ -105,6 +117,8 @@ function beginStartPhase(state) {
     p.turnsPassed += 1;
     p.flags.evolvedThisTurn = false;
     p.flags.cardsPlayedThisTurn = 0;
+    p.flags.spellsPlayedThisTurn = 0;
+    p.flags.unionBurstsActivatedThisTurn = 0;
     p.flags.leaderLostDefThisTurn = false;
     p.flags.chosenChooseOptionTracksThisTurn = {};
     p.flags.chosenChooseOptionLabelsThisTurn = {};

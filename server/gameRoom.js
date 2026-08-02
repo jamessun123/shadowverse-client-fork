@@ -22,6 +22,8 @@ class GameRoom {
     this.rematchVotes = new Set();
     /** True while both decks are ready and the host must pick turn order. */
     this.awaitingTurnOrder = false;
+    /** Testing rooms allow DEBUG_* cheats (tutor, PP/life adjust). */
+    this.testing = false;
   }
 
   addPlayer(socketId, playerId) {
@@ -34,10 +36,20 @@ class GameRoom {
         }
       }
     }
-    const slot = this.players.size;
+    // Assign the lowest free seat — do not use players.size, or a reconnect
+    // after the host dropped would give the new joiner slot 1 twice and leave
+    // nobody as slot 0 (turn-order choice never appears for a host).
+    const used = new Set([...this.players.values()].map((p) => p.slot));
+    let slot = 0;
+    while (slot < 2 && used.has(slot)) slot += 1;
     if (slot >= 2) return null;
     this.players.set(socketId, { playerId, slot });
     return slot;
+  }
+
+  /** Socket ids currently seated in this room (for direct emits). */
+  seatedSocketIds() {
+    return [...this.players.keys()];
   }
 
   getSlot(socketId) {
@@ -62,6 +74,7 @@ class GameRoom {
     const first = firstPlayer === 1 ? 1 : 0;
     let state = createInitialGameState(first);
     state = loadDecks(state, preparedDecks);
+    state.testingMode = !!this.testing;
     this.state = state;
     this.seq += 1;
     this.rematchVotes = new Set();
@@ -109,6 +122,7 @@ class GameRoom {
       seq: this.seq,
       phase: this.state.phase,
       winner: this.state.winner,
+      testingMode: !!this.testing,
     };
   }
 

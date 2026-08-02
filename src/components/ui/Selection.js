@@ -93,6 +93,7 @@ import {
   setRematchStatus,
   setEnemyRematchStatus,
 } from "../../redux/CardSlice";
+import { setPlayerSlot } from "../../redux/GameStateSlice";
 
 export default function Selection({ setSelectedOption }) {
   // redux state
@@ -234,10 +235,13 @@ export default function Selection({ setSelectedOption }) {
   useEffect(() => {
     if (gameMode !== "automated") return undefined;
 
-    const onAwaitingTurnOrder = ({ rematch } = {}) => {
+    const onAwaitingTurnOrder = ({ rematch, slot, isHost } = {}) => {
       if (!rematch) return;
       setAwaitingTurnOrder(true);
       setRematchOpenDialog(true);
+      if (slot != null) dispatch(setPlayerSlot(slot));
+      else if (isHost === true) dispatch(setPlayerSlot(0));
+      else if (isHost === false) dispatch(setPlayerSlot(1));
     };
 
     const onTurnOrderCancelled = () => {

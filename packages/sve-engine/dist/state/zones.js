@@ -13,21 +13,45 @@ function moveCard(state, instanceId, toZone, toPlayer) {
     const found = (0, queries_1.findInstance)(state, instanceId);
     if (!found)
         return state;
-    const next = structuredClone(state);
+    let next = structuredClone(state);
     const fromZones = next.players[found.player].zones;
     const fromList = fromZones[found.zone];
     const idx = fromList.findIndex((c) => c.instanceId === instanceId);
     if (idx < 0)
         return state;
     const [card] = fromList.splice(idx, 1);
-    let actualZone = toZone;
-    if (toZone === "cemetery") {
-        actualZone = (0, tokens_1.destinationForDestroyedCard)(card.name);
+    // Host leaving field: send attached equipment to cemetery/banish.
+    if (found.zone === "field" && toZone !== "field" && card.equippedInstanceIds?.length) {
+        const equipIds = [...card.equippedInstanceIds];
+        card.equippedInstanceIds = [];
+        for (const eqId of equipIds) {
+            next = moveCard(next, eqId, "cemetery", found.player);
+        }
+    }
+    // Equipment leaving: unlink from host.
+    if (card.equippedToInstanceId) {
+        const host = (0, queries_1.findInstance)(next, card.equippedToInstanceId);
+        if (host?.card.equippedInstanceIds) {
+            host.card.equippedInstanceIds = host.card.equippedInstanceIds.filter((id) => id !== instanceId);
+            // Strip modifiers sourced from this equipment.
+            host.card.modifiers = host.card.modifiers.filter((m) => m.sourceId !== instanceId);
+            host.card.grantedKeywords = host.card.grantedKeywords.filter(() => true);
+            // Recalculate damage bonuses from remaining equipment modifiers.
+            host.card.damageDealtBonus = host.card.modifiers.reduce((sum, m) => sum + (m.damageDealtBonus ?? 0), 0) || undefined;
+            host.card.damageTakenReduction = host.card.modifiers.reduce((sum, m) => sum + (m.damageTakenReduction ?? 0), 0) || undefined;
+        }
+        card.equippedToInstanceId = undefined;
+    }
+    // Tokens cease to exist outside field / EX / resolution.
+    if ((toZone === "cemetery" || toZone === "banish") &&
+        (0, tokens_1.isTokenCard)(card.name)) {
+        (0, card_reset_1.resetCardInstanceState)(card);
+        return next;
     }
     card.controller = toPlayer;
-    const toList = next.players[toPlayer].zones[actualZone];
+    const toList = next.players[toPlayer].zones[toZone];
     toList.push(card);
-    if (actualZone === "cemetery" || actualZone === "banish") {
+    if (toZone === "cemetery" || toZone === "banish") {
         (0, card_reset_1.resetCardInstanceState)(card);
     }
     else if (toZone === "field") {
@@ -42,15 +66,30 @@ function removeFromField(state, instanceId) {
     const found = (0, queries_1.findInstance)(state, instanceId);
     if (!found || found.zone !== "field")
         return null;
-    const next = structuredClone(state);
+    let next = structuredClone(state);
     const p = next.players[found.player];
     const idx = p.zones.field.findIndex((c) => c.instanceId === instanceId);
     if (idx < 0)
         return null;
     const [card] = p.zones.field.splice(idx, 1);
-    const dest = (0, tokens_1.destinationForDestroyedCard)(card.name);
+    // Host leaving: dump equipment first (while still tracked on the card).
+    if (card.equippedInstanceIds?.length) {
+        const equipIds = [...card.equippedInstanceIds];
+        card.equippedInstanceIds = [];
+        for (const eqId of equipIds) {
+            next = moveCard(next, eqId, "cemetery", found.player);
+        }
+    }
+    if (card.equippedToInstanceId) {
+        const host = (0, queries_1.findInstance)(next, card.equippedToInstanceId);
+        if (host?.card.equippedInstanceIds) {
+            host.card.equippedInstanceIds = host.card.equippedInstanceIds.filter((id) => id !== instanceId);
+            host.card.modifiers = host.card.modifiers.filter((m) => m.sourceId !== instanceId);
+        }
+        card.equippedToInstanceId = undefined;
+    }
     (0, card_reset_1.resetCardInstanceState)(card);
-    p.zones[dest].push(card);
+    (0, tokens_1.placeLeavingPlay)(p.zones, card, "cemetery");
     return { state: next, card, player: found.player };
 }
 function destroyFollower(state, instanceId) {

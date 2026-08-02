@@ -31,6 +31,23 @@ export function getPlayer(state: GameState, player: PlayerId) {
   return state.players[player];
 }
 
+/** Equipment sits on the field zone but does not occupy a board slot. */
+export function isEquippedAttachment(card: CardInstance): boolean {
+  return Boolean(card.equippedToInstanceId);
+}
+
+/** Board occupants only (followers/amulets that are not attached equipment). */
+export function fieldOccupancy(field: CardInstance[]): number {
+  return field.filter((c) => !isEquippedAttachment(c)).length;
+}
+
+export function hasFieldSpace(
+  field: CardInstance[],
+  fieldLimit: number,
+): boolean {
+  return fieldOccupancy(field) < fieldLimit;
+}
+
 export function findInstance(state: GameState, instanceId: string): { card: CardInstance; player: PlayerId; zone: string } | null {
   for (const pid of [0, 1] as PlayerId[]) {
     const zones = state.players[pid].zones;
@@ -318,6 +335,20 @@ export function hasKeyword(
   }
   // Evolved followers gain Rush for the turn they are evolved.
   if (keyword === "rush" && card.evolvedThisTurn) return true;
+  // Equipment passives may grant keywords to the host.
+  if (state && card.equippedInstanceIds?.length) {
+    for (const eqId of card.equippedInstanceIds) {
+      const eq = findInstance(state, eqId);
+      if (!eq) continue;
+      const eqDef = getCardDef(resolveCardNo(state, eq.card));
+      for (const ability of eqDef?.abilities ?? []) {
+        if (ability.timing !== "passive") continue;
+        const eff = ability.effect;
+        if (eff.op === "passiveKeywords" && eff.keywords.includes(keyword)) return true;
+        if (eff.op === "equipPassive" && eff.keywords?.includes(keyword)) return true;
+      }
+    }
+  }
   return false;
 }
 
@@ -327,9 +358,14 @@ export function clampDamageToFollower(
   player: PlayerId,
   amount: number,
 ): number {
+  let dmg = amount;
+  const reduction =
+    (card.damageTakenReduction ?? 0) +
+    card.modifiers.reduce((sum, m) => sum + (m.damageTakenReduction ?? 0), 0);
+  if (reduction > 0) dmg = Math.max(0, dmg - reduction);
   const cap = state ? getMaxDamagePerHit(state, card, player) : null;
-  if (cap != null && amount > cap) return cap;
-  return amount;
+  if (cap != null && dmg > cap) return cap;
+  return dmg;
 }
 
 export function canEvolveFollower(state: GameState, player: PlayerId, fieldInstanceId: string): boolean {
@@ -409,10 +445,39 @@ export function getActivatedAbilities(
       }
       if (have < need) continue;
     }
+    if (a.cost?.removePersistentCounter) {
+      const need = a.cost.removePersistentCounter.amount ?? 1;
+      const have = card.persistentCounters?.[a.cost.removePersistentCounter.key] ?? 0;
+      if (have < need) continue;
+    }
     if (a.cost?.burySelf && zone !== "field") continue;
     if (zone === "field" && a.cost?.engage && card.engaged) continue;
     if (!canActivateEffectResolve(state, player, a.effect)) continue;
     results.push({ ability: a, key });
+  }
+
+  // Equipment-granted activates usable through the host follower.
+  if (zone === "field" && card.equippedInstanceIds?.length) {
+    for (const eqId of card.equippedInstanceIds) {
+      const eqFound = findInstance(state, eqId);
+      if (!eqFound) continue;
+      const eqDef = getCardDef(resolveCardNo(state, eqFound.card));
+      for (const [idx, a] of (eqDef?.abilities ?? []).entries()) {
+        if (a.timing !== "activated" || !a.equipHostActivate) continue;
+        const key = `equipActivated:${eqId}:${idx}`;
+        if (a.oncePerTurn && card.abilitiesActivatedThisTurn.includes(key)) continue;
+        if (a.maxPerTurn != null && (card.counters[key] ?? 0) >= a.maxPerTurn) continue;
+        if (a.condition && !evalCondition(state, player, a.condition)) continue;
+        const ppCost = a.cost?.pp ?? 0;
+        const p = getPlayer(state, player);
+        const canPayPp = computeEvolvePayment(ppCost, p.pp, p.evoPoints, false).ok;
+        const canPayEp = computeEvolvePayment(ppCost, p.pp, p.evoPoints, true).ok;
+        if (!canPayPp && !canPayEp) continue;
+        if (a.cost?.engage && card.engaged) continue;
+        if (!canActivateEffectResolve(state, player, a.effect)) continue;
+        results.push({ ability: a, key });
+      }
+    }
   }
   return results;
 }
@@ -446,10 +511,34 @@ export function findMatchingEvolveCard(
   );
 }
 
-export function getStrikeAbilities(state: GameState, card: CardInstance) {
+export function getStrikeAbilities(
+  state: GameState,
+  card: CardInstance,
+): { ability: AbilityDefinition; key: string }[] {
   if (isBoxed(card, state)) return [];
+  const results: { ability: AbilityDefinition; key: string }[] = [];
   const def = getCardDef(resolveCardNo(state, card));
-  return def?.abilities?.filter((a) => a.timing === "strike") ?? [];
+  for (const [idx, a] of (def?.abilities ?? []).entries()) {
+    if (a.timing !== "strike") continue;
+    const key = `strike:${idx}`;
+    if (a.oncePerTurn && card.abilitiesActivatedThisTurn.includes(key)) continue;
+    results.push({ ability: a, key });
+  }
+  // Equipment that grants Strike to the host (e.g. Holy Castle Sword, Avalon).
+  if (card.equippedInstanceIds?.length) {
+    for (const eqId of card.equippedInstanceIds) {
+      const eqFound = findInstance(state, eqId);
+      if (!eqFound) continue;
+      const eqDef = getCardDef(resolveCardNo(state, eqFound.card));
+      for (const [idx, a] of (eqDef?.abilities ?? []).entries()) {
+        if (a.timing !== "strike") continue;
+        const key = `equipStrike:${eqId}:${idx}`;
+        if (a.oncePerTurn && card.abilitiesActivatedThisTurn.includes(key)) continue;
+        results.push({ ability: a, key });
+      }
+    }
+  }
+  return results;
 }
 
 export function opponentOf(player: PlayerId): PlayerId {
@@ -477,6 +566,9 @@ export function getLegalAttackTargets(
   attacker: CardInstance,
   player: PlayerId,
 ): Array<{ type: "leader"; player: PlayerId } | { type: "follower"; instanceId: string }> {
+  if (attacker.cannotAttack || attacker.modifiers.some((m) => m.cannotAttack)) {
+    return [];
+  }
   const enemy = opponentOf(player);
   const targets: Array<{ type: "leader"; player: PlayerId } | { type: "follower"; instanceId: string }> = [];
   const wards = getWardTargets(state, enemy);

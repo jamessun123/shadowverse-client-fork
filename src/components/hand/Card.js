@@ -29,6 +29,7 @@ export default function Card({
   evolvedUsed = false,
   opponentField = false,
   cardBeneath,
+  equipmentBeneath,
   engaged,
   showAtk,
   showDef,
@@ -114,10 +115,19 @@ export default function Card({
   };
 
   const handleHoverStart = () => {
-    if (!ready) {
-      setHovering(true);
-      if (name.slice(0, 6) === "Carrot" || name === "Drive Point") {
-        dispatch(setCurrentCard(cardBeneath));
+    // Opponent field stays inspectable even while placing/selecting (ready).
+    if (ready && !opponentField) return;
+    setHovering(true);
+    if (name.slice(0, 6) === "Carrot" || name === "Drive Point") {
+      dispatch(setCurrentCard(cardBeneath));
+    } else {
+      const eqList = Array.isArray(equipmentBeneath)
+        ? equipmentBeneath.filter((n) => n && n !== 0)
+        : equipmentBeneath != null && equipmentBeneath !== 0
+          ? [equipmentBeneath]
+          : [];
+      if (eqList.length) {
+        dispatch(setCurrentCard({ name, equipment: eqList }));
       } else {
         dispatch(setCurrentCard(name));
       }
@@ -157,23 +167,20 @@ export default function Card({
     <>
       <motion.div
         onTap={handleTap}
-        // style={{
-        //   height: "160px",
-        //   position: "relative",
-        // }}
+        style={{
+          position: "relative",
+          overflow: "visible",
+        }}
         animate={engaged ? { rotate: -90 } : { rotate: 0 }}
         initial={false}
         onHoverStart={() => handleHoverStart()}
         onHoverEnd={() => handleHoverEnd()}
         whileHover={
-          !ready && {
-            // boxShadow:
-            //   "0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 1.0)",
+          (!ready || opponentField) && {
             translateY: inHand ? -80 : -25,
             scale: inHand ? 1.5 : 1.3,
             cursor: `url(${img}) 55 55, auto`,
             overlay: "auto",
-            // display: "inline-block",
           }
         }
         className={
@@ -197,7 +204,9 @@ export default function Card({
         {intimidate === 1 && (
           <span className="kw-silhouette kw-intimidate" aria-hidden />
         )}
-        {discountedPlayCost != null && (
+        {typeof discountedPlayCost === "number" &&
+          Number.isFinite(discountedPlayCost) &&
+          discountedPlayCost >= 0 && (
           <div
             style={{
               position: "absolute",
@@ -214,12 +223,13 @@ export default function Card({
               alignItems: "center",
               justifyContent: "center",
               pointerEvents: "none",
+              zIndex: 2,
             }}
           >
             {discountedPlayCost}
           </div>
         )}
-        {counterVal > 0 && (
+        {Number(counterVal) > 0 ? (
           <>
             {gameMode !== "automated" && !opponentField && (
               <input
@@ -255,17 +265,50 @@ export default function Card({
               {counter}
             </div>
           </>
-        )}
+        ) : null}
         {(numOfCarrots > 0 && name !== "Carrot") ||
         (name === "Drive Point" && onField) ? (
           <img
-            style={{ opacity: 1 }}
+            style={{ opacity: 1, position: "relative", zIndex: 1 }}
             height={"100%"}
             src={cardImage(cardBeneath)}
             alt={name}
           />
         ) : (
-          <img height={"100%"} src={cardImage(name)} alt={name} />
+          <>
+            {equipmentBeneath != null &&
+              equipmentBeneath !== 0 &&
+              (Array.isArray(equipmentBeneath)
+                ? equipmentBeneath
+                : [equipmentBeneath]
+              )
+                .filter((n) => n && n !== 0)
+                .map((eqName, eqIdx) => (
+                  <img
+                    key={`eq-${eqName}-${eqIdx}`}
+                    height={"100%"}
+                    src={cardImage(eqName)}
+                    alt=""
+                    aria-hidden
+                    style={{
+                      position: "absolute",
+                      left: `${-14 - eqIdx * 8}%`,
+                      top: `${4 + eqIdx * 2}%`,
+                      height: "94%",
+                      zIndex: 0,
+                      pointerEvents: "none",
+                      opacity: 0.92,
+                      filter: "brightness(0.92)",
+                    }}
+                  />
+                ))}
+            <img
+              height={"100%"}
+              src={cardImage(name)}
+              alt={name}
+              style={{ position: "relative", zIndex: 1 }}
+            />
+          </>
         )}
 
         {showAtk && (
@@ -290,6 +333,7 @@ export default function Card({
                 display: "flex",
                 alignItems: "center",
                 pointerEvents: "none",
+                zIndex: 2,
               }}
             >
               <img height={"40px"} src={atkImg} alt="atk" />
@@ -329,6 +373,7 @@ export default function Card({
                 display: "flex",
                 alignItems: "center",
                 pointerEvents: "none",
+                zIndex: 2,
               }}
             >
               <img height={"40px"} src={defImg} alt="def" />

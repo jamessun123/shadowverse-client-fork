@@ -52,4 +52,6 @@
 .cardStyle {
   height: 161px;
   width: 115px;
+  position: relative;
+  overflow: visible;
 }

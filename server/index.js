@@ -36,11 +36,13 @@ function normalizeRoomId(room) {
   return String(room).trim();
 }
 
-function getOrCreateRoom(roomId) {
+function getOrCreateRoom(roomId, { testing = false } = {}) {
   const id = normalizeRoomId(roomId);
   if (!id) return null;
   if (!rooms.has(id)) {
-    rooms.set(id, new GameRoom(id, true));
+    const room = new GameRoom(id, true);
+    room.testing = !!testing;
+    rooms.set(id, room);
   } else if (!rooms.get(id).automated) {
     rooms.get(id).automated = true;
   }
@@ -54,6 +56,7 @@ function parseJoinPayload(raw) {
       playerId: null,
       deck: null,
       deckName: null,
+      testing: false,
     };
   }
   if (raw && typeof raw === "object") {
@@ -62,9 +65,10 @@ function parseJoinPayload(raw) {
       playerId: raw.playerId ?? null,
       deck: raw.deck ?? null,
       deckName: typeof raw.deckName === "string" ? raw.deckName : null,
+      testing: !!raw.testing,
     };
   }
-  return { room: null, playerId: null, deck: null, deckName: null };
+  return { room: null, playerId: null, deck: null, deckName: null, testing: false };
 }
 
 /** Rooms waiting for a second player (game not started yet). */
@@ -77,6 +81,7 @@ function listOpenRooms() {
       roomId: id,
       players: room.players.size,
       deckName: room.hostDeckName || null,
+      testing: !!room.testing,
       createdAt: room.createdAt || 0,
     });
   }
@@ -86,6 +91,26 @@ function listOpenRooms() {
 
 function broadcastOpenRooms() {
   io.emit("open_rooms", listOpenRooms());
+}
+
+/** Prompt every seated client (by socket id) so room-membership races can't drop it. */
+function emitAwaitingTurnOrder(gameRoom, { rematch = false } = {}) {
+  gameRoom.awaitingTurnOrder = true;
+  for (const [socketId, info] of gameRoom.players.entries()) {
+    io.to(socketId).emit("awaiting_turn_order", {
+      rematch: !!rematch,
+      slot: info.slot,
+      isHost: info.slot === 0,
+    });
+  }
+}
+
+function bothDecksReady(gameRoom) {
+  return Boolean(
+    gameRoom?.pendingDecks?.[0] &&
+      gameRoom?.pendingDecks?.[1] &&
+      !gameRoom.state,
+  );
 }
 
 function leaveWaitingRoom(socket) {
@@ -98,6 +123,20 @@ function leaveWaitingRoom(socket) {
   socket.leave(roomId);
   socket.data.room = null;
   socket.data.slot = null;
+
+  // Abort turn-order handshake — clear the lobby so a disconnected host seat
+  // can't leave a ghost room that blocks matchmaking forever.
+  if (gameRoom.awaitingTurnOrder) {
+    gameRoom.awaitingTurnOrder = false;
+    for (const sid of gameRoom.seatedSocketIds()) {
+      io.to(sid).emit("turn_order_cancelled");
+    }
+    gameRoom.players.clear();
+    gameRoom.pendingDecks = {};
+    rooms.delete(roomId);
+    broadcastOpenRooms();
+    return;
+  }
 
   if (gameRoom.players.size === 0) {
     rooms.delete(roomId);
@@ -113,7 +152,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("join_room", (payload) => {
-    const { room, playerId, deck, deckName } = parseJoinPayload(payload);
+    const { room, playerId, deck, deckName, testing } = parseJoinPayload(payload);
     if (!room) {
       socket.emit("join_error", { error: "Invalid room" });
       return;
@@ -124,7 +163,7 @@ io.on("connection", (socket) => {
       leaveWaitingRoom(socket);
     }
 
-    const gameRoom = getOrCreateRoom(room);
+    const gameRoom = getOrCreateRoom(room, { testing });
     if (gameRoom.state) {
       socket.emit("join_error", { error: "Room is full" });
       return;
@@ -146,22 +185,34 @@ io.on("connection", (socket) => {
       gameRoom.hostDeckName = deckName;
     }
 
+    if (deck) {
+      gameRoom.pendingDecks = gameRoom.pendingDecks || {};
+      gameRoom.pendingDecks[slot] = deck;
+      if (bothDecksReady(gameRoom)) {
+        gameRoom.awaitingTurnOrder = true;
+      }
+    }
+
     socket.emit("joined", {
       room,
       slot,
       automated: true,
+      testing: !!gameRoom.testing,
       serverMode: "authoritative",
+      awaitingTurnOrder: !!gameRoom.awaitingTurnOrder,
     });
 
     broadcastOpenRooms();
 
-    if (deck) {
-      gameRoom.pendingDecks = gameRoom.pendingDecks || {};
-      gameRoom.pendingDecks[slot] = deck;
-      if (gameRoom.pendingDecks[0] && gameRoom.pendingDecks[1] && !gameRoom.state) {
-        gameRoom.awaitingTurnOrder = true;
-        io.to(room).emit("awaiting_turn_order", { rematch: false });
-      }
+    if (bothDecksReady(gameRoom) && gameRoom.awaitingTurnOrder) {
+      emitAwaitingTurnOrder(gameRoom, { rematch: false });
+    } else if (gameRoom.awaitingTurnOrder) {
+      // Rejoining client missed the earlier broadcast — push it again.
+      socket.emit("awaiting_turn_order", {
+        rematch: !!gameRoom.state,
+        slot,
+        isHost: slot === 0,
+      });
     }
   });
 
@@ -211,8 +262,7 @@ io.on("connection", (socket) => {
     if (gameRoom.rematchVotes.size < 2) return;
 
     // Both accepted — host picks turn order before the new match starts.
-    gameRoom.awaitingTurnOrder = true;
-    io.to(roomId).emit("awaiting_turn_order", { rematch: true });
+    emitAwaitingTurnOrder(gameRoom, { rematch: true });
   });
 
   socket.on("cancel_rematch", () => {
@@ -309,6 +359,14 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
+    // Keep seats warm while the host is choosing turn order so a brief
+    // websocket blip doesn't remove the only player who can start the match.
+    // Explicit leave_room still drops the seat.
+    const roomId = socket.data.room;
+    const gameRoom = roomId ? rooms.get(roomId) : null;
+    if (gameRoom?.awaitingTurnOrder && !gameRoom.state) {
+      return;
+    }
     leaveWaitingRoom(socket);
   });
 });

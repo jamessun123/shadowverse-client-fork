@@ -13,6 +13,7 @@ export const CardSlice = createSlice({
     hand: [],
     handInstanceIds: [],
     cemeteryInstanceIds: [],
+    banishInstanceIds: [],
     fieldInstanceIds: Array(10).fill(null),
     enemyFieldInstanceIds: Array(10).fill(null),
     enemyHand: [],
@@ -70,7 +71,10 @@ export const CardSlice = createSlice({
     enemyDrainField: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     intimidateField: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     enemyIntimidateField: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    equipmentField: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    enemyEquipmentField: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     currentCard: "",
+    currentCardEquipment: [],
     currentCardIndex: -1,
     currentEvo: "",
     room: "",
@@ -1022,13 +1026,26 @@ export const CardSlice = createSlice({
       });
     },
     setCurrentCard: (state, action) => {
-      state.currentCard = action.payload;
+      const payload = action.payload;
+      if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+        state.currentCard = payload.name ?? "";
+        const eq = payload.equipment;
+        state.currentCardEquipment = Array.isArray(eq)
+          ? eq.filter(Boolean)
+          : eq
+            ? [eq]
+            : [];
+      } else {
+        state.currentCard = payload;
+        state.currentCardEquipment = [];
+      }
     },
     setCurrentCardIndex: (state, action) => {
       state.currentCardIndex = action.payload;
     },
     setCurrentEvo: (state, action) => {
       state.currentCard = action.payload;
+      state.currentCardEquipment = [];
     },
     shuffleDeck: (state) => {
       function shuffleDeck(deck) {
@@ -2545,6 +2562,10 @@ export const CardSlice = createSlice({
       if (s.enemyIntimidateField !== undefined) {
         state.enemyIntimidateField = s.enemyIntimidateField;
       }
+      if (s.equipmentField !== undefined) state.equipmentField = s.equipmentField;
+      if (s.enemyEquipmentField !== undefined) {
+        state.enemyEquipmentField = s.enemyEquipmentField;
+      }
       if (s.exPlayCostField !== undefined) state.exPlayCostField = s.exPlayCostField;
       if (s.enemyExPlayCostField !== undefined) {
         state.enemyExPlayCostField = s.enemyExPlayCostField;
@@ -2553,6 +2574,9 @@ export const CardSlice = createSlice({
       if (s.enemyCounterField !== undefined) state.enemyCounterField = s.enemyCounterField;
       if (s.cemetery !== undefined) state.cemetery = s.cemetery;
       if (s.cemeteryInstanceIds !== undefined) state.cemeteryInstanceIds = s.cemeteryInstanceIds;
+      if (s.banish !== undefined) state.banish = s.banish;
+      if (s.banishInstanceIds !== undefined) state.banishInstanceIds = s.banishInstanceIds;
+      if (s.enemyBanish !== undefined) state.enemyBanish = s.enemyBanish;
       if (s.deck !== undefined) state.deck = s.deck;
       if (s.evoDeck !== undefined) state.evoDeck = s.evoDeck;
       if (s.playPoints !== undefined) state.playPoints = s.playPoints;
@@ -2699,7 +2723,10 @@ export const CardSlice = createSlice({
       state.enemyEvoField = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
       state.counterField = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
       state.enemyCounterField = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+      state.equipmentField = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+      state.enemyEquipmentField = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
       state.currentCard = "";
+      state.currentCardEquipment = [];
       state.currentEvo = "";
       state.rematchStatus = false;
       state.enemyRematchStatus = false;
@@ -2802,7 +2829,10 @@ export const CardSlice = createSlice({
       state.enemyEvoField = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
       state.counterField = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
       state.enemyCounterField = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+      state.equipmentField = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+      state.enemyEquipmentField = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
       state.currentCard = "";
+      state.currentCardEquipment = [];
       state.currentEvo = "";
       state.rematchStatus = false;
       state.enemyRematchStatus = false;

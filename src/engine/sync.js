@@ -53,7 +53,7 @@ export function applyEnginePayload(dispatch, payload, knownSlot = null) {
     return false;
   }
 
-  dispatch(setEngineView({ view, seq, force: freshGame }));
+  dispatch(setEngineView({ view, seq, force: freshGame, testingMode: payload.testingMode }));
   if (view.registeredDecklist) {
     dispatch(
       setInitialDecklist({

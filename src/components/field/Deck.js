@@ -90,7 +90,14 @@ export default function Deck({
   const reduxInitialEvoDeck = useSelector((state) => state.card.initialEvoDeck);
   const reduxRoom = useSelector((state) => state.card.room);
   const gameMode = useSelector((state) => state.gameState.gameMode);
+  const enginePhase = useSelector((state) => state.gameState.enginePhase);
+  const engineWinner = useSelector((state) => state.gameState.engineWinner);
   const automated = gameMode === "automated";
+  const gameOver =
+    enginePhase === "gameOver" || engineWinner != null;
+
+  /** When true, the open modal shows remaining deck order instead of registered list. */
+  const [viewingRemainingDeck, setViewingRemainingDeck] = useState(false);
 
   const registeredMainDeck = React.useMemo(() => {
     const list = Array.isArray(reduxInitialDeck) ? [...reduxInitialDeck] : [];
@@ -117,18 +124,27 @@ export default function Deck({
 
   const handleModalOpen = () => {
     if (automated || reduxDeck.length === 0 || ready) return;
+    setViewingRemainingDeck(false);
     setOpen(true);
     dispatch(setViewingDeck(true));
   };
 
+  const handleRemainingDeckOpen = () => {
+    if (!gameOver || ready) return;
+    setViewingRemainingDeck(true);
+    setOpen(true);
+  };
+
   const handleRegisteredDecklistOpen = () => {
-    if (!automated || ready) return;
+    if (!automated || ready || gameOver) return;
     if (registeredMainDeck.length === 0 && registeredEvoDeck.length === 0) return;
+    setViewingRemainingDeck(false);
     setOpen(true);
   };
 
   const handleModalRevealOpen = () => {
     if (automated || reduxDeck.length === 0 || ready) return;
+    setViewingRemainingDeck(false);
     setOpen(true);
     dispatch(setViewingTopCards(true));
   };
@@ -136,6 +152,7 @@ export default function Deck({
   const handleModalClose = () => {
     setOpen(false);
     setHovering?.(false);
+    setViewingRemainingDeck(false);
     if (automated) return;
     if (reveal) {
       setReveal(false);
@@ -408,25 +425,36 @@ export default function Deck({
   return (
     <>
       <div
-        onMouseEnter={automated ? undefined : (event) => handlePopoverOpen(event)}
-        onClick={
-          automated
-            ? () => {
-                if (!ready) handleRegisteredDecklistOpen();
-              }
-            : () => {
-                if (!ready) dispatch(drawFromDeck());
-              }
+        onMouseEnter={
+          automated || gameOver
+            ? undefined
+            : (event) => handlePopoverOpen(event)
         }
+        onClick={() => {
+          if (ready) return;
+          if (gameOver) {
+            handleRemainingDeckOpen();
+            return;
+          }
+          if (automated) {
+            handleRegisteredDecklistOpen();
+            return;
+          }
+          dispatch(drawFromDeck());
+        }}
         style={{
           cursor:
-            automated &&
-            (registeredMainDeck.length > 0 || registeredEvoDeck.length > 0)
+            gameOver ||
+            (automated &&
+              (registeredMainDeck.length > 0 || registeredEvoDeck.length > 0))
               ? `url(${img}) 55 55, auto`
               : automated
                 ? "default"
                 : `url(${img}) 55 55, auto`,
         }}
+        title={
+          gameOver ? "View remaining deck (top → bottom)" : undefined
+        }
       >
         <img className={"cardStyle"} src={cardback} alt={"cardback"} />
       </div>
@@ -675,6 +703,64 @@ export default function Deck({
               }}
               variant="outlined"
             >
+              {viewingRemainingDeck ? (
+                <>
+                  <div
+                    style={{
+                      color: "white",
+                      fontFamily: "Noto Serif JP, serif",
+                      fontSize: "20px",
+                      textAlign: "center",
+                    }}
+                  >
+                    Remaining deck ({reduxDeck.length})
+                  </div>
+                  <div
+                    style={{
+                      color: "rgba(255,255,255,0.75)",
+                      fontFamily: "Noto Serif JP, serif",
+                      fontSize: "13px",
+                      textAlign: "center",
+                    }}
+                  >
+                    Top → bottom
+                  </div>
+                  {reduxDeck.length === 0 ? (
+                    <div
+                      style={{
+                        color: "rgba(255,255,255,0.7)",
+                        fontFamily: "Noto Serif JP, serif",
+                        textAlign: "center",
+                        marginTop: "2em",
+                      }}
+                    >
+                      No cards remaining
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      {reduxDeck.map((card, idx) => (
+                        <div key={`remain-${card}-${idx}`}>
+                          <Card
+                            ready={ready}
+                            name={card}
+                            setHovering={setHovering}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
               <div
                 style={{
                   color: "white",
@@ -750,6 +836,8 @@ export default function Deck({
                       </div>
                     ))}
                   </div>
+                </>
+              )}
                 </>
               )}
             </CardMUI>

@@ -4,6 +4,7 @@ export const GameStateSlice = createSlice({
   name: "gameState",
   initialState: {
     gameMode: "automated",
+    testingMode: false,
     engineView: null,
     playerSlot: null,
     pendingChoices: null,
@@ -25,11 +26,14 @@ export const GameStateSlice = createSlice({
         sessionStorage.setItem("sve_game_mode", action.payload);
       }
     },
+    setTestingMode: (state, action) => {
+      state.testingMode = !!action.payload;
+    },
     setPlayerSlot: (state, action) => {
       state.playerSlot = action.payload;
     },
     setEngineView: (state, action) => {
-      const { view, seq, force } = action.payload;
+      const { view, seq, force, testingMode } = action.payload;
       const freshMulligan =
         view?.state?.phase === "mulligan" && view?.state?.turnNumber === 0;
       if (!force && !freshMulligan && seq != null && seq <= state.lastSeq) return;
@@ -42,6 +46,8 @@ export const GameStateSlice = createSlice({
       state.engineWinner = view?.state?.winner ?? null;
       state.quickWindow = view?.state?.quickWindow ?? null;
       state.quickWindowPlayer = view?.state?.quickWindowPlayer ?? null;
+      if (testingMode != null) state.testingMode = !!testingMode;
+      else if (view?.state?.testingMode != null) state.testingMode = !!view.state.testingMode;
       state.selectedAttackerId = null;
       if (seq != null) state.lastSeq = seq;
     },
@@ -67,12 +73,14 @@ export const GameStateSlice = createSlice({
       state.selectedAttackerId = null;
       state.lastSeq = 0;
       state.uiChromeHidden = false;
+      // Keep testingMode — rematch / fresh sync should not clear it.
     },
   },
 });
 
 export const {
   setGameMode,
+  setTestingMode,
   setPlayerSlot,
   setEngineView,
   setInstanceMap,

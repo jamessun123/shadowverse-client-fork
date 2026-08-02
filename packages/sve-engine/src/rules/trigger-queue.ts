@@ -1,8 +1,8 @@
 import { getCardDef } from "../cards/registry";
 import { describeAbility } from "./trigger-labels";
-import { cardMatchesFilter } from "../state/conditions";
+import { cardMatchesFilter, evalCondition } from "../state/conditions";
 import { isBoxed } from "../state/passives";
-import { findInstance, getPlayer, resolveCardNo } from "../state/queries";
+import { findInstance, getPlayer, isFollowerCard, resolveCardNo } from "../state/queries";
 import { matchesExAreaEntryFilter } from "../state/passives";
 import { AbilityDefinition, CardInstance, GameState, PlayerId, TriggerTiming } from "../types";
 
@@ -181,6 +181,18 @@ export function queueOnCardFused(
   }
 }
 
+/** Queue "When this card is discarded" abilities for a card now in the cemetery. */
+export function queueOnDiscard(state: GameState, instanceId: string, player: PlayerId): void {
+  const found = findInstance(state, instanceId);
+  if (!found || found.zone !== "cemetery") return;
+  const cardNo = found.card.name;
+  const def = getCardDef(cardNo);
+  for (const ability of def?.abilities ?? []) {
+    if (ability.timing !== "onDiscard") continue;
+    pushTrigger(state, instanceId, player, cardNo, ability, "onDiscard", "od");
+  }
+}
+
 export function queueLastWords(state: GameState, instanceId: string, player: PlayerId): void {
   const found = findInstance(state, instanceId);
   if (!found) return;
@@ -227,6 +239,42 @@ export function queueStartOfEndAbilities(state: GameState, player: PlayerId): vo
     for (const ability of def?.abilities ?? []) {
       if (ability.timing !== "startOfEnd") continue;
       pushTrigger(state, card.instanceId, player, card.name, ability, "startOfEnd", "soe");
+    }
+    for (const [idx, granted] of (card.grantedStartOfEnd ?? []).entries()) {
+      const ability: AbilityDefinition = {
+        timing: "startOfEnd",
+        effect: granted.effect,
+        label: granted.label,
+      };
+      pushTrigger(
+        state,
+        card.instanceId,
+        player,
+        card.name,
+        ability,
+        "startOfEnd",
+        `gsoe${idx}`,
+      );
+    }
+  }
+  // Granted start-of-end on EX cards (e.g. Kyoka: bury if still in EX).
+  for (const card of [...getPlayer(state, player).zones.exArea]) {
+    if (isBoxed(card, state)) continue;
+    for (const [idx, granted] of (card.grantedStartOfEnd ?? []).entries()) {
+      const ability: AbilityDefinition = {
+        timing: "startOfEnd",
+        effect: granted.effect,
+        label: granted.label,
+      };
+      pushTrigger(
+        state,
+        card.instanceId,
+        player,
+        card.name,
+        ability,
+        "startOfEnd",
+        `gsoe${idx}`,
+      );
     }
   }
 }
@@ -373,6 +421,61 @@ export function queueOnAbilityDamageTaken(
   }
 }
 
+/**
+ * Queue onAbilityDamageDealt after a follower deals ability damage to an enemy follower.
+ * Equipment attached to the dealer can also carry this timing (e.g. Dark Axe Nachtfang).
+ */
+export function queueOnAbilityDamageDealt(
+  state: GameState,
+  sourceInstanceId: string,
+  damagedInstanceId: string,
+): void {
+  const damaged = findInstance(state, damagedInstanceId);
+  if (!damaged || damaged.zone !== "field") return;
+  if (!isFollowerCard(damaged.card, state)) return;
+
+  const source = findInstance(state, sourceInstanceId);
+  if (!source) return;
+
+  let dealer = source;
+  if (source.card.equippedToInstanceId) {
+    const host = findInstance(state, source.card.equippedToInstanceId);
+    if (!host || host.zone !== "field") return;
+    dealer = host;
+  }
+  if (dealer.zone !== "field" || !isFollowerCard(dealer.card, state)) return;
+  if (damaged.player === dealer.player) return;
+  if (isBoxed(dealer.card, state)) return;
+
+  const queueFrom = (card: CardInstance, idPrefix: string) => {
+    const cardNo = resolveCardNo(state, card);
+    const def = getCardDef(cardNo);
+    for (const [idx, ability] of (def?.abilities ?? []).entries()) {
+      if (ability.timing !== "onAbilityDamageDealt") continue;
+      const key = `onAbilityDamageDealt:${idx}`;
+      if (!canFireLimitedTrigger(card, key, ability)) continue;
+      pushTrigger(
+        state,
+        card.instanceId,
+        dealer.player,
+        cardNo,
+        ability,
+        "onAbilityDamageDealt",
+        idPrefix,
+        key,
+        damagedInstanceId,
+      );
+    }
+  };
+
+  queueFrom(dealer.card, "add");
+  for (const eqId of dealer.card.equippedInstanceIds ?? []) {
+    const eq = findInstance(state, eqId);
+    if (!eq) continue;
+    queueFrom(eq.card, "adde");
+  }
+}
+
 export function onCardEntersExAreaTriggers(
   state: GameState,
   instanceId: string,
@@ -394,6 +497,36 @@ export function onCardEntersExAreaTriggers(
         ability,
         "onExAreaEntry",
         `ex_${instanceId}`,
+      );
+    }
+  }
+}
+
+/** Queue onUnionBurstActivated abilities on other ally field followers. */
+export function queueOnUnionBurstActivated(
+  state: GameState,
+  activatorInstanceId: string,
+  player: PlayerId,
+): void {
+  for (const fieldCard of getPlayer(state, player).zones.field) {
+    if (fieldCard.instanceId === activatorInstanceId) continue;
+    if (isBoxed(fieldCard, state)) continue;
+    const def = getCardDef(resolveCardNo(state, fieldCard));
+    for (const [idx, ability] of (def?.abilities ?? []).entries()) {
+      if (ability.timing !== "onUnionBurstActivated") continue;
+      const key = `onUnionBurstActivated:${idx}`;
+      if (!canFireLimitedTrigger(fieldCard, key, ability)) continue;
+      if (ability.condition && !evalCondition(state, player, ability.condition)) continue;
+      pushTrigger(
+        state,
+        fieldCard.instanceId,
+        player,
+        fieldCard.name,
+        ability,
+        "onUnionBurstActivated",
+        "ub",
+        key,
+        activatorInstanceId,
       );
     }
   }

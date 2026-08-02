@@ -1,10 +1,18 @@
 import { getCardDef, resolveTokenName } from "../cards/registry";
+import { normalizeIdentityName } from "../cards/reprints";
+import { placeLeavingPlay } from "../cards/tokens";
 
 import { onCardEntersExArea, onFollowerEntersField, queueLastWords } from "../rules/confirmation";
 
 import { runConfirmationTiming } from "../rules/confirmation";
 import { describeEffect } from "../rules/trigger-labels";
-import { queueOnOpponentDeckToCemetery, queueOnAbilityDamageTaken } from "../rules/trigger-queue";
+import {
+  queueOnDiscard,
+  queueOnOpponentDeckToCemetery,
+  queueOnAbilityDamageTaken,
+  queueOnAbilityDamageDealt,
+} from "../rules/trigger-queue";
+import { recordUnionBurstActivated } from "../rules/union-burst";
 import {
   contextForTriggerResolution,
   finishDeferredTriggers,
@@ -19,11 +27,14 @@ import { createCardInstance } from "../state/factory";
 
 import {
   clampDamageToFollower,
+  fieldOccupancy,
   findInstance,
   findMatchingEvolveCard,
   getEffectiveStats,
   getPlayer,
+  hasFieldSpace,
   hasKeyword,
+  isEquippedAttachment,
   opponentOf,
   resolveCardDefCost,
   resolveCardNo,
@@ -56,6 +67,7 @@ export function appendResumeEffects(state: GameState, effects: Effect[]): GameSt
     lastSelectedTargetId: prev?.lastSelectedTargetId,
     buriedCosts: prev?.buriedCosts,
     lastDiscardedCardName: prev?.lastDiscardedCardName,
+    lastSelectedCardName: prev?.lastSelectedCardName,
     engagedAsCostCount: prev?.engagedAsCostCount,
     deferTriggers: true,
   };
@@ -75,6 +87,13 @@ function getTargetCandidates(
       return false;
     }
     if ("cardType" in selector && selector.cardType && def.cardType !== selector.cardType) {
+      return false;
+    }
+    if (
+      "excludeIdentityName" in selector &&
+      selector.excludeIdentityName &&
+      normalizeIdentityName(def.name) === normalizeIdentityName(selector.excludeIdentityName)
+    ) {
       return false;
     }
     return true;
@@ -111,12 +130,19 @@ function getTargetCandidates(
         .map((c) => c.instanceId);
     case "selfFieldCard":
       return getPlayer(state, player).zones.field
+        .filter((c) => !isEquippedAttachment(c))
         .filter((c) => {
           if ("includeSelf" in selector && selector.includeSelf) return true;
           return c.instanceId !== state.resolutionContext?.sourceInstanceId;
         })
         .filter(matchesExtra)
         .map((c) => c.instanceId);
+    case "lastSelected": {
+      const id =
+        state.resolutionContext?.lastSelectedTargetId ??
+        state.resolutionContext?.forcedTargetId;
+      return id ? [id] : [];
+    }
     case "anyFollower":
       return [...getPlayer(state, 0).zones.field, ...getPlayer(state, 1).zones.field]
         .filter((c) => {
@@ -155,7 +181,8 @@ function shouldPromptTargetSelection(
   if (
     selector.type === "enemyLeader" ||
     selector.type === "selfLeader" ||
-    selector.type === "self"
+    selector.type === "self" ||
+    selector.type === "lastSelected"
   ) {
     return false;
   }
@@ -217,6 +244,12 @@ function dealDamageToFollower(state: GameState, instanceId: string, amount: numb
   // then destroyAtZeroDef handles destruction + last words.
   queueOnAbilityDamageTaken(next, instanceId);
 
+  // "Whenever this deals ability damage to an enemy follower…" (e.g. Dark Axe Nachtfang).
+  const sourceId = next.resolutionContext?.sourceInstanceId;
+  if (sourceId) {
+    queueOnAbilityDamageDealt(next, sourceId, instanceId);
+  }
+
   return next;
 
 }
@@ -250,6 +283,24 @@ function resolveDamageAmount(state: GameState, player: PlayerId, amount: DamageA
   }
   if (amount.op === "engagedAsCostCount") {
     return (state.resolutionContext?.engagedAsCostCount ?? 0) * (amount.multiplier ?? 1);
+  }
+  if (amount.op === "cemeteryFilterCount") {
+    return getPlayer(state, player).zones.cemetery.filter((c) =>
+      cardMatchesFilter(resolveCardNo(state, c), amount.filter),
+    ).length;
+  }
+  if (amount.op === "halfSourceAtk") {
+    const sourceId = state.resolutionContext?.sourceInstanceId;
+    if (!sourceId) return 0;
+    const found = findInstance(state, sourceId);
+    if (!found) return 0;
+    let atkCard = found.card;
+    if (found.card.equippedToInstanceId) {
+      const host = findInstance(state, found.card.equippedToInstanceId);
+      if (!host) return 0;
+      atkCard = host.card;
+    }
+    return Math.ceil(getEffectiveStats(atkCard, state).atk / 2);
   }
   return 0;
 }
@@ -407,7 +458,7 @@ function promptSelectZoneCard(
   state: GameState,
   player: PlayerId,
   fromZone: "deck" | "cemetery" | "hand" | "evolveDeck",
-  to: "hand" | "exArea" | "field",
+  to: "hand" | "exArea" | "field" | "cemetery",
   matches: { instanceId: string; name: string }[],
   optional?: boolean,
   playCostReduction?: number,
@@ -443,13 +494,13 @@ function promptSearchDeckTop(
 
   filter: DeckFilter,
 
-  to: "hand" | "exArea" | "field",
+  to: "hand" | "exArea" | "field" | "cemetery",
 
   optional?: boolean,
 
   playCostReduction?: number,
 
-  remainderTo: "cemetery" | "deckBottom" = "cemetery",
+  remainderTo: "cemetery" | "deckBottom" | "deckTop" = "cemetery",
 
   reveal?: boolean,
 
@@ -458,6 +509,15 @@ function promptSearchDeckTop(
 ): GameState {
 
   const next = structuredClone(state);
+
+  const destLabel =
+    to === "cemetery"
+      ? "bury"
+      : to === "hand"
+        ? "add to hand"
+        : to === "exArea"
+          ? "put into EX"
+          : "summon";
 
   next.pendingChoices = withChoiceContext(next, {
     type: "searchDeckTop",
@@ -470,7 +530,7 @@ function promptSearchDeckTop(
     playCostReductionFilter,
     remainderTo,
     reveal,
-    reasonLabel: "Search deck",
+    reasonLabel: `Look at top — ${destLabel} if matching`,
     options: top.map((c) => ({
       instanceId: c.instanceId,
       label: getCardDef(c.name)?.name || c.name,
@@ -484,6 +544,9 @@ function promptSearchDeckTop(
 }
 
 function describeDeckFilter(filter: DeckFilter): string {
+  if (filter.anyOf?.length) {
+    return filter.anyOf.map((alt) => describeDeckFilter(alt)).join(" or ");
+  }
   const parts: string[] = [];
   if (filter.trait) parts.push(filter.trait);
   if (filter.allTraits?.length) parts.push(...filter.allTraits);
@@ -501,7 +564,7 @@ function promptSelectDeckSummon(
   top: { instanceId: string; name: string }[],
   filter: DeckFilter,
   maxTotalCost: number | undefined,
-  remainderTo: "cemetery" | "deckBottom",
+  remainderTo: "cemetery" | "deckBottom" | "shuffle",
   maxCount?: number,
   to: "field" | "exArea" | "hand" = "field",
   reveal?: boolean,
@@ -515,9 +578,11 @@ function promptSelectDeckSummon(
   const costLabel =
     maxTotalCost != null ? ` (total cost ${maxTotalCost} or less)` : "";
   const remainderLabel =
-    remainderTo === "deckBottom"
-      ? " Unselected cards go to the bottom of your deck."
-      : " Unselected cards go to the cemetery.";
+    remainderTo === "shuffle"
+      ? " Then shuffle your deck."
+      : remainderTo === "deckBottom"
+        ? " Unselected cards go to the bottom of your deck."
+        : " Unselected cards go to the cemetery.";
   next.pendingChoices = withChoiceContext(next, {
     type: "selectDeckSummon",
     player,
@@ -554,7 +619,7 @@ export function buryDeckCards(state: GameState, player: PlayerId, instanceIds: s
 
     const [card] = p.zones.deck.splice(idx, 1);
 
-    p.zones.cemetery.push(card);
+    placeLeavingPlay(p.zones, card, "cemetery");
 
     next.eventLog.push({ type: "bury", player });
 
@@ -576,7 +641,7 @@ export function moveZoneCardTo(
 
   fromZone: "deck" | "cemetery" | "hand" | "evolveDeck",
 
-  to: "hand" | "exArea" | "field",
+  to: "hand" | "exArea" | "field" | "cemetery",
 
 ): GameState {
 
@@ -610,7 +675,7 @@ export function moveZoneCardTo(
 
   } else if (to === "field") {
 
-    if (p.zones.field.length >= p.fieldLimit) {
+    if (!hasFieldSpace(p.zones.field, p.fieldLimit)) {
       list.push(card);
     } else {
       p.zones.field.push(card);
@@ -626,6 +691,12 @@ export function moveZoneCardTo(
       }
       onFollowerEntersField(next, card.instanceId, player);
     }
+
+  } else if (to === "cemetery") {
+
+    placeLeavingPlay(p.zones, card, "cemetery");
+
+    next.eventLog.push({ type: "bury", player });
 
   } else {
 
@@ -664,6 +735,9 @@ function applyGrantKeyword(
 
   const found = findInstance(next, picked.targetId!);
   if (!found) return state;
+  if (next.resolutionContext) {
+    next.resolutionContext.lastSelectedTargetId = picked.targetId!;
+  }
   if (!found.card.grantedKeywords.includes(keyword)) {
     found.card.grantedKeywords.push(keyword);
   }
@@ -746,6 +820,7 @@ export function resolveEffect(
       lastSelectedTargetId: next.resolutionContext?.lastSelectedTargetId,
       buriedCosts: next.resolutionContext?.buriedCosts,
       lastDiscardedCardName: next.resolutionContext?.lastDiscardedCardName,
+      lastSelectedCardName: next.resolutionContext?.lastSelectedCardName,
       engagedAsCostCount: next.resolutionContext?.engagedAsCostCount,
       deferTriggers: true,
     };
@@ -818,7 +893,7 @@ export function resolveEffect(
         if (idx < 0) continue;
         const [buried] = p.zones.field.splice(idx, 1);
         resetCardInstanceState(buried);
-        p.zones.cemetery.push(buried);
+        placeLeavingPlay(p.zones, buried, "cemetery");
         next.eventLog.push({ type: "bury", player: opp });
       }
       break;
@@ -839,8 +914,20 @@ export function resolveEffect(
       const forced = next.resolutionContext?.forcedTargetId;
       const candidates = getTargetCandidates(next, player, effect.targets);
 
-      const applyTo = (targetId: string) => {
-        const damage = resolveDamageAmount(next, player, effect.amount);
+      const sourceDamageBonus = (): number => {
+        const sourceId = next.resolutionContext?.sourceInstanceId;
+        if (!sourceId) return 0;
+        const src = findInstance(next, sourceId);
+        if (!src) return 0;
+        return (
+          (src.card.damageDealtBonus ?? 0) +
+          src.card.modifiers.reduce((sum, m) => sum + (m.damageDealtBonus ?? 0), 0)
+        );
+      };
+
+      const applyTo = (targetId: string, damageOverride?: number) => {
+        let damage =
+          damageOverride ?? resolveDamageAmount(next, player, effect.amount) + sourceDamageBonus();
         if (targetId === "leader") {
           next = dealDamageToLeader(next, opponentOf(player), damage);
         } else if (targetId === "selfLeader") {
@@ -850,9 +937,28 @@ export function resolveEffect(
         }
       };
 
+      const applyDivided = (targetIds: string[]) => {
+        if (targetIds.length === 0) return;
+        const total =
+          resolveDamageAmount(next, player, effect.amount) + sourceDamageBonus();
+        if (targetIds.length > total) return;
+        const damages = targetIds.map(() => 1);
+        let rem = total - targetIds.length;
+        for (let i = 0; rem > 0; i += 1, rem -= 1) {
+          damages[i % targetIds.length] += 1;
+        }
+        for (let i = 0; i < targetIds.length; i += 1) {
+          applyTo(targetIds[i], damages[i]);
+        }
+      };
+
       if (forcedIds) {
-        for (const targetId of forcedIds) {
-          applyTo(targetId);
+        if (effect.divided) {
+          applyDivided(forcedIds);
+        } else {
+          for (const targetId of forcedIds) {
+            applyTo(targetId);
+          }
         }
         break;
       }
@@ -860,6 +966,12 @@ export function resolveEffect(
       if (candidates.length === 0) break;
 
       const bounds = targetSelectionBounds(effect.targets);
+      // Divided damage cannot target more followers than damage points.
+      if (effect.divided) {
+        const total =
+          resolveDamageAmount(next, player, effect.amount) + sourceDamageBonus();
+        bounds.max = Math.min(bounds.max, Math.max(0, total));
+      }
       if (
         isMultiTargetSelection(effect.targets) &&
         shouldPromptTargetSelection(effect.targets, candidates) &&
@@ -876,7 +988,11 @@ export function resolveEffect(
       if (picked.needsPrompt) {
         return promptSelectTarget(next, player, effect, candidates, bounds);
       }
-      applyTo(picked.targetId!);
+      if (effect.divided) {
+        applyDivided([picked.targetId!]);
+      } else {
+        applyTo(picked.targetId!);
+      }
 
       break;
 
@@ -920,15 +1036,31 @@ export function resolveEffect(
       }
       const targetId = picked.targetId!;
 
+      if (next.resolutionContext) {
+        next.resolutionContext.lastSelectedTargetId = targetId;
+      }
+
+      const atkAmt = effect.atk == null ? 0 : resolveDamageAmount(next, player, effect.atk);
+      const defAmt = effect.def == null ? 0 : resolveDamageAmount(next, player, effect.def);
+
+      if (targetId === "selfLeader") {
+        next.players[player].leaderDef += defAmt;
+        break;
+      }
+      if (targetId === "leader") {
+        next.players[opponentOf(player)].leaderDef += defAmt;
+        break;
+      }
+
       const found = findInstance(next, targetId);
 
       if (found && isFollowerCard(found.card, next)) {
 
         found.card.modifiers.push({
 
-          atk: effect.atk ?? 0,
+          atk: atkAmt,
 
-          def: effect.def ?? 0,
+          def: defAmt,
 
           sourceId: next.resolutionContext?.sourceInstanceId || "effect",
 
@@ -1004,9 +1136,12 @@ export function resolveEffect(
 
       const zone = effect.zone === "exArea" ? p.zones.exArea : p.zones.field;
 
-      const limit = effect.zone === "exArea" ? p.exLimit : p.fieldLimit;
+      const hasRoom = () =>
+        effect.zone === "exArea"
+          ? zone.length < p.exLimit
+          : hasFieldSpace(zone, p.fieldLimit);
 
-      for (let i = 0; i < effect.count && zone.length < limit; i++) {
+      for (let i = 0; i < effect.count && hasRoom(); i++) {
         const tokenKey = effect.tokenName ?? effect.tokenCardNo;
         if (!tokenKey) break;
         const token = createCardInstance(resolveTokenName(tokenKey), player, player);
@@ -1049,7 +1184,9 @@ export function resolveEffect(
 
         const card = hand.pop()!;
 
-        next.players[player].zones.cemetery.push(card);
+        placeLeavingPlay(next.players[player].zones, card, "cemetery");
+
+        queueOnDiscard(next, card.instanceId, player);
 
       }
 
@@ -1064,7 +1201,7 @@ export function resolveEffect(
       for (let i = 0; i < toDiscard; i++) {
         const idx = Math.floor(Math.random() * hand.length);
         const [card] = hand.splice(idx, 1);
-        if (card) next.players[opp].zones.cemetery.push(card);
+        if (card) placeLeavingPlay(next.players[opp].zones, card, "cemetery");
       }
       break;
     }
@@ -1126,6 +1263,7 @@ export function resolveEffect(
         lastSelectedTargetId: next.resolutionContext?.lastSelectedTargetId,
         buriedCosts: next.resolutionContext?.buriedCosts,
         lastDiscardedCardName: next.resolutionContext?.lastDiscardedCardName,
+        lastSelectedCardName: next.resolutionContext?.lastSelectedCardName,
         engagedAsCostCount: next.resolutionContext?.engagedAsCostCount,
         deferTriggers: true,
       };
@@ -1225,7 +1363,7 @@ export function resolveEffect(
 
         const [card] = deck.splice(0, 1);
 
-        next.players[player].zones.cemetery.push(card);
+        placeLeavingPlay(next.players[player].zones, card, "cemetery");
 
         next.eventLog.push({ type: "bury", player });
 
@@ -1253,7 +1391,7 @@ export function resolveEffect(
 
         const [card] = deck.splice(0, 1);
 
-        next.players[opp].zones.cemetery.push(card);
+        placeLeavingPlay(next.players[opp].zones, card, "cemetery");
 
         next.eventLog.push({ type: "millOpponent", player, data: { name: card.name } });
 
@@ -1308,7 +1446,9 @@ export function resolveEffect(
 
       const p = next.players[player];
 
-      const matches = p.zones.cemetery.filter((c) => cardMatchesFilter(c.name, effect.filter));
+      const matches = p.zones.cemetery.filter((c) =>
+        cardMatchesFilter(c.name, effect.filter, next),
+      );
 
       if (matches.length === 0) break;
 
@@ -1407,9 +1547,27 @@ export function resolveEffect(
       const found = findInstance(next, sourceId);
       if (!found) break;
       if (!found.card.persistentCounters) found.card.persistentCounters = {};
+      let amount = 1;
+      if (effect.amount === "maxPp") {
+        amount = next.players[player].maxPp;
+      } else if (typeof effect.amount === "number") {
+        amount = effect.amount;
+      }
+      const current = found.card.persistentCounters[effect.key] ?? 0;
+      let nextCount = current + amount;
+      if (effect.max != null) nextCount = Math.min(nextCount, effect.max);
+      found.card.persistentCounters[effect.key] = nextCount;
+      break;
+    }
+
+    case "removePersistentCounter": {
+      const sourceId = next.resolutionContext?.sourceInstanceId;
+      if (!sourceId) break;
+      const found = findInstance(next, sourceId);
+      if (!found?.card.persistentCounters) break;
       const amount = effect.amount ?? 1;
-      found.card.persistentCounters[effect.key] =
-        (found.card.persistentCounters[effect.key] ?? 0) + amount;
+      const current = found.card.persistentCounters[effect.key] ?? 0;
+      found.card.persistentCounters[effect.key] = Math.max(0, current - amount);
       break;
     }
 
@@ -1486,7 +1644,9 @@ export function resolveEffect(
 
       const p = next.players[player];
 
-      const matches = p.zones.deck.filter((c) => cardMatchesFilter(c.name, effect.filter));
+      const matches = p.zones.deck.filter((c) =>
+        cardMatchesFilter(c.name, effect.filter, next),
+      );
 
       if (matches.length === 0) break;
 
@@ -1498,7 +1658,7 @@ export function resolveEffect(
           "deck",
           effect.to,
           matches,
-          undefined,
+          effect.optional,
           effect.playCostReduction,
           effect.reveal,
         );
@@ -1543,28 +1703,181 @@ export function resolveEffect(
 
 
     case "engage": {
-
       const candidates = getTargetCandidates(next, player, effect.targets);
-
       if (candidates.length === 0) break;
-
-      let targetId = candidates[0];
-
-      if (candidates.length >= 1 && !next.pendingChoices) {
-
+      const forced = next.resolutionContext?.forcedTargetId;
+      const picked = pickTargetFromCandidates(
+        forced,
+        candidates,
+        shouldPromptTargetSelection(effect.targets, candidates) && !next.pendingChoices,
+      );
+      if (picked.needsPrompt) {
         return promptSelectTarget(next, player, effect, candidates);
-
       }
-
-      const found = findInstance(next, targetId);
-
-      if (found) found.card.engaged = true;
-
+      const found = findInstance(next, picked.targetId!);
+      if (found) {
+        found.card.engaged = true;
+        if (effect.skipRefreshNextStart) {
+          found.card.skipRefreshNextStart = true;
+        }
+      }
       break;
-
     }
 
+    case "refreshFollower": {
+      const candidates = getTargetCandidates(next, player, effect.targets);
+      if (candidates.length === 0) break;
+      const forced = next.resolutionContext?.forcedTargetId;
+      const picked = pickTargetFromCandidates(
+        forced,
+        candidates,
+        shouldPromptTargetSelection(effect.targets, candidates) && !next.pendingChoices,
+      );
+      if (picked.needsPrompt) {
+        return promptSelectTarget(next, player, effect, candidates);
+      }
+      const found = findInstance(next, picked.targetId!);
+      if (found) {
+        if (next.resolutionContext) {
+          next.resolutionContext.lastSelectedTargetId = picked.targetId!;
+        }
+        found.card.engaged = false;
+        found.card.onFieldSinceTurnStart = true;
+        found.card.skipRefreshNextStart = undefined;
+      }
+      break;
+    }
 
+    case "cannotAttack": {
+      const targets = effect.targets ?? { type: "selfFollower" as const, count: 1 };
+      const candidates = getTargetCandidates(next, player, targets);
+      if (candidates.length === 0) break;
+      const forced = next.resolutionContext?.forcedTargetId;
+      const picked = pickTargetFromCandidates(
+        forced,
+        candidates,
+        shouldPromptTargetSelection(targets, candidates) && !next.pendingChoices,
+      );
+      if (picked.needsPrompt) {
+        return promptSelectTarget(next, player, { ...effect, targets }, candidates);
+      }
+      const found = findInstance(next, picked.targetId!);
+      if (found) {
+        if (next.resolutionContext) {
+          next.resolutionContext.lastSelectedTargetId = picked.targetId!;
+        }
+        found.card.cannotAttack = true;
+        if (effect.untilEndOfTurn !== false) {
+          found.card.modifiers.push({
+            sourceId: next.resolutionContext?.sourceInstanceId || "cannotAttack",
+            untilEndOfTurn: true,
+            cannotAttack: true,
+          });
+        }
+      }
+      break;
+    }
+
+    case "equip": {
+      const hostTargets = effect.targets ?? { type: "self" as const };
+      const candidates = getTargetCandidates(next, player, hostTargets);
+      if (candidates.length === 0) break;
+      const forced = next.resolutionContext?.forcedTargetId;
+      const picked = pickTargetFromCandidates(
+        forced,
+        candidates,
+        shouldPromptTargetSelection(hostTargets, candidates) && !next.pendingChoices,
+      );
+      if (picked.needsPrompt) {
+        return promptSelectTarget(next, player, { ...effect, targets: hostTargets }, candidates);
+      }
+      const hostId = picked.targetId!;
+      const host = findInstance(next, hostId);
+      if (!host || host.zone !== "field") break;
+      // Equipment attaches to the host and does not consume a board slot.
+
+      const tokenName = resolveTokenName(effect.tokenName);
+      const token = createCardInstance(tokenName, player, player);
+      token.equippedToInstanceId = hostId;
+      next.players[player].zones.field.push(token);
+      if (!host.card.equippedInstanceIds) host.card.equippedInstanceIds = [];
+      // Re-find host after possible clone issues — host is on next already
+      const hostLive = findInstance(next, hostId);
+      if (!hostLive) break;
+      if (!hostLive.card.equippedInstanceIds) hostLive.card.equippedInstanceIds = [];
+      hostLive.card.equippedInstanceIds.push(token.instanceId);
+
+      const eqDef = getCardDef(token.name);
+      for (const ability of eqDef?.abilities ?? []) {
+        if (ability.timing === "passive" && ability.effect.op === "equipPassive") {
+          const ep = ability.effect;
+          if (ep.atk || ep.def || ep.damageDealtBonus || ep.damageTakenReduction) {
+            hostLive.card.modifiers.push({
+              atk: ep.atk ?? 0,
+              def: ep.def ?? 0,
+              sourceId: token.instanceId,
+              damageDealtBonus: ep.damageDealtBonus,
+              damageTakenReduction: ep.damageTakenReduction,
+            });
+          }
+          if (ep.damageDealtBonus) {
+            hostLive.card.damageDealtBonus =
+              (hostLive.card.damageDealtBonus ?? 0) + ep.damageDealtBonus;
+          }
+          if (ep.damageTakenReduction) {
+            hostLive.card.damageTakenReduction =
+              (hostLive.card.damageTakenReduction ?? 0) + ep.damageTakenReduction;
+          }
+          for (const kw of ep.keywords ?? []) {
+            if (!hostLive.card.grantedKeywords.includes(kw)) {
+              hostLive.card.grantedKeywords.push(kw);
+            }
+          }
+        }
+        if (ability.timing === "onEquip") {
+          const prevCtx = next.resolutionContext;
+          next.resolutionContext = {
+            sourceInstanceId: token.instanceId,
+            effectStack: [ability.effect],
+            forcedTargetId: hostId,
+          };
+          next = resolveEffect(next, ability.effect, player);
+          next.resolutionContext = prevCtx;
+        }
+      }
+      break;
+    }
+
+    case "activateUnionBurst": {
+      const candidates = getTargetCandidates(next, player, effect.targets);
+      if (candidates.length === 0) break;
+      const forced = next.resolutionContext?.forcedTargetId;
+      const picked = pickTargetFromCandidates(
+        forced,
+        candidates,
+        shouldPromptTargetSelection(effect.targets, candidates) && !next.pendingChoices,
+      );
+      if (picked.needsPrompt) {
+        return promptSelectTarget(next, player, effect, candidates);
+      }
+      const target = findInstance(next, picked.targetId!);
+      if (!target || target.zone !== "field") break;
+      const def = getCardDef(resolveCardNo(next, target.card));
+      const ub = def?.abilities?.find((a) => a.unionBurst);
+      if (!ub) break;
+      const prevCtx = next.resolutionContext;
+      next.resolutionContext = {
+        sourceInstanceId: target.card.instanceId,
+        effectStack: [ub.effect],
+      };
+      next = resolveEffect(next, ub.effect, player);
+      recordUnionBurstActivated(next, player, target.card.instanceId, ub);
+      next.resolutionContext = prevCtx;
+      break;
+    }
+
+    case "equipPassive":
+      break;
 
     case "box": {
 
@@ -1642,7 +1955,7 @@ export function resolveEffect(
 
         const [card] = p.zones.cemetery.splice(idx, 1);
 
-        p.zones.banish.push(card);
+        placeLeavingPlay(p.zones, card, "banish");
 
       }
 
@@ -1664,7 +1977,9 @@ export function resolveEffect(
 
         const [card] = p.zones.exArea.splice(idx, 1);
 
-        p.zones.banish.push(card);
+        resetCardInstanceState(card);
+
+        placeLeavingPlay(p.zones, card, "banish");
 
       }
 
@@ -1684,7 +1999,7 @@ export function resolveEffect(
 
       const idx = p.zones.cemetery.findIndex((c) => c.instanceId === sourceId);
 
-      if (idx < 0 || p.zones.field.length >= p.fieldLimit) break;
+      if (idx < 0 || !hasFieldSpace(p.zones.field, p.fieldLimit)) break;
 
       const [card] = p.zones.cemetery.splice(idx, 1);
 
@@ -1796,7 +2111,9 @@ export function resolveEffect(
 
         p.zones.hand.splice(i, 1);
 
-        p.zones.cemetery.push(card);
+        placeLeavingPlay(p.zones, card, "cemetery");
+
+        queueOnDiscard(next, card.instanceId, player);
 
         next.resolutionContext = {
           ...next.resolutionContext,
@@ -1867,7 +2184,7 @@ export function resolveEffect(
 
       resetCardInstanceState(card);
 
-      p.zones.banish.push(card);
+      placeLeavingPlay(p.zones, card, "banish");
 
       break;
 
@@ -1880,6 +2197,15 @@ export function resolveEffect(
       if (!found || found.zone !== "field") break;
       queueLastWords(next, sourceId, found.player);
       next = destroyFollower(next, sourceId);
+      break;
+    }
+
+    case "burySelfIfInExArea": {
+      const sourceId = next.resolutionContext?.sourceInstanceId;
+      if (!sourceId) break;
+      const found = findInstance(next, sourceId);
+      if (!found || found.zone !== "exArea") break;
+      next = moveCard(next, sourceId, "cemetery", found.player);
       break;
     }
 
@@ -1897,6 +2223,23 @@ export function resolveEffect(
 
       break;
 
+    }
+
+    case "grantStartOfEnd": {
+      const targets = effect.targets ?? { type: "lastSelected" as const };
+      const candidates = getTargetCandidates(next, player, targets);
+      if (candidates.length === 0) break;
+      for (const targetId of candidates) {
+        if (targetId === "leader" || targetId === "selfLeader") continue;
+        const found = findInstance(next, targetId);
+        if (!found) continue;
+        if (!found.card.grantedStartOfEnd) found.card.grantedStartOfEnd = [];
+        found.card.grantedStartOfEnd.push({
+          effect: effect.effect,
+          label: effect.label,
+        });
+      }
+      break;
     }
 
 
@@ -1938,7 +2281,7 @@ export function resolveEffect(
 
       const p = next.players[player];
 
-      if (p.zones.field.length >= p.fieldLimit) break;
+      if (!hasFieldSpace(p.zones.field, p.fieldLimit)) break;
 
       const filter = effect.filter ?? {};
 
@@ -1962,7 +2305,7 @@ export function resolveEffect(
 
       const p = next.players[player];
 
-      const slots = p.fieldLimit - p.zones.field.length;
+      const slots = p.fieldLimit - fieldOccupancy(p.zones.field);
 
       if (slots <= 0) break;
 
@@ -1972,64 +2315,26 @@ export function resolveEffect(
 
       if (matches.length === 0) break;
 
-      if (effect.maxTotalCost != null) {
-
-        if (!next.pendingChoices) {
-
-          const pick = structuredClone(next);
-
-          pick.pendingChoices = {
-
-            type: "selectCemeterySummon",
-
-            player,
-
-            count: toSummon,
-
-            maxTotalCost: effect.maxTotalCost,
-
-            filter: effect.filter,
-
-            options: matches.map((c) => ({
-
-              instanceId: c.instanceId,
-
-              name: c.name,
-
-              label: getCardDef(c.name)?.name || c.name,
-
-              cost: resolveCardDefCost(c.name),
-
-            })),
-
-          };
-
-          return pick;
-
-        }
-
-        break;
-
-      }
-
-      let summoned = 0;
-
-      for (const card of [...matches]) {
-
-        if (summoned >= toSummon || p.zones.field.length >= p.fieldLimit) break;
-
-        const idx = p.zones.cemetery.findIndex((c) => c.instanceId === card.instanceId);
-
-        if (idx < 0) continue;
-
-        const [picked] = p.zones.cemetery.splice(idx, 1);
-
-        p.zones.field.push(picked);
-
-        onFollowerEntersField(next, picked.instanceId, player);
-
-        summoned++;
-
+      // Always prompt — auto-summoning the first N cards skips "select" / distinct-name rules.
+      if (!next.pendingChoices) {
+        const pick = structuredClone(next);
+        pick.pendingChoices = withChoiceContext(pick, {
+          type: "selectCemeterySummon",
+          player,
+          count: toSummon,
+          minCount:
+            effect.minCount ?? (effect.maxTotalCost != null ? 1 : 0),
+          maxTotalCost: effect.maxTotalCost,
+          distinctNames: effect.distinctNames,
+          filter: effect.filter,
+          options: matches.map((c) => ({
+            instanceId: c.instanceId,
+            name: c.name,
+            label: getCardDef(c.name)?.name || c.name,
+            cost: resolveCardDefCost(c.name),
+          })),
+        });
+        return pick;
       }
 
       break;
@@ -2040,7 +2345,10 @@ export function resolveEffect(
 
     case "searchDeckSummonMultiple": {
       const p = next.players[player];
-      const top = p.zones.deck.slice(0, effect.lookAt);
+      const fullDeck = effect.lookAt == null;
+      const top = fullDeck
+        ? p.zones.deck.filter((c) => cardMatchesFilter(c.name, effect.filter, next))
+        : p.zones.deck.slice(0, effect.lookAt);
       if (top.length === 0) break;
       if (!next.pendingChoices) {
         return promptSelectDeckSummon(
@@ -2049,7 +2357,7 @@ export function resolveEffect(
           top,
           effect.filter,
           effect.maxTotalCost,
-          effect.remainderTo ?? "deckBottom",
+          effect.remainderTo ?? (fullDeck ? "shuffle" : "deckBottom"),
           effect.maxCount,
           effect.to ?? "field",
           effect.reveal,
@@ -2210,16 +2518,42 @@ export function canEffectResolve(state: GameState, player: PlayerId, effect: Eff
     case "dealDamage":
     case "engage":
     case "box":
-    case "destroy": {
+    case "destroy":
+    case "refreshFollower":
+    case "cannotAttack":
+    case "equip":
+    case "activateUnionBurst":
+    case "grantKeyword": {
+      if (
+        "targets" in effect &&
+        effect.targets &&
+        effect.targets.type === "lastSelected"
+      ) {
+        // Prior step in a sequence will supply the target at resolve time.
+        return true;
+      }
       if (
         (effect.op === "dealDamage" ||
           effect.op === "buff" ||
           effect.op === "engage" ||
           effect.op === "box" ||
-          effect.op === "destroy") &&
+          effect.op === "destroy" ||
+          effect.op === "refreshFollower" ||
+          effect.op === "cannotAttack" ||
+          effect.op === "equip" ||
+          effect.op === "activateUnionBurst" ||
+          effect.op === "grantKeyword") &&
+        "targets" in effect &&
+        effect.targets &&
         "minCount" in effect.targets &&
         effect.targets.minCount === 0
       ) {
+        return true;
+      }
+      if (!("targets" in effect) || !effect.targets) {
+        if (effect.op === "cannotAttack" || effect.op === "equip") {
+          return getTargetCandidates(state, player, { type: "self" }).length > 0;
+        }
         return true;
       }
       return getTargetCandidates(state, player, effect.targets).length > 0;
@@ -2240,9 +2574,15 @@ export function canEffectResolve(state: GameState, player: PlayerId, effect: Eff
           (!o.additionalPpCost || state.players[player].pp >= o.additionalPpCost) &&
           canEffectResolve(state, player, o.effect),
       );
+    case "tutorFromDeck": {
+      if (effect.optional) return true;
+      return getPlayer(state, player).zones.deck.some((c) =>
+        cardMatchesFilter(c.name, effect.filter, state),
+      );
+    }
     case "tutorFromCemetery": {
       return getPlayer(state, player).zones.cemetery.some((c) =>
-        cardMatchesFilter(c.name, effect.filter),
+        cardMatchesFilter(c.name, effect.filter, state),
       );
     }
     case "tutorFromOpponentCemetery":
@@ -2264,6 +2604,22 @@ export function canEffectResolve(state: GameState, player: PlayerId, effect: Eff
         cardMatchesFilter(c.name, effect.filter),
       );
       return matches.length >= need;
+    }
+    case "banishFromCemetery": {
+      const need = effect.count ?? 1;
+      return (
+        getPlayer(state, player).zones.cemetery.filter((c) =>
+          cardMatchesFilter(c.name, effect.filter),
+        ).length >= need
+      );
+    }
+    case "banishFromExArea": {
+      const need = effect.count ?? 1;
+      return (
+        getPlayer(state, player).zones.exArea.filter((c) =>
+          cardMatchesFilter(c.name, effect.filter),
+        ).length >= need
+      );
     }
     default:
       return true;

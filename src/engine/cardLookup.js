@@ -105,7 +105,7 @@ function statValue(...values) {
   for (const v of values) {
     if (v != null && !Number.isNaN(Number(v))) return Number(v);
   }
-  return 0;
+  return null;
 }
 
 export function getCardStatsClient(nameOrCardNo) {
@@ -113,12 +113,17 @@ export function getCardStatsClient(nameOrCardNo) {
   const cardNo = def?.cardNo || nameOrCardNo;
   const gameplayNo = resolveGameplayCardNo(cardNo);
   const stats = cardStats[cardNo] || cardStats[gameplayNo] || {};
-  const cardType = def?.cardType ?? stats.cardType ?? null;
+  let cardType = def?.cardType ?? stats.cardType ?? null;
+  // Authored defs / incomplete scrapes may omit cardType while still having stats.
+  if (!cardType && (def?.attack != null || stats.attack != null)) {
+    cardType = "follower";
+  }
   const isFollower = cardType === "follower";
   return {
+    // null (not 0) when printed stats are missing — avoids a false "0" ATK/DEF overlay.
     attack: isFollower ? statValue(def?.attack, stats.attack) : null,
     defense: isFollower ? statValue(def?.defense, stats.defense) : null,
-    cost: statValue(def?.cost, stats.cost),
+    cost: statValue(def?.cost, stats.cost) ?? 0,
     keywords: def?.keywords ?? stats.keywords ?? [],
     cardType,
   };

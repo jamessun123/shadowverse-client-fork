@@ -86,6 +86,7 @@ function contextForTriggerResolution(state, sourceInstanceId, effect) {
         deferTriggers: prev?.deferTriggers,
         buriedCosts: prev?.buriedCosts,
         lastDiscardedCardName: prev?.lastDiscardedCardName,
+        lastSelectedCardName: prev?.lastSelectedCardName,
         engagedAsCostCount: prev?.engagedAsCostCount,
     };
 }

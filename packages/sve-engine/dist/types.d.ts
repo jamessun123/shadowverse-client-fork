@@ -28,11 +28,22 @@ export type TriggerTiming = "fanfare" | "lastWords" | "onEvolve" | "onSuperEvolv
 /** Fires when a card is fused into EX (and for abilities that also watch plays). */
  | "onCardFused"
 /** Fires on either play or fuse of a matching card. */
- | "onCardPlayedOrFused" | "strike" | "startOfMain" | "startOfEnd" | "passive" | "aura" | "onExAreaEntry" | "onAllyFollowerEnter"
+ | "onCardPlayedOrFused" | "strike" | "startOfMain" | "startOfEnd"
+/** Fires when this card is discarded from hand (including fuse-from-hand). */
+ | "onDiscard" | "passive" | "aura" | "onExAreaEntry" | "onAllyFollowerEnter"
 /** Fires when a card moves from an opponent's deck to cemetery during your turn. */
  | "onOpponentDeckToCemetery"
 /** Fires on a follower during its controller's turn after it takes ability damage and survives. */
- | "onAbilityDamageTaken" | "evolve";
+ | "onAbilityDamageTaken"
+/**
+ * Fires on a follower (or its equipment) after that follower deals ability damage
+ * to an enemy follower on the field.
+ */
+ | "onAbilityDamageDealt"
+/** Fires when another ally's Union Burst ability resolves. */
+ | "onUnionBurstActivated"
+/** Fires on an equipment token when it is attached to a follower. */
+ | "onEquip" | "evolve";
 export interface AbilityDefinition {
     timing: TriggerTiming | "activated" | "spell";
     cost?: {
@@ -59,6 +70,11 @@ export interface AbilityDefinition {
             /** Default true — cannot use the fuse source as its own material. */
             excludeSelf?: boolean;
         };
+        /** Remove persistent counters from the source as an activate cost. */
+        removePersistentCounter?: {
+            key: string;
+            amount?: number;
+        };
     };
     quick?: boolean;
     condition?: Condition;
@@ -75,6 +91,13 @@ export interface AbilityDefinition {
     oncePerTurn?: boolean;
     /** Max times this trigger can fire per turn (e.g. Tetra Rebel Evo). */
     maxPerTurn?: number;
+    /** Marks this ability as a Union Burst for tracking / cross-card triggers. */
+    unionBurst?: boolean;
+    /**
+     * When on an equipment card, this activated ability is usable through the
+     * equipped host follower (engaging the host when cost.engage is set).
+     */
+    equipHostActivate?: boolean;
     effect: Effect;
 }
 export interface GrantedOnCardPlayed {
@@ -99,6 +122,8 @@ export type TargetSelector = {
     trait?: string;
     cardType?: CardType;
     excludeSelf?: boolean;
+    /** Exclude cards whose normalized identity name equals this value. */
+    excludeIdentityName?: string;
 }
 /** Enemy leader or an enemy follower (player chooses). */
  | {
@@ -109,6 +134,7 @@ export type TargetSelector = {
     trait?: string;
     cardType?: CardType;
     excludeSelf?: boolean;
+    excludeIdentityName?: string;
 } | {
     type: "anyFollower";
     count?: number;
@@ -117,6 +143,7 @@ export type TargetSelector = {
     trait?: string;
     cardType?: CardType;
     excludeSelf?: boolean;
+    excludeIdentityName?: string;
 } | {
     type: "selfFollower";
     count?: number;
@@ -126,6 +153,8 @@ export type TargetSelector = {
     cardType?: CardType;
     excludeSelf?: boolean;
     includeSelf?: boolean;
+    /** Exclude cards whose normalized identity name equals this value (e.g. "not named Lind"). */
+    excludeIdentityName?: string;
 }
 /** Ally field card (follower or amulet), optionally trait-filtered. */
  | {
@@ -137,6 +166,11 @@ export type TargetSelector = {
     cardType?: CardType;
     excludeSelf?: boolean;
     includeSelf?: boolean;
+    excludeIdentityName?: string;
+}
+/** Reuse the most recently selected target in this resolution (no new prompt). */
+ | {
+    type: "lastSelected";
 };
 export type DeckFilter = {
     /** Exact card name (gameplay identity). */
@@ -156,6 +190,13 @@ export type DeckFilter = {
     identityNameContains?: string;
     /** Exclude cards whose normalized identity name equals this value. */
     excludeIdentityName?: string;
+    /**
+     * Exclude the identity of resolutionContext.lastSelectedCardName
+     * (e.g. second tutor must have a different name).
+     */
+    excludeLastSelectedIdentity?: boolean;
+    /** Match if any nested filter matches (e.g. Friendship Club OR PC spell). */
+    anyOf?: DeckFilter[];
 };
 export type Condition = {
     type: "always";
@@ -265,6 +306,35 @@ export type Condition = {
  | {
     type: "leaderDefMax";
     count: number;
+}
+/** True when the player has activated at least `count` Union Bursts this turn. */
+ | {
+    type: "unionBurstActivatedMin";
+    count: number;
+}
+/** True when the player's max PP is at least `count`. */
+ | {
+    type: "maxPpMin";
+    count: number;
+}
+/** True when the player's max PP equals `count`. */
+ | {
+    type: "maxPpEquals";
+    count: number;
+}
+/** True when there are at least `count` followers on the player's field. */
+ | {
+    type: "fieldFollowerMin";
+    count: number;
+}
+/** True when a 7-cost (or higher) follower is on the player's field. */
+ | {
+    type: "fieldFollowerMinCostAny";
+    minCost: number;
+}
+/** True when the player has played at least one spell this turn. */
+ | {
+    type: "spellPlayedThisTurn";
 };
 export type DamageAmount = number | {
     op: "otherFieldTraitCount";
@@ -282,6 +352,18 @@ export type DamageAmount = number | {
  | {
     op: "engagedAsCostCount";
     multiplier?: number;
+}
+/** Count of own cemetery cards matching filter (e.g. Runecraft followers). */
+ | {
+    op: "cemeteryFilterCount";
+    filter: DeckFilter;
+}
+/**
+ * Half the attack of the source follower (or its equip host if the source is
+ * equipment), rounded up.
+ */
+ | {
+    op: "halfSourceAtk";
 };
 export type Effect = {
     op: "draw";
@@ -290,10 +372,15 @@ export type Effect = {
     op: "dealDamage";
     amount: DamageAmount;
     targets: TargetSelector;
+    /**
+     * Divide `amount` among the selected targets (each gets at least 1).
+     * Remainder is assigned round-robin in selection order.
+     */
+    divided?: boolean;
 } | {
     op: "buff";
-    atk?: number;
-    def?: number;
+    atk?: number | DamageAmount;
+    def?: number | DamageAmount;
     targets: TargetSelector;
 } | {
     op: "buffFieldTrait";
@@ -395,7 +482,8 @@ export type Effect = {
 } | {
     op: "tutorFromDeck";
     filter: DeckFilter;
-    to: "hand" | "exArea" | "field";
+    to: "hand" | "exArea" | "field" | "cemetery";
+    optional?: boolean;
     playCostReduction?: number;
     /** Reveal to opponent before adding to hand (default true for deck → hand). */
     reveal?: boolean;
@@ -422,6 +510,13 @@ export type Effect = {
 } | {
     op: "addPersistentCounter";
     key: string;
+    /** Numeric amount, or "maxPp" to place counters equal to current max PP. */
+    amount?: number | "maxPp";
+    /** Optional cap on total persistent counters for this key. */
+    max?: number;
+} | {
+    op: "removePersistentCounter";
+    key: string;
     amount?: number;
 } | {
     op: "returnSourceToHand";
@@ -433,20 +528,39 @@ export type Effect = {
     op: "banishSelf";
 } | {
     op: "burySelf";
+}
+/** Bury the source if it is currently in the EX area (e.g. Kyoka grant). */
+ | {
+    op: "burySelfIfInExArea";
 } | {
     op: "summonFromEvolveDeck";
     filter?: DeckFilter;
 } | {
     op: "summonFromCemetery";
     filter: DeckFilter;
+    /** Max cards that may be selected ("up to N"). */
     count: number;
+    /** Minimum cards that must be selected (default 1 when maxTotalCost is set, else 0). */
+    minCount?: number;
     maxTotalCost?: number;
+    /** Selected cards must have different normalized identity names. */
+    distinctNames?: boolean;
 } | {
     op: "putHandCardOnDeck";
     position: "top" | "bottom";
 } | {
     op: "grantLastWords";
     effect: Effect;
+}
+/**
+ * Grant a start-of-end-phase ability to targets (default: last selected card).
+ * Used for text like: Give it "At the start of your end phase, …".
+ */
+ | {
+    op: "grantStartOfEnd";
+    effect: Effect;
+    targets?: TargetSelector;
+    label?: string;
 } | {
     op: "noop";
 } | {
@@ -461,13 +575,13 @@ export type Effect = {
     op: "searchDeckChoose";
     filter: DeckFilter;
     lookAt: number;
-    to: "hand" | "exArea" | "field";
+    to: "hand" | "exArea" | "field" | "cemetery";
     optional?: boolean;
     playCostReduction?: number;
     /** Only apply playCostReduction when the chosen card matches this filter. */
     playCostReductionFilter?: DeckFilter;
-    /** Where unchosen cards from the search go (default cemetery). */
-    remainderTo?: "cemetery" | "deckBottom";
+    /** Where unchosen cards from the search go (default cemetery). deckTop = leave in place. */
+    remainderTo?: "cemetery" | "deckBottom" | "deckTop";
     /** Reveal to opponent before adding to hand (default true for deck → hand). */
     reveal?: boolean;
 } | {
@@ -487,6 +601,35 @@ export type Effect = {
 } | {
     op: "engage";
     targets: TargetSelector;
+    /** Target skips refresh during its controller's next start phase. */
+    skipRefreshNextStart?: boolean;
+} | {
+    op: "refreshFollower";
+    targets: TargetSelector;
+} | {
+    op: "cannotAttack";
+    targets?: TargetSelector;
+    /** Default true — lasts until end of turn. */
+    untilEndOfTurn?: boolean;
+} | {
+    /** Attach an equipment token amulet to a follower (default: source self). */
+    op: "equip";
+    tokenName: string;
+    tokenCardNo?: string;
+    targets?: TargetSelector;
+} | {
+    /** Resolve another follower's Union Burst ability, optionally skipping costs. */
+    op: "activateUnionBurst";
+    targets: TargetSelector;
+    skipCost?: boolean;
+} | {
+    /** Passive bonuses granted by equipment while attached (applied at equip time). */
+    op: "equipPassive";
+    keywords?: Keyword[];
+    atk?: number;
+    def?: number;
+    damageDealtBonus?: number;
+    damageTakenReduction?: number;
 } | {
     op: "box";
     targets: TargetSelector;
@@ -509,7 +652,7 @@ export type Effect = {
 } | {
     op: "selectFromHand";
     filter: DeckFilter;
-    to: "exArea" | "hand";
+    to: "exArea" | "hand" | "field";
     optional?: boolean;
     playCostReduction?: number;
 } | {
@@ -522,14 +665,22 @@ export type Effect = {
 } | {
     op: "searchDeckSummonMultiple";
     filter: DeckFilter;
-    lookAt: number;
+    /**
+     * Look at only the top N cards. Omit to search the entire deck
+     * (then shuffle after resolving).
+     */
+    lookAt?: number;
     /** Optional total play-cost budget across chosen cards. */
     maxTotalCost?: number;
     /** Cap how many cards may be chosen (default unlimited within cost). */
     maxCount?: number;
     /** Destination zone (default field). */
     to?: "field" | "exArea" | "hand";
-    remainderTo?: "cemetery" | "deckBottom";
+    /**
+     * Where unchosen looked-at cards go. Use `shuffle` for full-deck searches
+     * (default when `lookAt` is omitted).
+     */
+    remainderTo?: "cemetery" | "deckBottom" | "shuffle";
     /** Reveal when adding to hand (default true). */
     reveal?: boolean;
 } | {
@@ -571,6 +722,9 @@ export interface Modifier {
     def?: number;
     sourceId: string;
     untilEndOfTurn?: boolean;
+    cannotAttack?: boolean;
+    damageDealtBonus?: number;
+    damageTakenReduction?: number;
 }
 export interface CardInstance {
     instanceId: string;
@@ -611,6 +765,11 @@ export interface CardInstance {
     abilitiesActivatedThisTurn: string[];
     /** Extra last-words effects granted while on field. */
     grantedLastWords?: Effect[];
+    /** Extra start-of-end effects granted to this instance (e.g. Kyoka). */
+    grantedStartOfEnd?: {
+        effect: Effect;
+        label?: string;
+    }[];
     /** Granted "when you play a card" triggers (e.g. Tetra Serene super-evolve). */
     grantedOnCardPlayed?: GrantedOnCardPlayed[];
     /** Temporary evolve PP cost override for this instance (cleared end of turn). */
@@ -620,6 +779,18 @@ export interface CardInstance {
      * follower left play). Face-up in the evolve deck; cannot be used again.
      */
     evolveUsed?: boolean;
+    /** Equipment token instanceIds attached to this follower. */
+    equippedInstanceIds?: string[];
+    /** Host follower instanceId when this card is equipment. */
+    equippedToInstanceId?: string;
+    /** Skip refresh at the controller's next start phase. */
+    skipRefreshNextStart?: boolean;
+    /** Extra ability damage dealt by this follower (from equipment / effects). */
+    damageDealtBonus?: number;
+    /** Ability/combat damage reduction while on field. */
+    damageTakenReduction?: number;
+    /** Cannot attack enemies until cleared (usually end of turn). */
+    cannotAttack?: boolean;
 }
 export interface EvolveLink {
     fieldInstanceId: string;
@@ -642,6 +813,10 @@ export interface PlayerZones {
 export interface PlayerFlags {
     evolvedThisTurn: boolean;
     cardsPlayedThisTurn: number;
+    /** Spells played this turn (hand/EX/free plays). */
+    spellsPlayedThisTurn: number;
+    /** Union Burst abilities resolved this turn (any timing). */
+    unionBurstsActivatedThisTurn: number;
     mulliganDone: boolean;
     leaderLostDefThisTurn: boolean;
     /** Unfulfilled draw obligations (checked for deck-out loss after rules handling). */
@@ -720,7 +895,7 @@ export type ChoicePrompt = ChoiceSourceContext & ({
     fromZone: "deck" | "cemetery" | "hand" | "evolveDeck";
     /** Zone owner to select from (defaults to choosing player). */
     fromPlayer?: PlayerId;
-    to: "hand" | "exArea" | "field";
+    to: "hand" | "exArea" | "field" | "cemetery";
     /** If true, play the selected card for 0 PP instead of moving to `to`. */
     playSelected?: boolean;
     options: {
@@ -777,7 +952,7 @@ export type ChoicePrompt = ChoiceSourceContext & ({
 } | {
     type: "searchDeckTop";
     player: PlayerId;
-    to: "hand" | "exArea" | "field";
+    to: "hand" | "exArea" | "field" | "cemetery";
     filter: DeckFilter;
     topInstanceIds: string[];
     optional?: boolean;
@@ -789,7 +964,7 @@ export type ChoicePrompt = ChoiceSourceContext & ({
     }[];
     playCostReduction?: number;
     playCostReductionFilter?: DeckFilter;
-    remainderTo?: "cemetery" | "deckBottom";
+    remainderTo?: "cemetery" | "deckBottom" | "deckTop";
     reveal?: boolean;
 } | {
     type: "selectZoneCards";
@@ -830,7 +1005,9 @@ export type ChoicePrompt = ChoiceSourceContext & ({
     type: "selectCemeterySummon";
     player: PlayerId;
     count: number;
-    maxTotalCost: number;
+    minCount?: number;
+    maxTotalCost?: number;
+    distinctNames?: boolean;
     filter: DeckFilter;
     options: {
         instanceId: string;
@@ -846,7 +1023,7 @@ export type ChoicePrompt = ChoiceSourceContext & ({
     to?: "field" | "exArea" | "hand";
     filter: DeckFilter;
     topInstanceIds: string[];
-    remainderTo: "cemetery" | "deckBottom";
+    remainderTo: "cemetery" | "deckBottom" | "shuffle";
     reveal?: boolean;
     options: {
         instanceId: string;
@@ -881,6 +1058,8 @@ export interface ActionLogEntry {
     text: string;
     /** Optional card name for art in the UI. */
     cardName?: string;
+    /** Running Union Burst activations for this player this turn (UB log lines only). */
+    unionBurstCount?: number;
 }
 export interface ResolutionContext {
     sourceInstanceId?: string;
@@ -905,6 +1084,8 @@ export interface ResolutionContext {
     buriedCosts?: number[];
     /** Card no. of the most recently discarded card this effect sequence. */
     lastDiscardedCardName?: string;
+    /** Name of the most recently selected zone/search card this effect sequence. */
+    lastSelectedCardName?: string;
     /** Number of cards engaged via engageFromFieldAsCost this resolution. */
     engagedAsCostCount?: number;
 }
@@ -934,6 +1115,8 @@ export interface GameState {
     revealedCards?: RevealedCardInfo[];
     /** End phase: opponent quick window was offered or skipped after start-of-end. */
     endPhaseQuickResolved?: boolean;
+    /** When true, DEBUG_* actions are allowed (testing rooms). */
+    testingMode?: boolean;
 }
 export type GameAction = {
     type: "MULLIGAN";
@@ -983,6 +1166,15 @@ export type GameAction = {
     payload: Record<string, unknown>;
 } | {
     type: "CONCEDE";
+} | {
+    type: "DEBUG_ADJUST_PP";
+    delta: number;
+} | {
+    type: "DEBUG_ADJUST_LIFE";
+    delta: number;
+} | {
+    type: "DEBUG_TUTOR_FROM_DECK";
+    instanceId: string;
 };
 export interface ActionResult {
     ok: boolean;

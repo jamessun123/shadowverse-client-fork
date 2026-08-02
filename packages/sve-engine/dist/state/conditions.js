@@ -6,7 +6,10 @@ const registry_1 = require("../cards/registry");
 const reprints_1 = require("../cards/reprints");
 const passives_1 = require("./passives");
 const queries_1 = require("./queries");
-function cardMatchesFilter(cardNo, filter) {
+function cardMatchesFilter(cardNo, filter, state) {
+    if (filter.anyOf?.length) {
+        return filter.anyOf.some((alt) => cardMatchesFilter(cardNo, alt, state));
+    }
     const def = (0, registry_1.getCardDef)(cardNo);
     if (!def)
         return false;
@@ -51,6 +54,12 @@ function cardMatchesFilter(cardNo, filter) {
         if ((0, reprints_1.normalizeIdentityName)(def.name) === excluded)
             return false;
     }
+    if (filter.excludeLastSelectedIdentity) {
+        const last = state?.resolutionContext?.lastSelectedCardName;
+        if (last && (0, reprints_1.normalizeIdentityName)(def.name) === (0, reprints_1.normalizeIdentityName)(last)) {
+            return false;
+        }
+    }
     return true;
 }
 function countTraitInZone(state, player, zone, trait) {
@@ -64,6 +73,8 @@ function evalCondition(state, player, condition) {
             return (0, queries_1.isOverflowActive)(state, player);
         case "combo":
             return (0, queries_1.getPlayer)(state, player).flags.cardsPlayedThisTurn >= condition.count;
+        case "spellPlayedThisTurn":
+            return ((0, queries_1.getPlayer)(state, player).flags.spellsPlayedThisTurn ?? 0) >= 1;
         case "namedFollowerOnField":
             return (0, queries_1.getPlayer)(state, player).zones.field.some((c) => c.name === condition.name);
         case "namedFollowerOnFieldByName":
@@ -184,6 +195,27 @@ function evalCondition(state, player, condition) {
             return countTraitInZone(state, player, "field", condition.trait) >= condition.count;
         case "leaderDefMax":
             return (0, queries_1.getPlayer)(state, player).leaderDef <= condition.count;
+        case "unionBurstActivatedMin":
+            return ((0, queries_1.getPlayer)(state, player).flags.unionBurstsActivatedThisTurn ?? 0) >= condition.count;
+        case "maxPpMin":
+            return (0, queries_1.getPlayer)(state, player).maxPp >= condition.count;
+        case "maxPpEquals":
+            return (0, queries_1.getPlayer)(state, player).maxPp === condition.count;
+        case "fieldFollowerMin": {
+            const count = (0, queries_1.getPlayer)(state, player).zones.field.filter((c) => {
+                const def = (0, registry_1.getCardDef)((0, queries_1.resolveCardNo)(state, c));
+                return def?.cardType === "follower";
+            }).length;
+            return count >= condition.count;
+        }
+        case "fieldFollowerMinCostAny": {
+            return (0, queries_1.getPlayer)(state, player).zones.field.some((c) => {
+                const def = (0, registry_1.getCardDef)((0, queries_1.resolveCardNo)(state, c));
+                if (!def || def.cardType !== "follower")
+                    return false;
+                return (0, queries_1.resolveCardDefCost)(c.name) >= condition.minCost;
+            });
+        }
         default:
             return false;
     }

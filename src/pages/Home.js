@@ -28,7 +28,7 @@ import {
 import { deleteDeck } from "../redux/DeckSlice";
 import { cardImage } from "../decks/getCards";
 import { socket, saveRoom, playerId } from "../sockets";
-import { setGameMode, setPlayerSlot, resetEngine } from "../redux/GameStateSlice";
+import { setGameMode, setPlayerSlot, setTestingMode, resetEngine } from "../redux/GameStateSlice";
 import { deckToEnginePayload, defaultMvpDeck } from "../engine/adapter";
 import { detectDeckIdentity } from "../decks/detectDeck";
 import { setLeader } from "../redux/CardSlice";
@@ -69,6 +69,10 @@ export default function Home() {
   const [roomNumber, setRoomNumber] = useState("");
   const [waitingRoom, setWaitingRoom] = useState("");
   const [awaitingTurnOrder, setAwaitingTurnOrder] = useState(false);
+  const waitingRoomRef = useRef("");
+  const selectedDeckRef = useRef(selectedDeck);
+  selectedDeckRef.current = selectedDeck;
+  waitingRoomRef.current = waitingRoom;
   const [openRooms, setOpenRooms] = useState([]);
   const [name, setName] = useState("");
   const [open, setOpen] = useState(false);
@@ -82,6 +86,7 @@ export default function Home() {
   const reduxDecks = useSelector((state) => state.deck.decks);
   const reduxActiveUsers = useSelector((state) => state.card.activeUsers);
   const playerSlot = useSelector((state) => state.gameState.playerSlot);
+  const testingMode = useSelector((state) => state.gameState.testingMode);
   const deckListRef = useRef(null);
   useEffect(() => {
     const el = deckListRef.current;
@@ -109,19 +114,31 @@ export default function Home() {
       handleNavigateToGame();
     };
 
-    const onJoined = ({ slot, room }) => {
-      dispatch(setPlayerSlot(slot));
+    const onJoined = ({ slot, room, testing, awaitingTurnOrder: serverAwaiting }) => {
+      if (slot != null) dispatch(setPlayerSlot(slot));
       dispatch(setGameMode("automated"));
+      dispatch(setTestingMode(!!testing));
       if (room) {
         setWaitingRoom(String(room));
         dispatch(setRoom(String(room)));
         saveRoom(String(room));
       }
+      setAwaitingTurnOrder(!!serverAwaiting);
       socket.emit("request_engine_state");
     };
 
-    const onAwaitingTurnOrder = () => {
+    const onAwaitingTurnOrder = ({ slot, isHost } = {}) => {
       setAwaitingTurnOrder(true);
+      // Authoritative seat from the server — avoids stale playerSlot from a
+      // previous match hiding the host's Go First / Second / Random buttons.
+      if (slot != null) dispatch(setPlayerSlot(slot));
+      else if (isHost === true) dispatch(setPlayerSlot(0));
+      else if (isHost === false) dispatch(setPlayerSlot(1));
+    };
+
+    const onTurnOrderCancelled = () => {
+      setAwaitingTurnOrder(false);
+      setWaitingRoom("");
     };
 
     const onOpenRooms = (rooms) => {
@@ -135,12 +152,31 @@ export default function Home() {
       setOpenSnack(true);
     };
 
+    const rejoinWaitingRoom = () => {
+      const room = waitingRoomRef.current;
+      const deck = selectedDeckRef.current;
+      if (!room) return;
+      const engineDeck = deck?.deck?.length
+        ? deckToEnginePayload(deck.deck, deck.evoDeck || [])
+        : defaultMvpDeck();
+      socket.emit("join_room", {
+        room,
+        playerId,
+        automated: true,
+        testing: !!store.getState().gameState.testingMode,
+        deck: engineDeck,
+        deckName: deck?.name || null,
+      });
+    };
+
     socket.on("start_game", onStartGame);
     socket.on("engine_state", onEngineState);
     socket.on("joined", onJoined);
     socket.on("awaiting_turn_order", onAwaitingTurnOrder);
+    socket.on("turn_order_cancelled", onTurnOrderCancelled);
     socket.on("open_rooms", onOpenRooms);
     socket.on("join_error", onJoinError);
+    socket.on("connect", rejoinWaitingRoom);
     socket.on("active_users", (data) => {
       dispatch(setActiveUsers(data));
     });
@@ -151,8 +187,10 @@ export default function Home() {
       socket.off("engine_state", onEngineState);
       socket.off("joined", onJoined);
       socket.off("awaiting_turn_order", onAwaitingTurnOrder);
+      socket.off("turn_order_cancelled", onTurnOrderCancelled);
       socket.off("open_rooms", onOpenRooms);
       socket.off("join_error", onJoinError);
+      socket.off("connect", rejoinWaitingRoom);
     };
   }, [dispatch, socket]);
 
@@ -199,12 +237,17 @@ export default function Home() {
     return deckToEnginePayload(selectedDeck.deck, selectedDeck.evoDeck || []);
   };
 
-  const joinRoomWithMode = (room) => {
+  const joinRoomWithMode = (room, { testing = false } = {}) => {
     dispatch(setRoom(room));
     saveRoom(room);
     setWaitingRoom(String(room));
+    setAwaitingTurnOrder(false);
     dispatch(resetEngine());
+    // Clear any seat left over from a prior match so we don't briefly render
+    // the guest "waiting for host" copy before joined arrives.
+    dispatch(setPlayerSlot(null));
     dispatch(setGameMode("automated"));
+    dispatch(setTestingMode(!!testing));
     const engineDeck = buildEngineDeck();
     // Snapshot the registered list for in-match decklist viewing (not live remaining).
     dispatch(
@@ -217,6 +260,7 @@ export default function Home() {
       room,
       playerId,
       automated: true,
+      testing: !!testing,
       deck: engineDeck,
       deckName: selectedDeck.name || null,
     });
@@ -230,6 +274,14 @@ export default function Home() {
     joinRoomWithMode(room);
   };
 
+  const handleCreateTestingRoom = () => {
+    if (!requireDeck()) return;
+    if (!socket.id) return;
+    const room = String(parseInt(Math.random() * 10000000, 10));
+    setRoomNumber(room);
+    joinRoomWithMode(room, { testing: true });
+  };
+
   const handleJoinRoom = () => {
     if (!requireDeck()) return;
     if (roomNumber === "") {
@@ -240,10 +292,10 @@ export default function Home() {
     joinRoomWithMode(roomNumber.toString());
   };
 
-  const handleJoinOpenRoom = (roomId) => {
+  const handleJoinOpenRoom = (roomId, { testing = false } = {}) => {
     if (!requireDeck()) return;
     setRoomNumber(String(roomId));
-    joinRoomWithMode(String(roomId));
+    joinRoomWithMode(String(roomId), { testing });
   };
 
   const handleCancelWaiting = () => {
@@ -251,6 +303,7 @@ export default function Home() {
     setWaitingRoom("");
     setAwaitingTurnOrder(false);
     setRoomNumber("");
+    dispatch(setTestingMode(false));
   };
 
   const handleChooseTurnOrder = (choice) => {
@@ -558,6 +611,10 @@ export default function Home() {
           <Stack spacing={5} direction="column">
             <Button
               onClick={handleCreateRoom}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                handleCreateTestingRoom();
+              }}
               sx={{
                 position: "relative",
                 fontFamily: "Noto Serif JP,serif",
@@ -849,7 +906,10 @@ export default function Home() {
             )
           ) : (
             <div style={{ display: "flex", alignItems: "center", gap: "0.75em" }}>
-              <span>Waiting in room {waitingRoom} — 1/2 players</span>
+              <span>
+                Waiting in room {waitingRoom}
+                {testingMode ? " (TEST)" : ""} — 1/2 players
+              </span>
               <Button
                 onClick={handleCancelWaiting}
                 sx={{
@@ -978,6 +1038,7 @@ export default function Home() {
                           whiteSpace: "nowrap",
                         }}
                       >
+                        {room.testing ? "TEST · " : ""}
                         {room.deckName || "Open match"} · {room.players}/2
                       </div>
                     </div>
@@ -994,7 +1055,7 @@ export default function Home() {
                       </span>
                     ) : (
                       <Button
-                        onClick={() => handleJoinOpenRoom(room.roomId)}
+                        onClick={() => handleJoinOpenRoom(room.roomId, { testing: !!room.testing })}
                         sx={{
                           textTransform: "none",
                           fontFamily: "Noto Serif JP, serif",

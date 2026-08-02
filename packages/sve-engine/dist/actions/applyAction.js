@@ -3,12 +3,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.applyAction = applyAction;
 exports.advanceCombatIfNeeded = advanceCombatIfNeeded;
 const registry_1 = require("../cards/registry");
+const reprints_1 = require("../cards/reprints");
+const tokens_1 = require("../cards/tokens");
 const resolver_1 = require("../effects/resolver");
 const setup_1 = require("../phases/setup");
 const confirmation_1 = require("../rules/confirmation");
 const effect_utils_1 = require("../rules/effect-utils");
 const reveal_1 = require("../state/reveal");
 const trigger_queue_1 = require("../rules/trigger-queue");
+const union_burst_1 = require("../rules/union-burst");
 const conditions_1 = require("../state/conditions");
 const card_reset_1 = require("../state/card-reset");
 const queries_1 = require("../state/queries");
@@ -90,6 +93,7 @@ function preserveResumeContext(next, sourceId, stack, tail) {
         lastSelectedTargetId: prev?.lastSelectedTargetId,
         buriedCosts: prev?.buriedCosts,
         lastDiscardedCardName: prev?.lastDiscardedCardName,
+        lastSelectedCardName: prev?.lastSelectedCardName,
         engagedAsCostCount: prev?.engagedAsCostCount,
         deferTriggers: true,
     };
@@ -123,6 +127,7 @@ function continueAfterChoice(state, player) {
             lastSelectedTargetId: prev?.lastSelectedTargetId,
             buriedCosts: prev?.buriedCosts,
             lastDiscardedCardName: prev?.lastDiscardedCardName,
+            lastSelectedCardName: prev?.lastSelectedCardName,
             engagedAsCostCount: prev?.engagedAsCostCount,
             deferTriggers: true,
         };
@@ -225,6 +230,14 @@ function finishChoiceResolution(state, player) {
     return next;
 }
 function sendSearchRemainder(state, player, instanceIds, remainderTo) {
+    if (remainderTo === "deckTop") {
+        // Leave looked-at cards on top in their current order.
+        return state;
+    }
+    if (remainderTo === "shuffle") {
+        // Full-deck search: unchosen cards stay in place, then shuffle.
+        return (0, zones_1.shuffleDeck)(state, player);
+    }
     if (remainderTo === "deckBottom") {
         let next = structuredClone(state);
         const deck = next.players[player].zones.deck;
@@ -313,6 +326,7 @@ function handleChoiceResponse(state, player, payload) {
             resumeAfterChoice: resume,
             buriedCosts: prev?.buriedCosts,
             lastDiscardedCardName: prev?.lastDiscardedCardName,
+            lastSelectedCardName: prev?.lastSelectedCardName,
             engagedAsCostCount: prev?.engagedAsCostCount,
             deferTriggers: true,
         };
@@ -358,7 +372,9 @@ function handleChoiceResponse(state, player, payload) {
                 let handIdx = pZones.hand.findIndex((c) => c.instanceId === id);
                 if (handIdx >= 0) {
                     const [card] = pZones.hand.splice(handIdx, 1);
-                    pZones.cemetery.push(card);
+                    (0, card_reset_1.resetCardInstanceState)(card);
+                    (0, tokens_1.placeLeavingPlay)(pZones, card, "cemetery");
+                    (0, trigger_queue_1.queueOnDiscard)(next, card.instanceId, player);
                     next.resolutionContext = {
                         ...next.resolutionContext,
                         sourceInstanceId: next.resolutionContext?.sourceInstanceId,
@@ -375,7 +391,8 @@ function handleChoiceResponse(state, player, payload) {
                 if (exIdx < 0)
                     return fail(state, "Invalid card");
                 const [card] = pZones.exArea.splice(exIdx, 1);
-                pZones.cemetery.push(card);
+                (0, card_reset_1.resetCardInstanceState)(card);
+                (0, tokens_1.placeLeavingPlay)(pZones, card, "cemetery");
                 continue;
             }
             const zone = next.players[player].zones[choice.fromZone];
@@ -385,11 +402,13 @@ function handleChoiceResponse(state, player, payload) {
             const [card] = zone.splice(idx, 1);
             if (choice.action === "banish") {
                 (0, card_reset_1.resetCardInstanceState)(card);
-                next.players[player].zones.banish.push(card);
+                (0, tokens_1.placeLeavingPlay)(next.players[player].zones, card, "banish");
             }
             else {
-                next.players[player].zones.cemetery.push(card);
+                (0, card_reset_1.resetCardInstanceState)(card);
+                (0, tokens_1.placeLeavingPlay)(next.players[player].zones, card, "cemetery");
                 if (choice.action === "discard" && choice.fromZone === "hand") {
+                    (0, trigger_queue_1.queueOnDiscard)(next, card.instanceId, player);
                     next.resolutionContext = {
                         ...next.resolutionContext,
                         sourceInstanceId: next.resolutionContext?.sourceInstanceId,
@@ -423,7 +442,7 @@ function handleChoiceResponse(state, player, payload) {
                 if (srcIdx >= 0) {
                     const [self] = ex.splice(srcIdx, 1);
                     (0, card_reset_1.resetCardInstanceState)(self);
-                    next.players[player].zones.banish.push(self);
+                    (0, tokens_1.placeLeavingPlay)(next.players[player].zones, self, "banish");
                 }
             }
             next = finishActivateAfterCost(next, player, sourceInstanceId, activateZone, abilityKey);
@@ -451,7 +470,7 @@ function handleChoiceResponse(state, player, payload) {
             return fail(state, `Total cost must be ${choice.maxTotalCost} or less`);
         }
         if (to === "field") {
-            const slots = p.fieldLimit - p.zones.field.length;
+            const slots = p.fieldLimit - (0, queries_1.fieldOccupancy)(p.zones.field);
             if (ids.length > slots)
                 return fail(state, "Not enough field space");
         }
@@ -481,7 +500,7 @@ function handleChoiceResponse(state, player, payload) {
                 }
             }
             else {
-                if (next.players[player].zones.field.length >= next.players[player].fieldLimit)
+                if (!(0, queries_1.hasFieldSpace)(next.players[player].zones.field, next.players[player].fieldLimit))
                     break;
                 next.players[player].zones.field.push(card);
                 (0, confirmation_1.onFollowerEntersField)(next, card.instanceId, player);
@@ -493,22 +512,33 @@ function handleChoiceResponse(state, player, payload) {
     }
     if (choice.type === "selectCemeterySummon") {
         const ids = payload.instanceIds || [];
-        if (ids.length === 0 || ids.length > choice.count) {
-            return fail(state, `Select up to ${choice.count} card(s)`);
+        const minCount = choice.minCount ?? 1;
+        if (ids.length < minCount || ids.length > choice.count) {
+            return fail(state, minCount === choice.count
+                ? `Select exactly ${choice.count} card(s)`
+                : `Select ${minCount} to ${choice.count} card(s)`);
         }
         let totalCost = 0;
         const p = next.players[player];
+        const seenNames = new Set();
         for (const id of ids) {
             const card = p.zones.cemetery.find((c) => c.instanceId === id);
             if (!card || !(0, conditions_1.cardMatchesFilter)(card.name, choice.filter)) {
                 return fail(state, "Invalid card");
             }
+            if (choice.distinctNames) {
+                const key = (0, reprints_1.normalizeIdentityName)(card.name);
+                if (seenNames.has(key)) {
+                    return fail(state, "Selected cards must have different names");
+                }
+                seenNames.add(key);
+            }
             totalCost += (0, queries_1.resolveCardDefCost)(card.name);
         }
-        if (totalCost > choice.maxTotalCost) {
+        if (choice.maxTotalCost != null && totalCost > choice.maxTotalCost) {
             return fail(state, `Total cost must be ${choice.maxTotalCost} or less`);
         }
-        const slots = p.fieldLimit - p.zones.field.length;
+        const slots = p.fieldLimit - (0, queries_1.fieldOccupancy)(p.zones.field);
         if (ids.length > slots)
             return fail(state, "Not enough field space");
         for (const id of ids) {
@@ -557,6 +587,18 @@ function handleChoiceResponse(state, player, payload) {
         if (!found || found.zone !== choice.fromZone || found.player !== zoneOwner) {
             return fail(state, "Invalid card");
         }
+        if (next.resolutionContext) {
+            next.resolutionContext.lastSelectedCardName = found.card.name;
+            next.resolutionContext.lastSelectedTargetId = instanceId;
+        }
+        else {
+            next.resolutionContext = {
+                effectStack: [],
+                lastSelectedCardName: found.card.name,
+                lastSelectedTargetId: instanceId,
+                deferTriggers: true,
+            };
+        }
         if (choice.playSelected) {
             const def = (0, registry_1.getCardDef)(found.card.name);
             if (!def)
@@ -567,7 +609,7 @@ function handleChoiceResponse(state, player, payload) {
                 }
             }
             else if (def.cardType !== "spell" &&
-                next.players[player].zones.field.length >= next.players[player].fieldLimit) {
+                !(0, queries_1.hasFieldSpace)(next.players[player].zones.field, next.players[player].fieldLimit)) {
                 return fail(state, "Field full");
             }
             // Spells with no legal targets: accept the cemetery choice and close the
@@ -593,7 +635,7 @@ function handleChoiceResponse(state, player, payload) {
                 const moved = (0, queries_1.findInstance)(next, instanceId);
                 if (moved) {
                     moved.card.enteredFromCemetery = choice.fromZone === "cemetery";
-                    moved.card.enteredFromHand = false;
+                    moved.card.enteredFromHand = choice.fromZone === "hand";
                 }
             }
         }
@@ -624,7 +666,24 @@ function handleChoiceResponse(state, player, payload) {
         if ((0, reveal_1.shouldRevealBeforeHand)(choice.to, "deck", choice.reveal)) {
             next = (0, reveal_1.revealCard)(next, player, instanceId, option.name);
         }
-        next = (0, resolver_1.moveZoneCardTo)(next, player, instanceId, "deck", choice.to);
+        if (next.resolutionContext) {
+            next.resolutionContext.lastSelectedCardName = option.name;
+            next.resolutionContext.lastSelectedTargetId = instanceId;
+        }
+        else {
+            next.resolutionContext = {
+                effectStack: [],
+                lastSelectedCardName: option.name,
+                lastSelectedTargetId: instanceId,
+                deferTriggers: true,
+            };
+        }
+        if (choice.to === "cemetery") {
+            next = (0, resolver_1.buryDeckCards)(next, player, [instanceId]);
+        }
+        else {
+            next = (0, resolver_1.moveZoneCardTo)(next, player, instanceId, "deck", choice.to);
+        }
         if (choice.to === "exArea") {
             const moved = (0, queries_1.findInstance)(next, instanceId);
             if (!moved || moved.zone !== "exArea") {
@@ -650,6 +709,11 @@ function handleChoiceResponse(state, player, payload) {
             if (!handIds.has(id))
                 return fail(state, "Card not in hand");
             next = (0, zones_1.moveCard)(next, id, "cemetery", player);
+            (0, trigger_queue_1.queueOnDiscard)(next, id, player);
+        }
+        next = (0, confirmation_1.runConfirmationTiming)(next);
+        if (next.pendingChoices || next.pendingTriggers.length > 0) {
+            return ok(next);
         }
         return ok(beginEndPhaseDiscard(next));
     }
@@ -742,6 +806,9 @@ function playCardForFree(state, player, instanceId) {
     let next = structuredClone(state);
     const p = next.players[player];
     p.flags.cardsPlayedThisTurn += 1;
+    if (def.cardType === "spell") {
+        p.flags.spellsPlayedThisTurn = (p.flags.spellsPlayedThisTurn ?? 0) + 1;
+    }
     (0, queries_1.consumeGrantedPlayCostReductions)(next, player, found.card.name);
     if (def.cardType === "crest") {
         if (p.zones.exArea.length >= p.exLimit)
@@ -754,12 +821,13 @@ function playCardForFree(state, player, instanceId) {
             forcedTargetId: prev?.forcedTargetId,
             buriedCosts: prev?.buriedCosts,
             lastDiscardedCardName: prev?.lastDiscardedCardName,
+            lastSelectedCardName: prev?.lastSelectedCardName,
             engagedAsCostCount: prev?.engagedAsCostCount,
             deferTriggers: true,
         };
     }
     else if (def.cardType !== "spell") {
-        if (p.zones.field.length >= p.fieldLimit)
+        if (!(0, queries_1.hasFieldSpace)(p.zones.field, p.fieldLimit))
             return state;
         next = (0, zones_1.moveCard)(next, instanceId, "field", player);
         const onField = (0, queries_1.findInstance)(next, instanceId);
@@ -774,6 +842,7 @@ function playCardForFree(state, player, instanceId) {
             forcedTargetId: prev?.forcedTargetId,
             buriedCosts: prev?.buriedCosts,
             lastDiscardedCardName: prev?.lastDiscardedCardName,
+            lastSelectedCardName: prev?.lastSelectedCardName,
             engagedAsCostCount: prev?.engagedAsCostCount,
             deferTriggers: true,
         };
@@ -787,6 +856,7 @@ function playCardForFree(state, player, instanceId) {
             forcedTargetId: prev?.forcedTargetId,
             buriedCosts: prev?.buriedCosts,
             lastDiscardedCardName: prev?.lastDiscardedCardName,
+            lastSelectedCardName: prev?.lastSelectedCardName,
             engagedAsCostCount: prev?.engagedAsCostCount,
             deferTriggers: true,
         };
@@ -805,6 +875,7 @@ function playCardForFree(state, player, instanceId) {
                     forcedTargetId: prev?.forcedTargetId,
                     buriedCosts: prev?.buriedCosts,
                     lastDiscardedCardName: prev?.lastDiscardedCardName,
+                    lastSelectedCardName: prev?.lastSelectedCardName,
                     engagedAsCostCount: prev?.engagedAsCostCount,
                     deferTriggers: true,
                 };
@@ -895,8 +966,11 @@ function playCard(state, player, handInstanceId, targets, fromQuickWindow = fals
         return fail(state, "Not enough PP");
     p.pp -= playCost;
     p.flags.cardsPlayedThisTurn += 1;
+    if (def.cardType === "spell") {
+        p.flags.spellsPlayedThisTurn = (p.flags.spellsPlayedThisTurn ?? 0) + 1;
+    }
     (0, queries_1.consumeGrantedPlayCostReductions)(next, player, found.card.name);
-    if (p.zones.field.length >= p.fieldLimit && def.cardType !== "spell") {
+    if (!(0, queries_1.hasFieldSpace)(p.zones.field, p.fieldLimit) && def.cardType !== "spell") {
         return fail(state, "Field full");
     }
     next = (0, zones_1.moveCard)(next, handInstanceId, "resolutionZone", player);
@@ -1081,8 +1155,9 @@ function resolveCombat(state) {
     const strikeAbilities = (0, queries_1.getStrikeAbilities)(next, attackerFound.card);
     const strikeStart = combat.strikeAbilityIndex ?? 0;
     for (let i = strikeStart; i < strikeAbilities.length; i++) {
-        next.resolutionContext = { sourceInstanceId: combat.attackerId, effectStack: [strikeAbilities[i].effect] };
-        next = (0, resolver_1.resolveEffect)(next, strikeAbilities[i].effect, attackerFound.player, {
+        const { ability, key } = strikeAbilities[i];
+        next.resolutionContext = { sourceInstanceId: combat.attackerId, effectStack: [ability.effect] };
+        next = (0, resolver_1.resolveEffect)(next, ability.effect, attackerFound.player, {
             deferConfirmation: true,
         });
         next = (0, confirmation_1.runConfirmationTiming)(next);
@@ -1095,6 +1170,11 @@ function resolveCombat(state) {
             next.quickWindowPlayer = null;
             return next;
         }
+        const host = (0, queries_1.findInstance)(next, combat.attackerId);
+        if (host && ability.oncePerTurn && !host.card.abilitiesActivatedThisTurn.includes(key)) {
+            host.card.abilitiesActivatedThisTurn.push(key);
+        }
+        next = (0, union_burst_1.recordUnionBurstActivated)(next, attackerFound.player, combat.attackerId, ability);
         next.resolutionContext = null;
         next = abortCombatIfAttackerGone(next);
         if (!next.combat)
@@ -1242,10 +1322,19 @@ function finishActivateAfterCost(state, player, sourceInstanceId, zone, abilityK
     // Prefer the live field/hand/etc. copy; if burySelf already removed it, fall back to
     // the pre-clone state or any zone so we can still resolve the activated ability.
     const sourceOnNext = (0, queries_1.findInstance)(next, sourceInstanceId) ?? (0, queries_1.findInstance)(state, sourceInstanceId);
-    const def = sourceOnNext ? (0, registry_1.getCardDef)((0, queries_1.resolveCardNo)(next, sourceOnNext.card)) : undefined;
-    const ability = def?.abilities
-        ?.map((a, idx) => ({ ability: a, key: `activated:${idx}` }))
-        .find((entry) => entry.key === abilityKey)?.ability;
+    let ability = undefined;
+    const equipMatch = /^equipActivated:([^:]+):(\d+)$/.exec(abilityKey);
+    if (equipMatch) {
+        const eqFound = (0, queries_1.findInstance)(next, equipMatch[1]);
+        const eqDef = eqFound ? (0, registry_1.getCardDef)((0, queries_1.resolveCardNo)(next, eqFound.card)) : undefined;
+        ability = eqDef?.abilities?.[Number(equipMatch[2])];
+    }
+    else {
+        const def = sourceOnNext ? (0, registry_1.getCardDef)((0, queries_1.resolveCardNo)(next, sourceOnNext.card)) : undefined;
+        ability = def?.abilities
+            ?.map((a, idx) => ({ ability: a, key: `activated:${idx}` }))
+            .find((entry) => entry.key === abilityKey)?.ability;
+    }
     if (!ability)
         return next;
     const liveSource = (0, queries_1.findInstance)(next, sourceInstanceId);
@@ -1275,6 +1364,7 @@ function finishActivateAfterCost(state, player, sourceInstanceId, zone, abilityK
     if (ability.cost?.fuse) {
         (0, trigger_queue_1.queueOnCardFused)(next, sourceInstanceId, player);
     }
+    (0, union_burst_1.recordUnionBurstActivated)(next, player, sourceInstanceId, ability);
     if ((0, effect_utils_1.shouldClearResolutionContext)(next)) {
         next.resolutionContext = null;
     }
@@ -1347,7 +1437,7 @@ function resolveActivate(state, player, sourceInstanceId, zone, useEvoPoint, abi
                 return fail(state, "Cannot pay activate cost");
             const [card] = p.zones.cemetery.splice(idx, 1);
             (0, card_reset_1.resetCardInstanceState)(card);
-            p.zones.banish.push(card);
+            (0, tokens_1.placeLeavingPlay)(p.zones, card, "banish");
         }
     }
     if (ability.cost?.banishFromExArea) {
@@ -1386,7 +1476,7 @@ function resolveActivate(state, player, sourceInstanceId, zone, useEvoPoint, abi
                 return fail(state, "Cannot pay activate cost");
             const [card] = p.zones.exArea.splice(idx, 1);
             (0, card_reset_1.resetCardInstanceState)(card);
-            p.zones.banish.push(card);
+            (0, tokens_1.placeLeavingPlay)(p.zones, card, "banish");
         }
     }
     if (ability.cost?.buryFromField) {
@@ -1478,6 +1568,18 @@ function resolveActivate(state, player, sourceInstanceId, zone, useEvoPoint, abi
             resumeActivate: { sourceInstanceId, zone, abilityKey: key },
         };
         return ok(next);
+    }
+    if (ability.cost?.removePersistentCounter) {
+        const { key: counterKey, amount = 1 } = ability.cost.removePersistentCounter;
+        const live = (0, queries_1.findInstance)(next, sourceInstanceId);
+        if (!live)
+            return fail(state, "Invalid card");
+        const have = live.card.persistentCounters?.[counterKey] ?? 0;
+        if (have < amount)
+            return fail(state, "Not enough counters");
+        if (!live.card.persistentCounters)
+            live.card.persistentCounters = {};
+        live.card.persistentCounters[counterKey] = have - amount;
     }
     next = finishActivateAfterCost(next, player, sourceInstanceId, zone, key);
     next = (0, confirmation_1.runConfirmationTiming)(next);
@@ -1595,6 +1697,38 @@ function applyActionUnlogged(state, player, action) {
             next.winner = (0, queries_1.opponentOf)(player);
             next.phase = "gameOver";
             return ok(next);
+        }
+        case "DEBUG_ADJUST_PP": {
+            if (!state.testingMode)
+                return fail(state, "Testing mode only");
+            const next = structuredClone(state);
+            const p = next.players[player];
+            const delta = Number(action.delta) || 0;
+            p.pp = Math.max(0, p.pp + delta);
+            if (p.pp > p.maxPp)
+                p.maxPp = p.pp;
+            return ok(next);
+        }
+        case "DEBUG_ADJUST_LIFE": {
+            if (!state.testingMode)
+                return fail(state, "Testing mode only");
+            const next = structuredClone(state);
+            const p = next.players[player];
+            const delta = Number(action.delta) || 0;
+            p.leaderDef = Math.max(0, p.leaderDef + delta);
+            return ok(next);
+        }
+        case "DEBUG_TUTOR_FROM_DECK": {
+            if (!state.testingMode)
+                return fail(state, "Testing mode only");
+            const instanceId = String(action.instanceId || "");
+            if (!instanceId)
+                return fail(state, "No card selected");
+            const found = (0, queries_1.findInstance)(state, instanceId);
+            if (!found || found.zone !== "deck" || found.player !== player) {
+                return fail(state, "Card not in your deck");
+            }
+            return ok((0, resolver_1.moveZoneCardTo)(state, player, instanceId, "deck", "hand"));
         }
         default:
             return fail(state, "Unknown action");

@@ -47,14 +47,18 @@ function describeAbility(sourceCardNo, ability) {
                     ? "On Evolve"
                     : ability.timing === "startOfEnd"
                         ? "End of turn"
-                        : ability.timing === "onCardPlayed"
-                            ? "When you play a card"
-                            : ability.timing === "onAllyFollowerEnter"
-                                ? "When an ally enters the field"
-                                : ability.timing === "onOpponentDeckToCemetery"
-                                    ? "When an opponent mills"
-                                    : ability.timing === "onAbilityDamageTaken"
-                                        ? "When this takes ability damage"
-                                        : ability.timing;
+                        : ability.timing === "onDiscard"
+                            ? "When discarded"
+                            : ability.timing === "onCardPlayed"
+                                ? "When you play a card"
+                                : ability.timing === "onAllyFollowerEnter"
+                                    ? "When an ally enters the field"
+                                    : ability.timing === "onOpponentDeckToCemetery"
+                                        ? "When an opponent mills"
+                                        : ability.timing === "onAbilityDamageTaken"
+                                            ? "When this takes ability damage"
+                                            : ability.timing === "onAbilityDamageDealt"
+                                                ? "When this deals ability damage"
+                                                : ability.timing;
     return `${name} — ${timingLabel}: ${describeEffect(ability.effect)}`;
 }

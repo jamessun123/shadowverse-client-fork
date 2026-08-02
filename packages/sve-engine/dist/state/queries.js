@@ -2,6 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.isBoxed = void 0;
 exports.getPlayer = getPlayer;
+exports.isEquippedAttachment = isEquippedAttachment;
+exports.fieldOccupancy = fieldOccupancy;
+exports.hasFieldSpace = hasFieldSpace;
 exports.findInstance = findInstance;
 exports.getBaseCardNoForInstance = getBaseCardNoForInstance;
 exports.computeEvolvePayment = computeEvolvePayment;
@@ -51,6 +54,17 @@ function canActivateEffectResolve(state, player, effect) {
 }
 function getPlayer(state, player) {
     return state.players[player];
+}
+/** Equipment sits on the field zone but does not occupy a board slot. */
+function isEquippedAttachment(card) {
+    return Boolean(card.equippedToInstanceId);
+}
+/** Board occupants only (followers/amulets that are not attached equipment). */
+function fieldOccupancy(field) {
+    return field.filter((c) => !isEquippedAttachment(c)).length;
+}
+function hasFieldSpace(field, fieldLimit) {
+    return fieldOccupancy(field) < fieldLimit;
 }
 function findInstance(state, instanceId) {
     for (const pid of [0, 1]) {
@@ -301,13 +315,36 @@ function hasKeyword(card, keyword, state, player) {
     // Evolved followers gain Rush for the turn they are evolved.
     if (keyword === "rush" && card.evolvedThisTurn)
         return true;
+    // Equipment passives may grant keywords to the host.
+    if (state && card.equippedInstanceIds?.length) {
+        for (const eqId of card.equippedInstanceIds) {
+            const eq = findInstance(state, eqId);
+            if (!eq)
+                continue;
+            const eqDef = (0, registry_1.getCardDef)(resolveCardNo(state, eq.card));
+            for (const ability of eqDef?.abilities ?? []) {
+                if (ability.timing !== "passive")
+                    continue;
+                const eff = ability.effect;
+                if (eff.op === "passiveKeywords" && eff.keywords.includes(keyword))
+                    return true;
+                if (eff.op === "equipPassive" && eff.keywords?.includes(keyword))
+                    return true;
+            }
+        }
+    }
     return false;
 }
 function clampDamageToFollower(state, card, player, amount) {
+    let dmg = amount;
+    const reduction = (card.damageTakenReduction ?? 0) +
+        card.modifiers.reduce((sum, m) => sum + (m.damageTakenReduction ?? 0), 0);
+    if (reduction > 0)
+        dmg = Math.max(0, dmg - reduction);
     const cap = state ? (0, passives_1.getMaxDamagePerHit)(state, card, player) : null;
-    if (cap != null && amount > cap)
+    if (cap != null && dmg > cap)
         return cap;
-    return amount;
+    return dmg;
 }
 function canEvolveFollower(state, player, fieldInstanceId) {
     const fieldFound = findInstance(state, fieldInstanceId);
@@ -400,6 +437,12 @@ function getActivatedAbilities(state, card, player, zone) {
             if (have < need)
                 continue;
         }
+        if (a.cost?.removePersistentCounter) {
+            const need = a.cost.removePersistentCounter.amount ?? 1;
+            const have = card.persistentCounters?.[a.cost.removePersistentCounter.key] ?? 0;
+            if (have < need)
+                continue;
+        }
         if (a.cost?.burySelf && zone !== "field")
             continue;
         if (zone === "field" && a.cost?.engage && card.engaged)
@@ -407,6 +450,37 @@ function getActivatedAbilities(state, card, player, zone) {
         if (!canActivateEffectResolve(state, player, a.effect))
             continue;
         results.push({ ability: a, key });
+    }
+    // Equipment-granted activates usable through the host follower.
+    if (zone === "field" && card.equippedInstanceIds?.length) {
+        for (const eqId of card.equippedInstanceIds) {
+            const eqFound = findInstance(state, eqId);
+            if (!eqFound)
+                continue;
+            const eqDef = (0, registry_1.getCardDef)(resolveCardNo(state, eqFound.card));
+            for (const [idx, a] of (eqDef?.abilities ?? []).entries()) {
+                if (a.timing !== "activated" || !a.equipHostActivate)
+                    continue;
+                const key = `equipActivated:${eqId}:${idx}`;
+                if (a.oncePerTurn && card.abilitiesActivatedThisTurn.includes(key))
+                    continue;
+                if (a.maxPerTurn != null && (card.counters[key] ?? 0) >= a.maxPerTurn)
+                    continue;
+                if (a.condition && !(0, conditions_1.evalCondition)(state, player, a.condition))
+                    continue;
+                const ppCost = a.cost?.pp ?? 0;
+                const p = getPlayer(state, player);
+                const canPayPp = computeEvolvePayment(ppCost, p.pp, p.evoPoints, false).ok;
+                const canPayEp = computeEvolvePayment(ppCost, p.pp, p.evoPoints, true).ok;
+                if (!canPayPp && !canPayEp)
+                    continue;
+                if (a.cost?.engage && card.engaged)
+                    continue;
+                if (!canActivateEffectResolve(state, player, a.effect))
+                    continue;
+                results.push({ ability: a, key });
+            }
+        }
     }
     return results;
 }
@@ -436,8 +510,34 @@ function findMatchingEvolveCard(state, player, fieldInstanceId) {
 function getStrikeAbilities(state, card) {
     if ((0, passives_1.isBoxed)(card, state))
         return [];
+    const results = [];
     const def = (0, registry_1.getCardDef)(resolveCardNo(state, card));
-    return def?.abilities?.filter((a) => a.timing === "strike") ?? [];
+    for (const [idx, a] of (def?.abilities ?? []).entries()) {
+        if (a.timing !== "strike")
+            continue;
+        const key = `strike:${idx}`;
+        if (a.oncePerTurn && card.abilitiesActivatedThisTurn.includes(key))
+            continue;
+        results.push({ ability: a, key });
+    }
+    // Equipment that grants Strike to the host (e.g. Holy Castle Sword, Avalon).
+    if (card.equippedInstanceIds?.length) {
+        for (const eqId of card.equippedInstanceIds) {
+            const eqFound = findInstance(state, eqId);
+            if (!eqFound)
+                continue;
+            const eqDef = (0, registry_1.getCardDef)(resolveCardNo(state, eqFound.card));
+            for (const [idx, a] of (eqDef?.abilities ?? []).entries()) {
+                if (a.timing !== "strike")
+                    continue;
+                const key = `equipStrike:${eqId}:${idx}`;
+                if (a.oncePerTurn && card.abilitiesActivatedThisTurn.includes(key))
+                    continue;
+                results.push({ ability: a, key });
+            }
+        }
+    }
+    return results;
 }
 function opponentOf(player) {
     return player === 0 ? 1 : 0;
@@ -456,6 +556,9 @@ function getWardTargets(state, defender) {
     return state.players[defender].zones.field.filter((c) => isFollowerCard(c, state) && hasKeyword(c, "ward", state) && c.engaged);
 }
 function getLegalAttackTargets(state, attacker, player) {
+    if (attacker.cannotAttack || attacker.modifiers.some((m) => m.cannotAttack)) {
+        return [];
+    }
     const enemy = opponentOf(player);
     const targets = [];
     const wards = getWardTargets(state, enemy);

@@ -39,7 +39,7 @@ export function engineViewToRedux(view, playerSlot) {
   const engagedField = Array(10).fill(false);
   const customValues = Array(10)
     .fill(null)
-    .map(() => ({ showAtk: true, atk: 0, showDef: true, def: 0 }));
+    .map(() => ({ showAtk: false, atk: 0, showDef: false, def: 0 }));
   const wardField = Array(10).fill(0);
   const baneField = Array(10).fill(0);
   const auraField = Array(10).fill(0);
@@ -61,7 +61,10 @@ export function engineViewToRedux(view, playerSlot) {
 
   const visibleCounter = (inst) => {
     const persistent = inst?.persistentCounters || {};
-    return Object.values(persistent).reduce((sum, n) => sum + (Number(n) || 0), 0);
+    return Object.values(persistent).reduce((sum, n) => {
+      const v = Number(n);
+      return sum + (Number.isFinite(v) && v > 0 ? v : 0);
+    }, 0);
   };
 
   const cardName = (instance) => {
@@ -71,7 +74,7 @@ export function engineViewToRedux(view, playerSlot) {
       getNameByCardNoClient(key) ||
       getCardDefClient(key)?.name ||
       key;
-    // Present tokens without the data-file " TOKEN" suffix.
+    // Present tokens without the data-file " TOKEN" suffix on the board label.
     return String(resolved).replace(/\s+TOKEN$/i, "");
   };
 
@@ -84,23 +87,77 @@ export function engineViewToRedux(view, playerSlot) {
     );
   };
 
-  const applyStats = (inst, idx, displayKey) => {
-    const key = displayKey || instanceKey(inst);
-    const stats = getCardStatsClient(key);
+  const equipmentField = Array(10).fill(0);
+  const enemyEquipmentField = Array(10).fill(0);
+
+  /** Keep the engine/token name intact so art + cardData resolve (… TOKEN). */
+  const equipmentName = (instance) => {
+    const key = instanceKey(instance);
+    if (key === "HIDDEN") return "Hidden Card";
+    return (
+      getNameByCardNoClient(key) ||
+      getCardDefClient(key)?.name ||
+      key
+    );
+  };
+
+  const attachmentIds = (playerState) => {
+    const ids = new Set();
+    for (const inst of playerState.zones.field) {
+      for (const id of inst.equippedInstanceIds || []) ids.add(id);
+    }
+    return ids;
+  };
+
+  const equipmentNamesFor = (playerState, inst) => {
+    if (!inst?.equippedInstanceIds?.length) return [];
+    return inst.equippedInstanceIds
+      .map((id) => playerState.zones.field.find((c) => c.instanceId === id))
+      .filter(Boolean)
+      .map((c) => equipmentName(c));
+  };
+
+  const isBoardOccupant = (inst, attached) =>
+    !inst.equippedToInstanceId && !attached.has(inst.instanceId);
+
+  const applyFollowerCombatStats = (inst, stats) => {
     const isFollower = stats.cardType === "follower";
-    let atk = stats.attack ?? 0;
-    let defVal = stats.defense ?? 0;
-    if (isFollower) {
+    // Prefer explicit printed stats; do not flash "0" when lookup failed.
+    const printedAtk = isFollower
+      ? stats.attack != null && !Number.isNaN(Number(stats.attack))
+        ? Number(stats.attack)
+        : null
+      : null;
+    const printedDef = isFollower
+      ? stats.defense != null && !Number.isNaN(Number(stats.defense))
+        ? Number(stats.defense)
+        : null
+      : null;
+    let atk = printedAtk ?? 0;
+    let defVal = printedDef ?? 0;
+    if (isFollower && printedAtk != null) {
       for (const m of inst.modifiers || []) {
         atk += m.atk ?? 0;
         defVal += m.def ?? 0;
       }
     }
-    customValues[idx] = {
-      showAtk: isFollower,
+    return {
+      showAtk: printedAtk != null,
       atk,
-      showDef: isFollower,
+      showDef: printedDef != null,
       def: defVal,
+    };
+  };
+
+  const applyStats = (inst, idx, displayKey) => {
+    const key = displayKey || instanceKey(inst);
+    const stats = getCardStatsClient(key);
+    const combat = applyFollowerCombatStats(inst, stats);
+    customValues[idx] = {
+      showAtk: combat.showAtk,
+      atk: combat.atk,
+      showDef: combat.showDef,
+      def: combat.def,
     };
     wardField[idx] = hasKeywordFlag(stats, inst, "ward") ? 1 : 0;
     baneField[idx] = hasKeywordFlag(stats, inst, "bane") ? 1 : 0;
@@ -109,14 +166,17 @@ export function engineViewToRedux(view, playerSlot) {
     stormField[idx] = hasKeywordFlag(stats, inst, "storm") ? 1 : 0;
     drainField[idx] = hasKeywordFlag(stats, inst, "drain") ? 1 : 0;
     intimidateField[idx] = hasKeywordFlag(stats, inst, "intimidate") ? 1 : 0;
-    // Engaged = horizontal; reserved = vertical (do not rotate).
     engagedField[idx] = Boolean(inst.engaged);
   };
 
-  ps.zones.field.forEach((inst, i) => {
+  const selfAttached = attachmentIds(ps);
+  const boardField = ps.zones.field.filter((inst) => isBoardOccupant(inst, selfAttached));
+  boardField.forEach((inst, i) => {
     field[i] = cardName(inst);
     fieldInstanceIds[i] = inst.instanceId;
     counterField[i] = visibleCounter(inst);
+    const eqNames = equipmentNamesFor(ps, inst);
+    if (eqNames.length) equipmentField[i] = eqNames.length === 1 ? eqNames[0] : eqNames;
     const link = ps.zones.evolveZone.find((l) => l.fieldInstanceId === inst.instanceId);
     const evoInst =
       (link ? findEvoInstance(ps, link.evolveInstanceId) : null) ||
@@ -157,7 +217,7 @@ export function engineViewToRedux(view, playerSlot) {
   const enemyIntimidateField = Array(10).fill(0);
   const enemyCustom = Array(10)
     .fill(null)
-    .map(() => ({ showAtk: true, atk: 0, showDef: true, def: 0 }));
+    .map(() => ({ showAtk: false, atk: 0, showDef: false, def: 0 }));
 
   const applyEnemyKeywordFlags = (inst, idx, displayKey) => {
     const key = displayKey || instanceKey(inst);
@@ -171,11 +231,19 @@ export function engineViewToRedux(view, playerSlot) {
     enemyIntimidateField[idx] = hasKeywordFlag(stats, inst, "intimidate") ? 1 : 0;
   };
 
-  es.zones.field.forEach((inst, i) => {
+  const enemyAttached = attachmentIds(es);
+  const enemyBoard = es.zones.field.filter((inst) =>
+    isBoardOccupant(inst, enemyAttached),
+  );
+  enemyBoard.forEach((inst, i) => {
     enemyField[i] = cardName(inst);
     enemyFieldInstanceIds[i] = inst.instanceId;
     enemyCounterField[i] = visibleCounter(inst);
     enemyEngaged[i] = Boolean(inst.engaged);
+    const eqNames = equipmentNamesFor(es, inst);
+    if (eqNames.length) {
+      enemyEquipmentField[i] = eqNames.length === 1 ? eqNames[0] : eqNames;
+    }
     const link = es.zones.evolveZone.find((l) => l.fieldInstanceId === inst.instanceId);
     const evoInst =
       (link ? findEvoInstance(es, link.evolveInstanceId) : null) ||
@@ -185,20 +253,12 @@ export function engineViewToRedux(view, playerSlot) {
     }
     const displayKey = evoInst ? instanceKey(evoInst) : instanceKey(inst);
     const est = getCardStatsClient(displayKey);
-    const isFollower = est.cardType === "follower";
-    let atk = est.attack ?? 0;
-    let defVal = est.defense ?? 0;
-    if (isFollower) {
-      for (const m of inst.modifiers || []) {
-        atk += m.atk ?? 0;
-        defVal += m.def ?? 0;
-      }
-    }
+    const combat = applyFollowerCombatStats(inst, est);
     enemyCustom[i] = {
-      showAtk: isFollower,
-      atk,
-      showDef: isFollower,
-      def: defVal,
+      showAtk: combat.showAtk,
+      atk: combat.atk,
+      showDef: combat.showDef,
+      def: combat.def,
     };
     applyEnemyKeywordFlags(inst, i, displayKey);
   });
@@ -208,20 +268,12 @@ export function engineViewToRedux(view, playerSlot) {
     enemyFieldInstanceIds[idx] = inst.instanceId;
     enemyCounterField[idx] = visibleCounter(inst);
     const est = getCardStatsClient(instanceKey(inst));
-    const isFollower = est.cardType === "follower";
-    let atk = est.attack ?? 0;
-    let defVal = est.defense ?? 0;
-    if (isFollower) {
-      for (const m of inst.modifiers || []) {
-        atk += m.atk ?? 0;
-        defVal += m.def ?? 0;
-      }
-    }
+    const combat = applyFollowerCombatStats(inst, est);
     enemyCustom[idx] = {
-      showAtk: isFollower,
-      atk,
-      showDef: isFollower,
-      def: defVal,
+      showAtk: combat.showAtk,
+      atk: combat.atk,
+      showDef: combat.showDef,
+      def: combat.def,
     };
     applyEnemyKeywordFlags(inst, idx);
     const printed = getCardStatsClient(instanceKey(inst)).cost ?? 0;
@@ -241,6 +293,7 @@ export function engineViewToRedux(view, playerSlot) {
     fieldInstanceIds,
     evoField,
     engagedField,
+    equipmentField,
     customValues,
     wardField,
     baneField,
@@ -255,6 +308,7 @@ export function engineViewToRedux(view, playerSlot) {
     enemyFieldInstanceIds,
     enemyEvoField,
     enemyEngagedField: enemyEngaged,
+    enemyEquipmentField,
     enemyExPlayCostField,
     enemyCounterField,
     enemyCustomValues: enemyCustom,
@@ -268,6 +322,9 @@ export function engineViewToRedux(view, playerSlot) {
     cemetery: ps.zones.cemetery.map((c) => cardName(c)),
     cemeteryInstanceIds: ps.zones.cemetery.map((c) => c.instanceId),
     enemyCemetery: es.zones.cemetery.map((c) => cardName(c)),
+    banish: ps.zones.banish.map((c) => cardName(c)),
+    banishInstanceIds: ps.zones.banish.map((c) => c.instanceId),
+    enemyBanish: es.zones.banish.map((c) => cardName(c)),
     evoDeck: [
       ...ps.zones.evolveDeck.map((c) => ({
         card: cardName(c),

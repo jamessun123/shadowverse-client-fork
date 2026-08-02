@@ -471,13 +471,11 @@ export default function ChoiceModal({ setHovering }) {
         )}
 
         {pending.type === "searchDeckTop" && (
-
           <Typography sx={{ mb: 1 }}>
-
-            Choose a matching card to add to your {pending.to}.
-
+            {pending.to === "cemetery"
+              ? "Look at the top card. If it matches, you may bury it."
+              : `Choose a matching card to add to your ${pending.to}.`}
           </Typography>
-
         )}
 
         {pending.type === "selectZoneCards" && (

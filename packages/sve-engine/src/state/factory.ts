@@ -42,6 +42,7 @@ export function createCardInstance(
     persistentPlayCostReduction: 0,
     abilitiesActivatedThisTurn: [],
     grantedLastWords: [],
+    grantedStartOfEnd: [],
     grantedOnCardPlayed: [],
   };
 }
@@ -74,6 +75,8 @@ export function emptyPlayer(player: PlayerId): PlayerState {
     flags: {
       evolvedThisTurn: false,
       cardsPlayedThisTurn: 0,
+      spellsPlayedThisTurn: 0,
+      unionBurstsActivatedThisTurn: 0,
       mulliganDone: false,
       leaderLostDefThisTurn: false,
       owedDraws: 0,

@@ -1,0 +1,1879 @@
+{
+  "Kokkoro": {
+    "cardNo": "CP04-001EN",
+    "name": "Kokkoro",
+    "class": "forest",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 1,
+    "attack": 1,
+    "defense": 1,
+    "traits": ["Princess Connect", "Gourmet Guild"],
+    "keywords": ["fanfare", "evolve"],
+    "cardText": "[Union Burst] Fanfare Give your leader 🛡️+1.\n-------\nEvolve (1): Evolve this.\nFanfare 2PP: Equip an Ames Amulet token to this.",
+    "evolvesTo": "Kokkoro Evolved",
+    "evolveCost": 1,
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "unionBurst": true,
+        "effect": { "op": "buff", "def": 1, "targets": { "type": "selfLeader" } }
+      },
+      { "timing": "evolve", "cost": { "pp": 1 }, "effect": { "op": "noop" } },
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "optionalCost",
+          "label": "2PP: Equip an Ames Amulet token to this",
+          "cost": { "op": "spendPp", "amount": 2 },
+          "then": { "op": "equip", "tokenName": "Ames Amulet TOKEN", "targets": { "type": "self" } }
+        }
+      }
+    ]
+  },
+  "Kokkoro Evolved": {
+    "cardNo": "CP04-002EN",
+    "name": "Kokkoro Evolved",
+    "class": "forest",
+    "cardType": "follower",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 2,
+    "defense": 2,
+    "traits": ["Princess Connect", "Gourmet Guild"],
+    "keywords": ["onEvolve", "onSuperEvolve"],
+    "cardText": "On Evolve - Draw a card.\nOn Super Evolve - Give your leader 🛡️+2. Draw a card.",
+    "evolvesFrom": "Kokkoro",
+    "abilities": [
+      { "timing": "onEvolve", "effect": { "op": "draw", "count": 1 } },
+      {
+        "timing": "onSuperEvolve",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            { "op": "buff", "def": 2, "targets": { "type": "selfLeader" } },
+            { "op": "draw", "count": 1 }
+          ]
+        }
+      }
+    ]
+  },
+  "Eris": {
+    "cardNo": "CP04-003EN",
+    "name": "Eris",
+    "class": "forest",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 4,
+    "attack": 4,
+    "defense": 3,
+    "traits": ["Princess Connect"],
+    "keywords": ["fanfare"],
+    "cardText": "[Union Burst] Activate Engage this: Select another Princess Connect card on your field and give it 🗡️+1/🛡️+1. If you've activated at least 2 other [Union Burst] abilities this turn, give it Storm.\n------\nFanfare Look at the top 4 cards of your deck. You may reveal a Princess Connect card from among them and add it to your hand. Put the rest on the bottom of your deck in any order. The next Princess Connect card you play this turn costs 2 less to play.",
+    "abilities": [
+      {
+        "timing": "activated",
+        "unionBurst": true,
+        "cost": { "engage": true },
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "buff",
+              "atk": 1,
+              "def": 1,
+              "targets": { "type": "selfFieldCard", "trait": "Princess Connect", "count": 1, "excludeSelf": true }
+            },
+            {
+              "op": "if",
+              "condition": { "type": "unionBurstActivatedMin", "count": 2 },
+              "then": {
+                "op": "grantKeyword",
+                "keyword": "storm",
+                "targets": { "type": "lastSelected" }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "searchDeckChoose",
+              "filter": { "trait": "Princess Connect" },
+              "lookAt": 4,
+              "to": "hand",
+              "optional": true,
+              "remainderTo": "deckBottom"
+            },
+            {
+              "op": "grantOnCardPlayed",
+              "filter": { "trait": "Princess Connect" },
+              "effect": { "op": "playCostReduction", "amount": 2 },
+              "untilEndOfTurn": true
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Aurora Healing": {
+    "cardNo": "CP04-018EN",
+    "name": "Aurora Healing",
+    "class": "forest",
+    "cardType": "spell",
+    "printingType": "base",
+    "cost": 1,
+    "traits": ["Princess Connect", "Gourmet Guild"],
+    "keywords": [],
+    "cardText": "Select a Princess Connect follower on your field and refresh it. It can't attack enemies this turn. If it's a 1-cost follower, draw a card.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            { "op": "refreshFollower", "targets": { "type": "selfFollower", "trait": "Princess Connect", "count": 1 } },
+            { "op": "cannotAttack", "targets": { "type": "lastSelected" } }
+          ]
+        }
+      }
+    ]
+  },
+  "Pecorine": {
+    "cardNo": "CP04-019EN",
+    "name": "Pecorine",
+    "class": "sword",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 3,
+    "attack": 3,
+    "defense": 3,
+    "traits": ["Princess Connect", "Gourmet Guild"],
+    "keywords": ["evolve", "ward", "fanfare"],
+    "cardText": "Evolve (1): Evolve this.\nWard.\nFanfare 2PP: Equip a Princess Sword token to this.",
+    "evolvesTo": "Pecorine Evolved",
+    "evolveCost": 1,
+    "abilities": [
+      { "timing": "evolve", "cost": { "pp": 1 }, "effect": { "op": "noop" } },
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "optionalCost",
+          "label": "2PP: Equip a Princess Sword token to this",
+          "cost": { "op": "spendPp", "amount": 2 },
+          "then": { "op": "equip", "tokenName": "Princess Sword TOKEN", "targets": { "type": "self" } }
+        }
+      }
+    ]
+  },
+  "Pecorine Evolved": {
+    "cardNo": "CP04-020EN",
+    "name": "Pecorine Evolved",
+    "class": "sword",
+    "cardType": "follower",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 4,
+    "defense": 4,
+    "traits": ["Princess Connect", "Gourmet Guild"],
+    "keywords": ["onEvolve", "ward", "onSuperEvolve"],
+    "cardText": "[Union Burst] On Evolve - Select an enemy follower on the field and deal it 4 damage.\n-------\nWard.\nOn Super Evolve - Deal 4 damage to each enemy leader.",
+    "evolvesFrom": "Pecorine",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "unionBurst": true,
+        "effect": { "op": "dealDamage", "amount": 4, "targets": { "type": "enemyFollower", "count": 1 } }
+      },
+      {
+        "timing": "onSuperEvolve",
+        "effect": { "op": "dealDamage", "amount": 4, "targets": { "type": "enemyLeader" } }
+      }
+    ]
+  },
+  "Christina": {
+    "cardNo": "CP04-021EN",
+    "name": "Christina",
+    "class": "sword",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 5,
+    "attack": 4,
+    "defense": 4,
+    "traits": ["Princess Connect", "NIGHTMARE", "Seven Crowns"],
+    "keywords": ["storm", "fanfare", "strike"],
+    "cardText": "[Union Burst] Strike - Discard a card: Select an enemy follower on the field and deal it 5 damage.\n------\nStorm.\nFanfare 2PP: Equip a Holy Castle Sword, Avalon token to this.",
+    "abilities": [
+      {
+        "timing": "strike",
+        "unionBurst": true,
+        "effect": {
+          "op": "optionalCost",
+          "label": "Discard a card: deal 5 damage to an enemy follower",
+          "cost": { "op": "discardFromHand", "filter": {}, "count": 1 },
+          "then": { "op": "dealDamage", "amount": 5, "targets": { "type": "enemyFollower", "count": 1 } }
+        }
+      },
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "optionalCost",
+          "label": "2PP: Equip a Holy Castle Sword, Avalon token to this",
+          "cost": { "op": "spendPp", "amount": 2 },
+          "then": { "op": "equip", "tokenName": "Holy Castle Sword, Avalon TOKEN", "targets": { "type": "self" } }
+        }
+      }
+    ]
+  },
+  "Riri": {
+    "cardNo": "CP04-025EN",
+    "name": "Riri",
+    "class": "sword",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 5,
+    "attack": 4,
+    "defense": 3,
+    "traits": ["Princess Connect", "Alter Maiden"],
+    "keywords": ["rush", "fanfare", "strike"],
+    "cardText": "[Union Burst] Fanfare / Strike - Draw a card. You may summon a 2-cost or less follower from your hand.\n--------\nRush.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "unionBurst": true,
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            { "op": "draw", "count": 1 },
+            {
+              "op": "selectFromHand",
+              "filter": { "cardType": "follower", "maxCost": 2 },
+              "to": "field",
+              "optional": true
+            }
+          ]
+        }
+      },
+      {
+        "timing": "strike",
+        "unionBurst": true,
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            { "op": "draw", "count": 1 },
+            {
+              "op": "selectFromHand",
+              "filter": { "cardType": "follower", "maxCost": 2 },
+              "to": "field",
+              "optional": true
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Tomo": {
+    "cardNo": "CP04-027EN",
+    "name": "Tomo",
+    "class": "sword",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 1,
+    "traits": ["Princess Connect", "NIGHTMARE"],
+    "keywords": ["evolve", "storm", "fanfare"],
+    "cardText": "Evolve (2): Evolve this.\nStorm.\nFanfare If there are at least 4 Princess Connect followers on your field, evolve this.",
+    "evolvesTo": "Tomo Evolved",
+    "evolveCost": 2,
+    "abilities": [
+      { "timing": "evolve", "cost": { "pp": 2 }, "effect": { "op": "noop" } },
+      {
+        "timing": "fanfare",
+        "effect": { "op": "autoEvolveIf", "condition": { "type": "fieldTraitMin", "trait": "Princess Connect", "count": 4 } }
+      }
+    ]
+  },
+  "Tomo Evolved": {
+    "cardNo": "CP04-028EN",
+    "name": "Tomo Evolved",
+    "class": "sword",
+    "cardType": "follower",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 3,
+    "defense": 2,
+    "traits": ["Princess Connect", "NIGHTMARE"],
+    "keywords": ["onEvolve", "storm"],
+    "cardText": "[Union Burst] On Evolve - Select an enemy follower on the field and deal it 2 damage.\n-------\nStorm.",
+    "evolvesFrom": "Tomo",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "unionBurst": true,
+        "effect": { "op": "dealDamage", "amount": 2, "targets": { "type": "enemyFollower", "count": 1 } }
+      }
+    ]
+  },
+  "Karyl": {
+    "cardNo": "CP04-037EN",
+    "name": "Karyl",
+    "class": "rune",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 4,
+    "attack": 3,
+    "defense": 4,
+    "traits": ["Princess Connect", "Gourmet Guild"],
+    "keywords": ["fanfare", "evolve"],
+    "cardText": "[Union Burst] Fanfare Discard a spell: Select an enemy follower on the field and deal it 3 damage. Draw a card.\n--------\nEvolve (1): Evolve this.\nFanfare 2PP: Equip a Chaos Grimoire token to this.",
+    "evolvesTo": "Karyl Evolved",
+    "evolveCost": 1,
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "unionBurst": true,
+        "effect": {
+          "op": "optionalCost",
+          "label": "Discard a spell: deal 3 damage to an enemy follower and draw a card",
+          "cost": { "op": "discardFromHand", "filter": { "cardType": "spell" }, "count": 1 },
+          "then": {
+            "op": "sequence",
+            "steps": [
+              { "op": "dealDamage", "amount": 3, "targets": { "type": "enemyFollower", "count": 1 } },
+              { "op": "draw", "count": 1 }
+            ]
+          }
+        }
+      },
+      { "timing": "evolve", "cost": { "pp": 1 }, "effect": { "op": "noop" } },
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "optionalCost",
+          "label": "2PP: Equip a Chaos Grimoire token to this",
+          "cost": { "op": "spendPp", "amount": 2 },
+          "then": { "op": "equip", "tokenName": "Chaos Grimoire TOKEN", "targets": { "type": "self" } }
+        }
+      }
+    ]
+  },
+  "Karyl Evolved": {
+    "cardNo": "CP04-038EN",
+    "name": "Karyl Evolved",
+    "class": "rune",
+    "cardType": "follower",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 4,
+    "defense": 5,
+    "traits": ["Princess Connect", "Gourmet Guild"],
+    "keywords": ["onEvolve", "onSuperEvolve"],
+    "cardText": "On Evolve - Select an enemy follower on the field and deal it 5 damage.\nOn Super Evolve - Select up to 2 spells with different names in your cemetery and put them into your EX area. They cost 2 less to play this turn.",
+    "evolvesFrom": "Karyl",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "effect": { "op": "dealDamage", "amount": 5, "targets": { "type": "enemyFollower", "count": 1 } }
+      },
+      {
+        "timing": "onSuperEvolve",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            { "op": "tutorFromCemetery", "filter": { "cardType": "spell" }, "to": "exArea", "playCostReduction": 2 },
+            { "op": "tutorFromCemetery", "filter": { "cardType": "spell" }, "to": "exArea", "playCostReduction": 2 }
+          ]
+        }
+      }
+    ]
+  },
+  "Yuni": {
+    "cardNo": "CP04-039EN",
+    "name": "Yuni",
+    "class": "rune",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 5,
+    "attack": 4,
+    "defense": 4,
+    "traits": ["Princess Connect", "Friendship Club"],
+    "keywords": ["fanfare"],
+    "cardText": "[Union Burst] Fanfare Search your deck for up to 2 Friendship Club cards with different names, put them into your EX area, then shuffle. They cost 2 less to play this turn.\n---------\nWhen the [Union Burst] ability of another follower on your field activates, the next Princess Connect spell you play costs 2 less to play.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "unionBurst": true,
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "tutorFromDeck",
+              "filter": { "trait": "Friendship Club" },
+              "to": "exArea",
+              "optional": true,
+              "playCostReduction": 2
+            },
+            {
+              "op": "tutorFromDeck",
+              "filter": { "trait": "Friendship Club", "excludeLastSelectedIdentity": true },
+              "to": "exArea",
+              "optional": true,
+              "playCostReduction": 2
+            }
+          ]
+        }
+      },
+      {
+        "timing": "onUnionBurstActivated",
+        "effect": {
+          "op": "grantOnCardPlayed",
+          "filter": { "trait": "Princess Connect", "cardType": "spell" },
+          "effect": { "op": "playCostReduction", "amount": 2 },
+          "untilEndOfTurn": true
+        }
+      }
+    ]
+  },
+  "Maho": {
+    "cardNo": "CP04-041EN",
+    "name": "Maho",
+    "class": "rune",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 2,
+    "traits": ["Princess Connect", "Caon"],
+    "keywords": ["fanfare", "evolve"],
+    "cardText": "[Union Burst] Fanfare Select your leader or a follower on your field and give it 🛡️+1.\n------\nEvolve (1): Evolve this.",
+    "evolvesTo": "Maho Evolved",
+    "evolveCost": 1,
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "unionBurst": true,
+        "effect": {
+          "op": "choose",
+          "min": 1,
+          "max": 1,
+          "options": [
+            { "label": "Give your leader 🛡️+1", "effect": { "op": "buff", "def": 1, "targets": { "type": "selfLeader" } } },
+            {
+              "label": "Give a follower 🛡️+1",
+              "effect": { "op": "buff", "def": 1, "targets": { "type": "selfFollower", "count": 1, "includeSelf": true } }
+            }
+          ]
+        }
+      },
+      { "timing": "evolve", "cost": { "pp": 1 }, "effect": { "op": "noop" } }
+    ]
+  },
+  "Maho Evolved": {
+    "cardNo": "CP04-042EN",
+    "name": "Maho Evolved",
+    "class": "rune",
+    "cardType": "follower",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 3,
+    "defense": 3,
+    "traits": ["Princess Connect", "Caon"],
+    "keywords": ["onEvolve"],
+    "cardText": "On Evolve - Look at the top 4 cards of your deck. You may put a card from among them into your EX area. Put the rest on the bottom of your deck in any order.",
+    "evolvesFrom": "Maho",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "effect": {
+          "op": "searchDeckChoose",
+          "filter": {},
+          "lookAt": 4,
+          "to": "exArea",
+          "optional": true,
+          "remainderTo": "deckBottom"
+        }
+      }
+    ]
+  },
+  "The Shared Illusion of Truth and Existence": {
+    "cardNo": "CP04-044EN",
+    "name": "The Shared Illusion of Truth and Existence",
+    "class": "rune",
+    "cardType": "spell",
+    "printingType": "base",
+    "cost": 2,
+    "traits": ["Princess Connect", "Friendship Club"],
+    "keywords": ["quick"],
+    "cardText": "Quick.\nDiscard a Princess Connect card: Draw 2 cards. If you have a Friendship Club follower on your field, give your leader 🛡️+2.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            { "op": "discardFromHand", "filter": { "trait": "Princess Connect" }, "count": 1 },
+            { "op": "draw", "count": 2 },
+            {
+              "op": "if",
+              "condition": { "type": "fieldTraitMin", "trait": "Friendship Club", "count": 1 },
+              "then": { "op": "buff", "def": 2, "targets": { "type": "selfLeader" } }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Kyoka": {
+    "cardNo": "CP04-045EN",
+    "name": "Kyoka",
+    "class": "rune",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 2,
+    "traits": ["Princess Connect", "Little Lyrical"],
+    "keywords": ["evolve", "fanfare"],
+    "cardText": "Evolve (1): Evolve this.\nFanfare Select a Princess Connect spell in your cemetery and put it into your EX area. Give it \"At the start of your end phase, bury this card if it's in the EX area.\"",
+    "evolvesTo": "Kyoka Evolved",
+    "evolveCost": 1,
+    "abilities": [
+      { "timing": "evolve", "cost": { "pp": 1 }, "effect": { "op": "noop" } },
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "tutorFromCemetery",
+              "filter": { "trait": "Princess Connect", "cardType": "spell" },
+              "to": "exArea"
+            },
+            {
+              "op": "grantStartOfEnd",
+              "targets": { "type": "lastSelected" },
+              "label": "At the start of your end phase, bury this card if it's in the EX area",
+              "effect": { "op": "burySelfIfInExArea" }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Kyoka Evolved": {
+    "cardNo": "CP04-046EN",
+    "name": "Kyoka Evolved",
+    "class": "rune",
+    "cardType": "follower",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 3,
+    "defense": 3,
+    "traits": ["Princess Connect", "Little Lyrical"],
+    "keywords": ["onEvolve"],
+    "cardText": "[Union Burst] On Evolve - Select an enemy follower on the field and deal it 2 damage. If you played a spell this turn, deal 2 damage to its leader.",
+    "evolvesFrom": "Kyoka",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "unionBurst": true,
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            { "op": "dealDamage", "amount": 2, "targets": { "type": "enemyFollower", "count": 1 } },
+            {
+              "op": "if",
+              "condition": { "type": "spellPlayedThisTurn" },
+              "then": { "op": "dealDamage", "amount": 2, "targets": { "type": "enemyLeader" } }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Chieru": {
+    "cardNo": "CP04-047EN",
+    "name": "Chieru",
+    "class": "rune",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 3,
+    "traits": ["Princess Connect", "Friendship Club"],
+    "keywords": ["fanfare"],
+    "cardText": "[Union Burst] Fanfare Look at the top 4 cards of your deck. You may reveal a Friendship Club card or a Princess Connect spell from among them and add it to your hand. Put the rest on the bottom of your deck in any order.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "unionBurst": true,
+        "effect": {
+          "op": "searchDeckChoose",
+          "filter": {
+            "anyOf": [
+              { "trait": "Friendship Club" },
+              { "trait": "Princess Connect", "cardType": "spell" }
+            ]
+          },
+          "lookAt": 4,
+          "to": "hand",
+          "optional": true,
+          "remainderTo": "deckBottom"
+        }
+      }
+    ]
+  },
+  "Chloe": {
+    "cardNo": "CP04-048EN",
+    "name": "Chloe",
+    "class": "rune",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 3,
+    "defense": 2,
+    "traits": ["Princess Connect", "Friendship Club"],
+    "keywords": ["fanfare"],
+    "cardText": "[Union Burst] Fanfare Select an enemy follower on the field and deal it damage equal to the number of Friendship Club followers on your field.\n------\nWhenever you play a Friendship Club card or Princess Connect spell, deal 1 damage to each enemy leader.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "unionBurst": true,
+        "effect": {
+          "op": "dealDamage",
+          "amount": { "op": "fieldTraitCount", "trait": "Friendship Club" },
+          "targets": { "type": "enemyFollower", "count": 1 }
+        }
+      },
+      {
+        "timing": "onCardPlayed",
+        "filter": { "trait": "Friendship Club" },
+        "effect": { "op": "dealDamage", "amount": 1, "targets": { "type": "enemyLeader" } }
+      },
+      {
+        "timing": "onCardPlayed",
+        "filter": { "cardType": "spell", "trait": "Princess Connect" },
+        "effect": { "op": "dealDamage", "amount": 1, "targets": { "type": "enemyLeader" } }
+      }
+    ]
+  },
+  "Yuki": {
+    "cardNo": "CP04-049EN",
+    "name": "Yuki",
+    "class": "rune",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 3,
+    "attack": 3,
+    "defense": 3,
+    "traits": ["Princess Connect", "Weiße Flügel"],
+    "keywords": ["evolve", "fanfare"],
+    "cardText": "Evolve (1): Evolve this.\nFanfare Search your deck for a spell, reveal it, add it to your hand, then shuffle.",
+    "evolvesTo": "Yuki Evolved",
+    "evolveCost": 1,
+    "abilities": [
+      { "timing": "evolve", "cost": { "pp": 1 }, "effect": { "op": "noop" } },
+      { "timing": "fanfare", "effect": { "op": "tutorFromDeck", "filter": { "cardType": "spell" }, "to": "hand", "reveal": true } }
+    ]
+  },
+  "Yuki Evolved": {
+    "cardNo": "CP04-050EN",
+    "name": "Yuki Evolved",
+    "class": "rune",
+    "cardType": "follower",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 4,
+    "defense": 4,
+    "traits": ["Princess Connect", "Weiße Flügel"],
+    "keywords": ["onEvolve"],
+    "cardText": "[Union Burst] On Evolve - Select an enemy follower on the field and give 🗡️-2/🛡️-2.",
+    "evolvesFrom": "Yuki",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "unionBurst": true,
+        "effect": { "op": "buff", "atk": -2, "def": -2, "targets": { "type": "enemyFollower", "count": 1 } }
+      }
+    ]
+  },
+  "Cheru Cheru☆Carnival": {
+    "cardNo": "CP04-053EN",
+    "name": "Cheru Cheru☆Carnival",
+    "class": "rune",
+    "cardType": "spell",
+    "printingType": "base",
+    "cost": 2,
+    "traits": ["Princess Connect", "Friendship Club"],
+    "keywords": ["quick"],
+    "cardText": "Quick.\nSelect an enemy follower on the field and deal it 3 damage. If there's a Friendship Club follower on your field, draw a card.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            { "op": "dealDamage", "amount": 3, "targets": { "type": "enemyFollower", "count": 1 } },
+            {
+              "op": "if",
+              "condition": { "type": "fieldTraitMin", "trait": "Friendship Club", "count": 1 },
+              "then": { "op": "draw", "count": 1 }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Dark Eclipse": {
+    "cardNo": "CP04-054EN",
+    "name": "Dark Eclipse",
+    "class": "rune",
+    "cardType": "spell",
+    "printingType": "base",
+    "cost": 2,
+    "traits": ["Princess Connect", "Gourmet Guild"],
+    "keywords": [],
+    "cardText": "When this card is discarded, select an enemy follower on the field and deal it 1 damage.\n----------\nSelect a Princess Connect follower on your field. Give it 🗡️+3, Rush and Assail.",
+    "abilities": [
+      {
+        "timing": "onDiscard",
+        "effect": { "op": "dealDamage", "amount": 1, "targets": { "type": "enemyFollower", "count": 1 } }
+      },
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            { "op": "buff", "atk": 3, "targets": { "type": "selfFollower", "trait": "Princess Connect", "count": 1 } },
+            { "op": "grantKeyword", "keyword": "rush", "targets": { "type": "lastSelected" } },
+            { "op": "grantKeyword", "keyword": "assail", "targets": { "type": "lastSelected" } }
+          ]
+        }
+      }
+    ]
+  },
+  "Sheffy": {
+    "cardNo": "CP04-055EN",
+    "name": "Sheffy",
+    "class": "dragon",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 2,
+    "traits": ["Princess Connect", "Gourmet Guild"],
+    "keywords": ["fanfare", "evolve"],
+    "cardText": "[Union Burst] Fanfare Select an enemy follower on the field. It doesn't refresh during its controller's next start phase.\n-------\nEvolve (1): Evolve this.\nFanfare If Overflow is active for you, equip an Ice Drachen token to this follower.",
+    "evolvesTo": "Sheffy Evolved",
+    "evolveCost": 1,
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "unionBurst": true,
+        "effect": { "op": "engage", "targets": { "type": "enemyFollower", "count": 1 }, "skipRefreshNextStart": true }
+      },
+      { "timing": "evolve", "cost": { "pp": 1 }, "effect": { "op": "noop" } },
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "if",
+          "condition": { "type": "overflow" },
+          "then": { "op": "equip", "tokenName": "Ice Drachen TOKEN", "targets": { "type": "self" } }
+        }
+      }
+    ]
+  },
+  "Sheffy Evolved": {
+    "cardNo": "CP04-056EN",
+    "name": "Sheffy Evolved",
+    "class": "dragon",
+    "cardType": "follower",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 3,
+    "defense": 3,
+    "traits": ["Princess Connect", "Gourmet Guild"],
+    "keywords": ["onEvolve", "onSuperEvolve"],
+    "cardText": "On Evolve - Select up to 2 enemy followers on the field and deal 2 damage divided between them.\nOn Super Evolve - Deal 3 damage to each enemy follower on the field.",
+    "evolvesFrom": "Sheffy",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "effect": {
+          "op": "dealDamage",
+          "amount": 2,
+          "divided": true,
+          "targets": { "type": "enemyFollower", "minCount": 0, "maxCount": 2 }
+        }
+      },
+      {
+        "timing": "onSuperEvolve",
+        "effect": { "op": "dealDamageAllEnemies", "amount": 3, "followersOnly": true }
+      }
+    ]
+  },
+  "Homare": {
+    "cardNo": "CP04-057EN",
+    "name": "Homare",
+    "class": "dragon",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 5,
+    "attack": 4,
+    "defense": 5,
+    "traits": ["Princess Connect", "Dragon's Nest"],
+    "keywords": ["fanfare"],
+    "cardText": "[Union Burst] Activate Engage this: Select an enemy follower on the field and deal it 5 damage. If Overflow is active for you, recover 2 play points.\n--------\nWhen the [Union Burst] ability of another follower on your field activates, increase your max play points by 1.\nFanfare Increase your max play points by 1.",
+    "abilities": [
+      {
+        "timing": "activated",
+        "unionBurst": true,
+        "cost": { "engage": true },
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            { "op": "dealDamage", "amount": 5, "targets": { "type": "enemyFollower", "count": 1 } },
+            { "op": "if", "condition": { "type": "overflow" }, "then": { "op": "recoverPp", "amount": 2 } }
+          ]
+        }
+      },
+      { "timing": "onUnionBurstActivated", "effect": { "op": "increaseMaxPp", "amount": 1 } },
+      { "timing": "fanfare", "effect": { "op": "increaseMaxPp", "amount": 1 } }
+    ]
+  },
+  "Muimi": {
+    "cardNo": "CP04-058EN",
+    "name": "Muimi",
+    "class": "dragon",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 3,
+    "traits": ["Princess Connect"],
+    "keywords": ["fanfare"],
+    "cardText": "[Union Burst] Fanfare Draw a card, then discard a card. If Overflow is active for you, equip a Proof of Bonds to this. If you have 10 max play points, give this follower 🗡️+3.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "unionBurst": true,
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            { "op": "draw", "count": 1 },
+            { "op": "discard", "count": 1 },
+            { "op": "if", "condition": { "type": "overflow" }, "then": { "op": "equip", "tokenName": "Proof of Bonds TOKEN", "targets": { "type": "self" } } },
+            {
+              "op": "if",
+              "condition": { "type": "maxPpEquals", "count": 10 },
+              "then": { "op": "buff", "atk": 3, "targets": { "type": "self" } }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Kaya": {
+    "cardNo": "CP04-059EN",
+    "name": "Kaya",
+    "class": "dragon",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 6,
+    "attack": 4,
+    "defense": 4,
+    "traits": ["Princess Connect", "Dragon's Nest"],
+    "keywords": ["evolve", "storm", "fanfare"],
+    "cardText": "Evolve (1): Evolve this.\nStorm.\nWhen the [Union Burst] ability of another follower on your field activates, deal 2 damage to each enemy leader.\nFanfare Select an enemy follower on the field and deal it 4 damage. If you have 10 max play points, evolve this.",
+    "evolvesTo": "Kaya Evolved",
+    "evolveCost": 1,
+    "abilities": [
+      { "timing": "evolve", "cost": { "pp": 1 }, "effect": { "op": "noop" } },
+      { "timing": "onUnionBurstActivated", "effect": { "op": "dealDamage", "amount": 2, "targets": { "type": "enemyLeader" } } },
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            { "op": "dealDamage", "amount": 4, "targets": { "type": "enemyFollower", "count": 1 } },
+            { "op": "autoEvolveIf", "condition": { "type": "maxPpEquals", "count": 10 } }
+          ]
+        }
+      }
+    ]
+  },
+  "Kaya Evolved": {
+    "cardNo": "CP04-060EN",
+    "name": "Kaya Evolved",
+    "class": "dragon",
+    "cardType": "follower",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 5,
+    "defense": 5,
+    "traits": ["Princess Connect", "Dragon's Nest"],
+    "keywords": ["onEvolve", "storm"],
+    "cardText": "[Union Burst] On Evolve - Search your deck for a Dragon's Nest card not named Kaya, put it into your EX area, then shuffle. It costs 2 less to play this turn.\n---------\nStorm.\nWhen the [Union Burst] ability of another follower on your field activates, deal 2 damage to each enemy leader.",
+    "evolvesFrom": "Kaya",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "unionBurst": true,
+        "effect": {
+          "op": "tutorFromDeck",
+          "filter": { "trait": "Dragon's Nest", "excludeIdentityName": "Kaya" },
+          "to": "exArea",
+          "playCostReduction": 2
+        }
+      },
+      { "timing": "onUnionBurstActivated", "effect": { "op": "dealDamage", "amount": 2, "targets": { "type": "enemyLeader" } } }
+    ]
+  },
+  "Someday, We'll Meet Again in the Future": {
+    "cardNo": "CP04-062EN",
+    "name": "Someday, We'll Meet Again in the Future",
+    "class": "dragon",
+    "cardType": "spell",
+    "printingType": "base",
+    "cost": 3,
+    "traits": ["Princess Connect"],
+    "keywords": [],
+    "cardText": "Choose 1. (1) Increase your max play points by 1. Give your leader 🛡️+1. (2) If you have 10 max play points, search your deck for a 2-cost Princess Connect follower, summon it, then shuffle.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "choose",
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "label": "Increase your max play points by 1. Give your leader 🛡️+1.",
+              "effect": {
+                "op": "sequence",
+                "steps": [
+                  { "op": "increaseMaxPp", "amount": 1 },
+                  { "op": "buff", "def": 1, "targets": { "type": "selfLeader" } }
+                ]
+              }
+            },
+            {
+              "label": "Search your deck for a 2-cost Princess Connect follower and summon it",
+              "effect": {
+                "op": "if",
+                "condition": { "type": "maxPpEquals", "count": 10 },
+                "then": {
+                  "op": "tutorFromDeck",
+                  "filter": { "trait": "Princess Connect", "cardType": "follower", "minCost": 2, "maxCost": 2 },
+                  "to": "field"
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Inori": {
+    "cardNo": "CP04-063EN",
+    "name": "Inori",
+    "class": "dragon",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 2,
+    "traits": ["Princess Connect", "Dragon's Nest"],
+    "keywords": ["evolve"],
+    "cardText": "[Union Burst] Activate Engage this: Deal 1 damage to each enemy leader and enemy follower on the field. Activate only if Overflow is active for you.\n--------\nEvolve (1): Evolve this follower.",
+    "evolvesTo": "Inori Evolved",
+    "evolveCost": 1,
+    "abilities": [
+      {
+        "timing": "activated",
+        "unionBurst": true,
+        "cost": { "engage": true },
+        "condition": { "type": "overflow" },
+        "effect": { "op": "dealDamageAllEnemies", "amount": 1 }
+      },
+      { "timing": "evolve", "cost": { "pp": 1 }, "effect": { "op": "noop" } }
+    ]
+  },
+  "Inori Evolved": {
+    "cardNo": "CP04-064EN",
+    "name": "Inori Evolved",
+    "class": "dragon",
+    "cardType": "follower",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 3,
+    "defense": 3,
+    "traits": ["Princess Connect", "Dragon's Nest"],
+    "keywords": ["onEvolve"],
+    "cardText": "[Union Burst] Activate Engage this: Deal 1 damage to each enemy leader and enemy follower on the field. Activate only if Overflow is active for you.\n--------\nOn Evolve - Search your deck for a Dragon's Nest card not named Inori, reveal it, add it to your hand, then shuffle.",
+    "evolvesFrom": "Inori",
+    "abilities": [
+      {
+        "timing": "activated",
+        "unionBurst": true,
+        "cost": { "engage": true },
+        "condition": { "type": "overflow" },
+        "effect": { "op": "dealDamageAllEnemies", "amount": 1 }
+      },
+      {
+        "timing": "onEvolve",
+        "effect": {
+          "op": "tutorFromDeck",
+          "filter": { "trait": "Dragon's Nest", "excludeIdentityName": "Inori" },
+          "to": "hand",
+          "reveal": true
+        }
+      }
+    ]
+  },
+  "Lind": {
+    "cardNo": "CP04-065EN",
+    "name": "Lind",
+    "class": "dragon",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 3,
+    "traits": ["Princess Connect", "Gio Teogonia"],
+    "keywords": ["ward"],
+    "cardText": "[Union Burst] Activate Engage this: Select a Gio Teogonia follower on your field not named Lind, give it 🗡️+1/🛡️+1 and refresh it. It can't attack enemies this turn.\n-----------\nWard.",
+    "abilities": [
+      {
+        "timing": "activated",
+        "unionBurst": true,
+        "cost": { "engage": true },
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "buff",
+              "atk": 1,
+              "def": 1,
+              "targets": {
+                "type": "selfFollower",
+                "trait": "Gio Teogonia",
+                "excludeIdentityName": "Lind",
+                "count": 1
+              }
+            },
+            { "op": "refreshFollower", "targets": { "type": "lastSelected" } },
+            { "op": "cannotAttack", "targets": { "type": "lastSelected" } }
+          ]
+        }
+      }
+    ]
+  },
+  "Wyrm": {
+    "cardNo": "CP04-066EN",
+    "name": "Wyrm",
+    "class": "dragon",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 3,
+    "defense": 2,
+    "traits": ["Princess Connect", "Gio Teogonia"],
+    "keywords": ["fanfare"],
+    "cardText": "[Union Burst] Activate Engage this: Select an enemy follower on the field and deal it 3 damage. If there's a 7-cost follower on your field, deal 3 damage to the selected enemy follower's leader.\n----------\nFanfare If there isn't another Gio Teogonia follower on your field, engage this card.",
+    "abilities": [
+      {
+        "timing": "activated",
+        "unionBurst": true,
+        "cost": { "engage": true },
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            { "op": "dealDamage", "amount": 3, "targets": { "type": "enemyFollower", "count": 1 } },
+            {
+              "op": "if",
+              "condition": { "type": "fieldFollowerMinCostAny", "minCost": 7 },
+              "then": { "op": "dealDamage", "amount": 3, "targets": { "type": "enemyLeader" } }
+            }
+          ]
+        }
+      },
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "if",
+          "condition": { "type": "fieldTraitMax", "trait": "Gio Teogonia", "count": 1 },
+          "then": { "op": "engage", "targets": { "type": "self" } }
+        }
+      }
+    ]
+  },
+  "Illya": {
+    "cardNo": "CP04-073EN",
+    "name": "Illya",
+    "class": "abyss",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 2,
+    "traits": ["Princess Connect", "Diabolos"],
+    "keywords": ["evolve", "fanfare"],
+    "cardText": "[Union Burst] Activate Engage this and banish 5 cards from your cemetery: Select an enemy follower on the field and deal it 3 damage. Give your leader 🛡️+3.\n---------\nEvolve (1): Evolve this.\nFanfare 2PP: Equip a Dark Axe Nachtfang token to this.",
+    "evolvesTo": "Illya Evolved",
+    "evolveCost": 1,
+    "abilities": [
+      {
+        "timing": "activated",
+        "unionBurst": true,
+        "cost": { "engage": true, "banishFromCemetery": {}, "banishCount": 5 },
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            { "op": "dealDamage", "amount": 3, "targets": { "type": "enemyFollower", "count": 1 } },
+            { "op": "buff", "def": 3, "targets": { "type": "selfLeader" } }
+          ]
+        }
+      },
+      { "timing": "evolve", "cost": { "pp": 1 }, "effect": { "op": "noop" } },
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "optionalCost",
+          "label": "2PP: Equip a Dark Axe Nachtfang token to this",
+          "cost": { "op": "spendPp", "amount": 2 },
+          "then": { "op": "equip", "tokenName": "Dark Axe Nachtfang TOKEN", "targets": { "type": "self" } }
+        }
+      }
+    ]
+  },
+  "Illya Evolved": {
+    "cardNo": "CP04-074EN",
+    "name": "Illya Evolved",
+    "class": "abyss",
+    "cardType": "follower",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 3,
+    "defense": 3,
+    "traits": ["Princess Connect", "Diabolos"],
+    "keywords": ["onEvolve", "onSuperEvolve"],
+    "cardText": "[Union Burst] Activate Engage this and banish 5 cards from your cemetery: Select an enemy follower on the field and deal it 3 damage. Give your leader 🛡️+3.\n---------\nOn Evolve - Search your deck for a Princess Connect card, bury it, then shuffle.\nOn Super Evolve - Select an enemy follower on the field and deal it 5 damage.",
+    "evolvesFrom": "Illya",
+    "abilities": [
+      {
+        "timing": "activated",
+        "unionBurst": true,
+        "cost": { "engage": true, "banishFromCemetery": {}, "banishCount": 5 },
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            { "op": "dealDamage", "amount": 3, "targets": { "type": "enemyFollower", "count": 1 } },
+            { "op": "buff", "def": 3, "targets": { "type": "selfLeader" } }
+          ]
+        }
+      },
+      {
+        "timing": "onEvolve",
+        "effect": {
+          "op": "tutorFromDeck",
+          "filter": { "trait": "Princess Connect" },
+          "to": "cemetery"
+        }
+      },
+      {
+        "timing": "onSuperEvolve",
+        "effect": { "op": "dealDamage", "amount": 5, "targets": { "type": "enemyFollower", "count": 1 } }
+      }
+    ]
+  },
+  "Grace": {
+    "cardNo": "CP04-079EN",
+    "name": "Grace",
+    "class": "abyss",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 1,
+    "attack": 2,
+    "defense": 1,
+    "traits": ["Princess Connect", "Gio Niflhel"],
+    "keywords": ["fanfare"],
+    "cardText": "[Union Burst] Fanfare Draw a card. Discard a card. Bury the top 2 cards of your deck.\n-----------\nIf there's another Gio Niflhel follower on your field, give this follower Ward.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "unionBurst": true,
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            { "op": "draw", "count": 1 },
+            { "op": "discard", "count": 1 },
+            { "op": "mill", "count": 2 }
+          ]
+        }
+      },
+      {
+        "timing": "passive",
+        "condition": { "type": "fieldTraitMin", "trait": "Gio Niflhel", "count": 2 },
+        "effect": { "op": "passiveKeywords", "keywords": ["ward"] }
+      }
+    ]
+  },
+  "Infinite Break - Code: Null": {
+    "cardNo": "CP04-090EN",
+    "name": "Infinite Break - Code: Null",
+    "class": "abyss",
+    "cardType": "spell",
+    "printingType": "base",
+    "cost": 1,
+    "traits": ["Princess Connect", "Twilight Caravan"],
+    "keywords": ["quick"],
+    "cardText": "Quick.\nSelect an enemy follower on the field and deal it 2 damage. Look at the top card of your deck. If it's a Princess Connect card, you may bury it.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "quick": true,
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            { "op": "dealDamage", "amount": 2, "targets": { "type": "enemyFollower", "count": 1 } },
+            {
+              "op": "searchDeckChoose",
+              "filter": { "trait": "Princess Connect" },
+              "lookAt": 1,
+              "to": "cemetery",
+              "optional": true,
+              "remainderTo": "deckTop"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Saren": {
+    "cardNo": "CP04-091EN",
+    "name": "Saren",
+    "class": "haven",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 5,
+    "attack": 3,
+    "defense": 3,
+    "traits": ["Princess Connect", "Sarendia Orphanage"],
+    "keywords": ["evolve", "fanfare"],
+    "cardText": "Evolve (1): Evolve this.\nFanfare Choose one. If your leader's defense is 10 or less, choose up to two instead. (1) Equip a Glorious Feather token to this follower. (2) Search your deck for up to 2 Sarendia Orphanage followers that cost a total of 3 or less, summon them, then shuffle.",
+    "evolvesTo": "Saren Evolved",
+    "evolveCost": 1,
+    "abilities": [
+      { "timing": "evolve", "cost": { "pp": 1 }, "effect": { "op": "noop" } },
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "if",
+          "condition": { "type": "leaderDefMax", "count": 10 },
+          "then": {
+            "op": "choose",
+            "min": 1,
+            "max": 2,
+            "options": [
+              { "label": "Equip a Glorious Feather token to this follower", "effect": { "op": "equip", "tokenName": "Glorious Feather TOKEN", "targets": { "type": "self" } } },
+              {
+                "label": "Search your deck for Sarendia Orphanage followers costing 3 or less total and summon them",
+                "effect": {
+                  "op": "searchDeckSummonMultiple",
+                  "filter": { "trait": "Sarendia Orphanage", "cardType": "follower" },
+                  "maxTotalCost": 3,
+                  "maxCount": 2,
+                  "to": "field",
+                  "remainderTo": "shuffle"
+                }
+              }
+            ]
+          },
+          "else": {
+            "op": "choose",
+            "min": 1,
+            "max": 1,
+            "options": [
+              { "label": "Equip a Glorious Feather token to this follower", "effect": { "op": "equip", "tokenName": "Glorious Feather TOKEN", "targets": { "type": "self" } } },
+              {
+                "label": "Search your deck for Sarendia Orphanage followers costing 3 or less total and summon them",
+                "effect": {
+                  "op": "searchDeckSummonMultiple",
+                  "filter": { "trait": "Sarendia Orphanage", "cardType": "follower" },
+                  "maxTotalCost": 3,
+                  "maxCount": 2,
+                  "to": "field",
+                  "remainderTo": "shuffle"
+                }
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "Saren Evolved": {
+    "cardNo": "CP04-092EN",
+    "name": "Saren Evolved",
+    "class": "haven",
+    "cardType": "follower",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 4,
+    "defense": 4,
+    "traits": ["Princess Connect", "Sarendia Orphanage"],
+    "keywords": ["onEvolve", "onSuperEvolve"],
+    "cardText": "[Union Burst] On Evolve - Select an enemy follower on the field and deal it 4 damage. Deal each other enemy follower on the field 1 damage.\n--------\nOn Super Evolve - Deal 2 damage to each enemy leader and enemy follower on the field.",
+    "evolvesFrom": "Saren",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "unionBurst": true,
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            { "op": "dealDamage", "amount": 4, "targets": { "type": "enemyFollower", "count": 1 } },
+            { "op": "dealDamageAllEnemies", "amount": 1, "followersOnly": true }
+          ]
+        }
+      },
+      { "timing": "onSuperEvolve", "effect": { "op": "dealDamageAllEnemies", "amount": 2 } }
+    ]
+  },
+  "Yui": {
+    "cardNo": "CP04-095EN",
+    "name": "Yui",
+    "class": "haven",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 1,
+    "attack": 1,
+    "defense": 1,
+    "traits": ["Princess Connect", "Twinkle Wish"],
+    "keywords": ["evolve"],
+    "cardText": "Evolve (1): Evolve this.",
+    "evolvesTo": "Yui Evolved",
+    "evolveCost": 1,
+    "abilities": [{ "timing": "evolve", "cost": { "pp": 1 }, "effect": { "op": "noop" } }]
+  },
+  "Yui Evolved": {
+    "cardNo": "CP04-096EN",
+    "name": "Yui Evolved",
+    "class": "haven",
+    "cardType": "follower",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 2,
+    "defense": 2,
+    "traits": ["Princess Connect", "Twinkle Wish"],
+    "keywords": ["onEvolve"],
+    "cardText": "[Union Burst] On Evolve - XPP: Select an X-cost or less Princess Connect follower in your cemetery and summon it. X equals a number of your choice.\n---------\nWhenever the [Union Burst] ability of another follower on your field activates, give your leader 🛡️+1.",
+    "evolvesFrom": "Yui",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "unionBurst": true,
+        "effect": {
+          "op": "choose",
+          "min": 1,
+          "max": 1,
+          "options": [
+            { "label": "X=0", "effect": { "op": "summonFromCemetery", "filter": { "trait": "Princess Connect", "cardType": "follower" }, "count": 1, "maxTotalCost": 0 } },
+            { "label": "X=1", "additionalPpCost": 1, "effect": { "op": "summonFromCemetery", "filter": { "trait": "Princess Connect", "cardType": "follower" }, "count": 1, "maxTotalCost": 1 } },
+            { "label": "X=2", "additionalPpCost": 2, "effect": { "op": "summonFromCemetery", "filter": { "trait": "Princess Connect", "cardType": "follower" }, "count": 1, "maxTotalCost": 2 } },
+            { "label": "X=3", "additionalPpCost": 3, "effect": { "op": "summonFromCemetery", "filter": { "trait": "Princess Connect", "cardType": "follower" }, "count": 1, "maxTotalCost": 3 } },
+            { "label": "X=4", "additionalPpCost": 4, "effect": { "op": "summonFromCemetery", "filter": { "trait": "Princess Connect", "cardType": "follower" }, "count": 1, "maxTotalCost": 4 } },
+            { "label": "X=5", "additionalPpCost": 5, "effect": { "op": "summonFromCemetery", "filter": { "trait": "Princess Connect", "cardType": "follower" }, "count": 1, "maxTotalCost": 5 } },
+            { "label": "X=6", "additionalPpCost": 6, "effect": { "op": "summonFromCemetery", "filter": { "trait": "Princess Connect", "cardType": "follower" }, "count": 1, "maxTotalCost": 6 } },
+            { "label": "X=7", "additionalPpCost": 7, "effect": { "op": "summonFromCemetery", "filter": { "trait": "Princess Connect", "cardType": "follower" }, "count": 1, "maxTotalCost": 7 } },
+            { "label": "X=8", "additionalPpCost": 8, "effect": { "op": "summonFromCemetery", "filter": { "trait": "Princess Connect", "cardType": "follower" }, "count": 1, "maxTotalCost": 8 } },
+            { "label": "X=9", "additionalPpCost": 9, "effect": { "op": "summonFromCemetery", "filter": { "trait": "Princess Connect", "cardType": "follower" }, "count": 1, "maxTotalCost": 9 } },
+            { "label": "X=10", "additionalPpCost": 10, "effect": { "op": "summonFromCemetery", "filter": { "trait": "Princess Connect", "cardType": "follower" }, "count": 1, "maxTotalCost": 10 } }
+          ]
+        }
+      },
+      { "timing": "onUnionBurstActivated", "effect": { "op": "buff", "def": 1, "targets": { "type": "selfLeader" } } }
+    ]
+  },
+  "Suzume": {
+    "cardNo": "CP04-105EN",
+    "name": "Suzume",
+    "class": "haven",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 3,
+    "traits": ["Princess Connect", "Sarendia Orphanage"],
+    "keywords": ["fanfare"],
+    "cardText": "[Union Burst] Fanfare Give your leader 🛡️+2.",
+    "abilities": [
+      { "timing": "fanfare", "unionBurst": true, "effect": { "op": "buff", "def": 2, "targets": { "type": "selfLeader" } } }
+    ]
+  },
+  "Kurumi": {
+    "cardNo": "CP04-107EN",
+    "name": "Kurumi",
+    "class": "haven",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 1,
+    "attack": 2,
+    "defense": 2,
+    "traits": ["Princess Connect", "Sarendia Orphanage"],
+    "keywords": ["fanfare"],
+    "cardText": "[Union Burst] Fanfare Select an enemy follower on the field and engage it.",
+    "abilities": [
+      { "timing": "fanfare", "unionBurst": true, "effect": { "op": "engage", "targets": { "type": "enemyFollower", "count": 1 } } }
+    ]
+  },
+  "Lailael": {
+    "cardNo": "CP04-112EN",
+    "name": "Lailael",
+    "class": "neutral",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 7,
+    "attack": 3,
+    "defense": 4,
+    "traits": ["Princess Connect", "Gio Teogonia"],
+    "keywords": ["fanfare"],
+    "cardText": "[Union Burst] Fanfare Select up to three 2-cost or less followers with different names in your cemetery and summon them.\n-------\nWhen the [Union Burst] ability of another follower on your field activates, give it 🗡️+1/🛡️+1.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "unionBurst": true,
+        "effect": {
+          "op": "summonFromCemetery",
+          "filter": { "maxCost": 2, "cardType": "follower" },
+          "count": 3,
+          "minCount": 0,
+          "distinctNames": true
+        }
+      },
+      {
+        "timing": "onUnionBurstActivated",
+        "useEnteredTarget": true,
+        "effect": { "op": "buff", "atk": 1, "def": 1, "targets": { "type": "lastSelected" } }
+      }
+    ]
+  },
+  "Ameth": {
+    "cardNo": "CP04-113EN",
+    "name": "Ameth",
+    "class": "neutral",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 2,
+    "traits": ["Princess Connect"],
+    "keywords": ["evolve", "fanfare"],
+    "cardText": "Evolve (1): Evolve this.\nFanfare Look at the top card of your deck. If it's a Princess Connect card, you may reveal it and add it to your hand.",
+    "evolvesTo": "Ameth Evolved",
+    "evolveCost": 1,
+    "abilities": [
+      { "timing": "evolve", "cost": { "pp": 1 }, "effect": { "op": "noop" } },
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "searchDeckChoose",
+          "filter": { "trait": "Princess Connect" },
+          "lookAt": 1,
+          "to": "hand",
+          "optional": true,
+          "reveal": true,
+          "remainderTo": "deckTop"
+        }
+      }
+    ]
+  },
+  "Ameth Evolved": {
+    "cardNo": "CP04-114EN",
+    "name": "Ameth Evolved",
+    "class": "neutral",
+    "cardType": "follower",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 3,
+    "defense": 3,
+    "traits": ["Princess Connect"],
+    "keywords": ["onEvolve"],
+    "cardText": "[Union Burst] On Evolve - Choose one. (1) Select another follower on your field and give it Ward. (2) Select another Princess Connect follower on your field not named Ameth and, if you have activated at least 2 other [Union Burst] abilities this turn, activate that follower's [Union Burst] without paying the cost.",
+    "evolvesFrom": "Ameth",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "unionBurst": true,
+        "effect": {
+          "op": "choose",
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "label": "Give another follower Ward",
+              "effect": { "op": "grantKeyword", "keyword": "ward", "targets": { "type": "selfFollower", "count": 1 } }
+            },
+            {
+              "label": "Activate another follower's Union Burst without paying the cost",
+              "effect": {
+                "op": "if",
+                "condition": { "type": "unionBurstActivatedMin", "count": 2 },
+                "then": {
+                  "op": "activateUnionBurst",
+                  "targets": {
+                    "type": "selfFollower",
+                    "trait": "Princess Connect",
+                    "excludeIdentityName": "Ameth",
+                    "count": 1
+                  },
+                  "skipCost": true
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Croce": {
+    "cardNo": "CP04-115EN",
+    "name": "Croce",
+    "class": "neutral",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 1,
+    "attack": 2,
+    "defense": 2,
+    "traits": ["Princess Connect", "Gio Teogonia"],
+    "keywords": ["fanfare"],
+    "cardText": "[Union Burst] Fanfare Put X battery counters on this card. X equals your max play points.\n-------\nThis card may have up to 7 battery counters.\nActivate XPP, engage this card, remove X battery counters from this card: Search your deck for an X-cost or less Gio Teogonia follower not named Croce, summon it, then shuffle. X equals a number of your choice.",
+    "abilities": [
+      {
+        "timing": "fanfare",
+        "unionBurst": true,
+        "effect": { "op": "addPersistentCounter", "key": "battery", "amount": "maxPp", "max": 7 }
+      },
+      {
+        "timing": "activated",
+        "cost": { "engage": true },
+        "effect": {
+          "op": "choose",
+          "min": 1,
+          "max": 1,
+          "options": [
+            {
+              "label": "X=1",
+              "additionalPpCost": 1,
+              "effect": {
+                "op": "if",
+                "condition": { "type": "sourcePersistentCounterMin", "key": "battery", "count": 1 },
+                "then": {
+                  "op": "sequence",
+                  "steps": [
+                    { "op": "removePersistentCounter", "key": "battery", "amount": 1 },
+                    { "op": "tutorFromDeck", "filter": { "trait": "Gio Teogonia", "cardType": "follower", "maxCost": 1, "excludeIdentityName": "Croce" }, "to": "field" }
+                  ]
+                },
+                "else": { "op": "noop" }
+              }
+            },
+            {
+              "label": "X=2",
+              "additionalPpCost": 2,
+              "effect": {
+                "op": "if",
+                "condition": { "type": "sourcePersistentCounterMin", "key": "battery", "count": 2 },
+                "then": {
+                  "op": "sequence",
+                  "steps": [
+                    { "op": "removePersistentCounter", "key": "battery", "amount": 2 },
+                    { "op": "tutorFromDeck", "filter": { "trait": "Gio Teogonia", "cardType": "follower", "maxCost": 2, "excludeIdentityName": "Croce" }, "to": "field" }
+                  ]
+                },
+                "else": { "op": "noop" }
+              }
+            },
+            {
+              "label": "X=3",
+              "additionalPpCost": 3,
+              "effect": {
+                "op": "if",
+                "condition": { "type": "sourcePersistentCounterMin", "key": "battery", "count": 3 },
+                "then": {
+                  "op": "sequence",
+                  "steps": [
+                    { "op": "removePersistentCounter", "key": "battery", "amount": 3 },
+                    { "op": "tutorFromDeck", "filter": { "trait": "Gio Teogonia", "cardType": "follower", "maxCost": 3, "excludeIdentityName": "Croce" }, "to": "field" }
+                  ]
+                },
+                "else": { "op": "noop" }
+              }
+            },
+            {
+              "label": "X=4",
+              "additionalPpCost": 4,
+              "effect": {
+                "op": "if",
+                "condition": { "type": "sourcePersistentCounterMin", "key": "battery", "count": 4 },
+                "then": {
+                  "op": "sequence",
+                  "steps": [
+                    { "op": "removePersistentCounter", "key": "battery", "amount": 4 },
+                    { "op": "tutorFromDeck", "filter": { "trait": "Gio Teogonia", "cardType": "follower", "maxCost": 4, "excludeIdentityName": "Croce" }, "to": "field" }
+                  ]
+                },
+                "else": { "op": "noop" }
+              }
+            },
+            {
+              "label": "X=5",
+              "additionalPpCost": 5,
+              "effect": {
+                "op": "if",
+                "condition": { "type": "sourcePersistentCounterMin", "key": "battery", "count": 5 },
+                "then": {
+                  "op": "sequence",
+                  "steps": [
+                    { "op": "removePersistentCounter", "key": "battery", "amount": 5 },
+                    { "op": "tutorFromDeck", "filter": { "trait": "Gio Teogonia", "cardType": "follower", "maxCost": 5, "excludeIdentityName": "Croce" }, "to": "field" }
+                  ]
+                },
+                "else": { "op": "noop" }
+              }
+            },
+            {
+              "label": "X=6",
+              "additionalPpCost": 6,
+              "effect": {
+                "op": "if",
+                "condition": { "type": "sourcePersistentCounterMin", "key": "battery", "count": 6 },
+                "then": {
+                  "op": "sequence",
+                  "steps": [
+                    { "op": "removePersistentCounter", "key": "battery", "amount": 6 },
+                    { "op": "tutorFromDeck", "filter": { "trait": "Gio Teogonia", "cardType": "follower", "maxCost": 6, "excludeIdentityName": "Croce" }, "to": "field" }
+                  ]
+                },
+                "else": { "op": "noop" }
+              }
+            },
+            {
+              "label": "X=7",
+              "additionalPpCost": 7,
+              "effect": {
+                "op": "if",
+                "condition": { "type": "sourcePersistentCounterMin", "key": "battery", "count": 7 },
+                "then": {
+                  "op": "sequence",
+                  "steps": [
+                    { "op": "removePersistentCounter", "key": "battery", "amount": 7 },
+                    { "op": "tutorFromDeck", "filter": { "trait": "Gio Teogonia", "cardType": "follower", "maxCost": 7, "excludeIdentityName": "Croce" }, "to": "field" }
+                  ]
+                },
+                "else": { "op": "noop" }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Call of the Guild": {
+    "cardNo": "CP04-118EN",
+    "name": "Call of the Guild",
+    "class": "neutral",
+    "cardType": "spell",
+    "printingType": "base",
+    "cost": 1,
+    "traits": ["Princess Connect", "Guild Management Association"],
+    "keywords": [],
+    "cardText": "Look at the top 4 cards of your deck. You may put a Princess Connect follower from among them into your EX area. Put the rest on the bottom of your deck in any order.",
+    "abilities": [
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "searchDeckChoose",
+          "filter": { "trait": "Princess Connect", "cardType": "follower" },
+          "lookAt": 4,
+          "to": "exArea",
+          "optional": true,
+          "remainderTo": "deckBottom"
+        }
+      }
+    ]
+  },
+  "Ames Amulet TOKEN": {
+    "cardNo": "CP04-T01EN",
+    "name": "Ames Amulet TOKEN",
+    "class": "forest",
+    "cardType": "amulet",
+    "printingType": "token",
+    "specialType": "token",
+    "cost": 2,
+    "traits": ["Princess Connect", "Gourmet Guild"],
+    "keywords": [],
+    "cardText": "The follower equipped with this has \"Activate Engage this card: Give each follower on your field 🗡️+1/🛡️+1.\"",
+    "abilities": [
+      {
+        "timing": "activated",
+        "equipHostActivate": true,
+        "cost": { "engage": true },
+        "effect": { "op": "buffFieldTrait", "trait": "Princess Connect", "atk": 1, "def": 1 }
+      }
+    ]
+  },
+  "Princess Sword TOKEN": {
+    "cardNo": "CP04-T02EN",
+    "name": "Princess Sword TOKEN",
+    "class": "sword",
+    "cardType": "amulet",
+    "printingType": "token",
+    "specialType": "token",
+    "cost": 2,
+    "traits": ["Princess Connect", "Gourmet Guild"],
+    "keywords": [],
+    "cardText": "The follower equipped with this deals 2 more damage and takes 2 less damage.",
+    "abilities": [
+      { "timing": "passive", "effect": { "op": "equipPassive", "damageDealtBonus": 2, "damageTakenReduction": 2 } }
+    ]
+  },
+  "Holy Castle Sword, Avalon TOKEN": {
+    "cardNo": "CP04-T03EN",
+    "name": "Holy Castle Sword, Avalon TOKEN",
+    "class": "sword",
+    "cardType": "amulet",
+    "printingType": "token",
+    "specialType": "token",
+    "cost": 2,
+    "traits": ["Princess Connect", "NIGHTMARE", "Seven Crowns"],
+    "keywords": [],
+    "cardText": "The follower equipped with this has \"Strike - Refresh this follower. Draw a card. Activate only once per turn.\"",
+    "abilities": [
+      {
+        "timing": "strike",
+        "oncePerTurn": true,
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            { "op": "refreshFollower", "targets": { "type": "self" } },
+            { "op": "draw", "count": 1 }
+          ]
+        }
+      }
+    ]
+  },
+  "Chaos Grimoire TOKEN": {
+    "cardNo": "CP04-T06EN",
+    "name": "Chaos Grimoire TOKEN",
+    "class": "rune",
+    "cardType": "amulet",
+    "printingType": "token",
+    "specialType": "token",
+    "cost": 2,
+    "traits": ["Princess Connect", "Gourmet Guild"],
+    "keywords": [],
+    "cardText": "The follower equipped with this has \"Twice per turn, when you play a spell, deal damage equal to half this follower's attack (rounded up) to each enemy leader.\"",
+    "abilities": [
+      {
+        "timing": "onCardPlayed",
+        "filter": { "cardType": "spell" },
+        "maxPerTurn": 2,
+        "effect": { "op": "dealDamage", "amount": { "op": "halfSourceAtk" }, "targets": { "type": "enemyLeader" } }
+      }
+    ]
+  },
+  "Ice Drachen TOKEN": {
+    "cardNo": "CP04-T08EN",
+    "name": "Ice Drachen TOKEN",
+    "class": "dragon",
+    "cardType": "amulet",
+    "printingType": "token",
+    "specialType": "token",
+    "cost": 2,
+    "traits": ["Princess Connect", "Gourmet Guild"],
+    "keywords": [],
+    "cardText": "When this card is equipped, select an enemy follower on the field and engage it. Give the follower equipped with this 🗡️+2/🛡️+2.",
+    "abilities": [
+      { "timing": "passive", "effect": { "op": "equipPassive", "atk": 2, "def": 2 } },
+      { "timing": "onEquip", "effect": { "op": "engage", "targets": { "type": "enemyFollower", "count": 1 } } }
+    ]
+  },
+  "Proof of Bonds TOKEN": {
+    "cardNo": "CP04-T09EN",
+    "name": "Proof of Bonds TOKEN",
+    "class": "dragon",
+    "cardType": "amulet",
+    "printingType": "token",
+    "specialType": "token",
+    "cost": 2,
+    "traits": ["Princess Connect"],
+    "keywords": [],
+    "cardText": "The follower equipped with this has Storm and \"Strike - Select up to 2 enemy followers on the field and deal them 3 damage.\"",
+    "abilities": [
+      { "timing": "passive", "effect": { "op": "equipPassive", "keywords": ["storm"] } },
+      {
+        "timing": "strike",
+        "effect": {
+          "op": "dealDamage",
+          "amount": 3,
+          "targets": { "type": "enemyFollower", "minCount": 0, "maxCount": 2 }
+        }
+      }
+    ]
+  },
+  "Dark Axe Nachtfang TOKEN": {
+    "cardNo": "CP04-T11EN",
+    "name": "Dark Axe Nachtfang TOKEN",
+    "class": "abyss",
+    "cardType": "amulet",
+    "printingType": "token",
+    "specialType": "token",
+    "cost": 2,
+    "traits": ["Princess Connect", "Diabolos"],
+    "keywords": [],
+    "cardText": "The follower equipped with this has \"Whenever this deals ability damage to an enemy follower on the field, deal 3 damage to each enemy leader.\"",
+    "abilities": [
+      {
+        "timing": "onAbilityDamageDealt",
+        "effect": { "op": "dealDamage", "amount": 3, "targets": { "type": "enemyLeader" } }
+      }
+    ]
+  },
+  "Glorious Feather TOKEN": {
+    "cardNo": "CP04-T12EN",
+    "name": "Glorious Feather TOKEN",
+    "class": "haven",
+    "cardType": "amulet",
+    "printingType": "token",
+    "specialType": "token",
+    "cost": 2,
+    "traits": ["Princess Connect", "Sarendia Orphanage"],
+    "keywords": [],
+    "cardText": "The follower equipped with this deals 1 more damage and has \"At the start of your end phase, give your leader 🛡️+3.\"",
+    "abilities": [
+      { "timing": "passive", "effect": { "op": "equipPassive", "damageDealtBonus": 1 } },
+      { "timing": "startOfEnd", "effect": { "op": "buff", "def": 3, "targets": { "type": "selfLeader" } } }
+    ]
+  }
+}

@@ -30,6 +30,11 @@ function clearTurnScopedCardState(card: CardInstance): void {
   if (card.grantedOnCardPlayed?.length) {
     card.grantedOnCardPlayed = card.grantedOnCardPlayed.filter((g) => !g.untilEndOfTurn);
   }
+  // Clear until-end-of-turn attack lock when modifiers expire; also clear explicit flag
+  // that was set without a modifier.
+  if (card.cannotAttack && !card.modifiers.some((m) => m.cannotAttack)) {
+    card.cannotAttack = undefined;
+  }
 }
 
 function refreshFieldCard(card: CardInstance, state: GameState): void {
@@ -40,6 +45,13 @@ function refreshFieldCard(card: CardInstance, state: GameState): void {
   if (isBoxed(card, state)) {
     card.engaged = true;
     card.onFieldSinceTurnStart = false;
+    return;
+  }
+  if (card.skipRefreshNextStart) {
+    card.skipRefreshNextStart = undefined;
+    card.engaged = true;
+    card.onFieldSinceTurnStart = false;
+    card.boxedUntilTurn = undefined;
     return;
   }
   card.boxedUntilTurn = undefined;
@@ -126,6 +138,8 @@ export function beginStartPhase(state: GameState): GameState {
   p.turnsPassed += 1;
   p.flags.evolvedThisTurn = false;
   p.flags.cardsPlayedThisTurn = 0;
+  p.flags.spellsPlayedThisTurn = 0;
+  p.flags.unionBurstsActivatedThisTurn = 0;
   p.flags.leaderLostDefThisTurn = false;
   p.flags.chosenChooseOptionTracksThisTurn = {};
   p.flags.chosenChooseOptionLabelsThisTurn = {};

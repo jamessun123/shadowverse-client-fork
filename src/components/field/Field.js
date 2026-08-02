@@ -219,6 +219,10 @@ export default function Field({
   const reduxEnemyIntimidateField = useSelector(
     (state) => state.card.enemyIntimidateField,
   );
+  const reduxEquipmentField = useSelector((state) => state.card.equipmentField);
+  const reduxEnemyEquipmentField = useSelector(
+    (state) => state.card.enemyEquipmentField,
+  );
   const reduxEnemyCardBack = useSelector((state) => state.card.enemyCardback);
   const reduxCardSelectedInHand = useSelector(
     (state) => state.card.cardSelectedInHand,
@@ -2024,6 +2028,7 @@ export default function Field({
             columnGap: "60px",
             alignItems: "center",
             justifyItems: "center",
+            overflow: "visible",
             // zIndex: 0,
           }}
         >
@@ -2061,6 +2066,8 @@ export default function Field({
               className={"cardStyle"}
               style={{
                 zIndex: 2,
+                position: "relative",
+                overflow: "visible",
                 ...fieldCombatStyle(cardPos(idx), true),
               }}
               onClick={() => {
@@ -2081,7 +2088,11 @@ export default function Field({
                     showDef={reduxEnemyCustomValues[cardPos(idx)].showDef}
                     engaged={reduxEnemyEngaged[cardPos(idx)]}
                     counterVal={reduxEnemyCounterField[cardPos(idx)]}
-                    discountedPlayCost={reduxEnemyExPlayCostField[cardPos(idx)]}
+                    discountedPlayCost={
+                      cardPos(idx) >= 5
+                        ? reduxEnemyExPlayCostField[cardPos(idx)]
+                        : undefined
+                    }
                     aura={reduxEnemyAuraField[cardPos(idx)]}
                     bane={reduxEnemyBaneField[cardPos(idx)]}
                     ward={reduxEnemyWardField[cardPos(idx)]}
@@ -2089,6 +2100,7 @@ export default function Field({
                     storm={reduxEnemyStormField[cardPos(idx)]}
                     drain={reduxEnemyDrainField[cardPos(idx)]}
                     intimidate={reduxEnemyIntimidateField[cardPos(idx)]}
+                    equipmentBeneath={reduxEnemyEquipmentField[cardPos(idx)]}
                     opponentField={true}
                     onField={true}
                     idx={idx}
@@ -2113,6 +2125,7 @@ export default function Field({
                   storm={reduxEnemyStormField[cardPos(idx)]}
                   drain={reduxEnemyDrainField[cardPos(idx)]}
                   intimidate={reduxEnemyIntimidateField[cardPos(idx)]}
+                  equipmentBeneath={reduxEnemyEquipmentField[cardPos(idx)]}
                   opponentField={true}
                   onField={true}
                   idx={idx}
@@ -2200,6 +2213,7 @@ export default function Field({
             columnGap: "60px",
             alignItems: "center",
             justifyItems: "center",
+            overflow: "visible",
             // zIndex: 0,
           }}
         >
@@ -2245,6 +2259,8 @@ export default function Field({
                   key={`player1-${idx}`}
                   style={
                     {
+                      position: "relative",
+                      overflow: "visible",
                       // height: "160px",
                       // width: "115px",
                       // backgroundColor: "rgba(255, 255, 255, 0.1)",
@@ -2273,7 +2289,9 @@ export default function Field({
                       defVal={reduxCustomValues[idx].def}
                       engaged={reduxEngaged[idx]}
                       counterVal={reduxCounterField[idx]}
-                      discountedPlayCost={reduxExPlayCostField[idx]}
+                      discountedPlayCost={
+                        idx >= 5 ? reduxExPlayCostField[idx] : undefined
+                      }
                       aura={reduxAuraField[idx]}
                       bane={reduxBaneField[idx]}
                       ward={reduxWardField[idx]}
@@ -2281,6 +2299,7 @@ export default function Field({
                       storm={reduxStormField[idx]}
                       drain={reduxDrainField[idx]}
                       intimidate={reduxIntimidateField[idx]}
+                      equipmentBeneath={reduxEquipmentField[idx]}
                       idx={idx}
                       onField={true}
                       key={`card1-${idx}`}
@@ -2304,6 +2323,7 @@ export default function Field({
                       setHovering={setHovering}
                       ready={ready}
                       cardBeneath={reduxField[idx]}
+                      equipmentBeneath={reduxEquipmentField[idx]}
                     />
                   )}
                 </motion.div>
@@ -2324,7 +2344,13 @@ export default function Field({
                       handleEvoContextMenu(e, idx, reduxEvoField[idx]);
                   }}
                   key={`player2-${idx}`}
-                  style={fieldCombatStyle(idx, false)}
+                  style={
+                    {
+                      position: "relative",
+                      overflow: "visible",
+                      ...fieldCombatStyle(idx, false),
+                    }
+                  }
                   className={
                     idx >= 5 && canActivateExArea(fieldInstanceIds[idx])
                       ? "cardStyle ex-activate-ready"
@@ -2346,7 +2372,9 @@ export default function Field({
                       defVal={reduxCustomValues[idx].def}
                       engaged={reduxEngaged[idx]}
                       counterVal={reduxCounterField[idx]}
-                      discountedPlayCost={reduxExPlayCostField[idx]}
+                      discountedPlayCost={
+                        idx >= 5 ? reduxExPlayCostField[idx] : undefined
+                      }
                       aura={reduxAuraField[idx]}
                       bane={reduxBaneField[idx]}
                       ward={reduxWardField[idx]}
@@ -2354,6 +2382,7 @@ export default function Field({
                       storm={reduxStormField[idx]}
                       drain={reduxDrainField[idx]}
                       intimidate={reduxIntimidateField[idx]}
+                      equipmentBeneath={reduxEquipmentField[idx]}
                       idx={idx}
                       onField={true}
                       key={`card2-${idx}`}
@@ -2370,7 +2399,9 @@ export default function Field({
                       defVal={reduxCustomValues[idx].def}
                       engaged={reduxEngaged[idx]}
                       counterVal={reduxCounterField[idx]}
-                      discountedPlayCost={reduxExPlayCostField[idx]}
+                      discountedPlayCost={
+                        idx >= 5 ? reduxExPlayCostField[idx] : undefined
+                      }
                       aura={reduxAuraField[idx]}
                       bane={reduxBaneField[idx]}
                       ward={reduxWardField[idx]}
@@ -2378,6 +2409,7 @@ export default function Field({
                       storm={reduxStormField[idx]}
                       drain={reduxDrainField[idx]}
                       intimidate={reduxIntimidateField[idx]}
+                      equipmentBeneath={reduxEquipmentField[idx]}
                       idx={idx}
                       onField={true}
                       key={`evo2-${idx}`}

@@ -11,6 +11,7 @@ import { useSelector } from "react-redux";
 import ZoomedCard from "../components/ui/ZoomedCard";
 import ChoiceModal from "../components/automated/ChoiceModal";
 import AutomatedControls from "../components/automated/AutomatedControls";
+import TestingPanel from "../components/automated/TestingPanel";
 import UiChromeRestore from "../components/ui/UiChromeRestore";
 import { useEngineSync } from "../components/hooks/useEngineSync";
 import initialWallpaper from "../../src/assets/wallpapers/3.png";
@@ -29,29 +30,67 @@ export default function Game(callback) {
   // const [dragging, setDragging] = useState(false);
   const [hovering, setHoveringState] = useState(false);
   const hoverHideTimer = useRef(null);
-  const setHovering = useCallback((show) => {
-    if (hoverHideTimer.current) {
-      clearTimeout(hoverHideTimer.current);
-      hoverHideTimer.current = null;
-    }
-    if (show) {
-      setHoveringState(true);
-      return;
-    }
-    // Brief delay so the cursor can move onto the ZoomedCard effect text.
-    hoverHideTimer.current = setTimeout(() => {
-      setHoveringState(false);
-      hoverHideTimer.current = null;
-    }, 200);
+  const zoomRef = useRef(null);
+  const lastPointer = useRef({ x: 0, y: 0 });
+  const pinnedToZoom = useRef(false);
+
+  const pointerInZoom = useCallback(() => {
+    const el = zoomRef.current;
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    const { x, y } = lastPointer.current;
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
   }, []);
+
+  const setHovering = useCallback(
+    (show) => {
+      if (hoverHideTimer.current) {
+        clearTimeout(hoverHideTimer.current);
+        hoverHideTimer.current = null;
+      }
+      if (show) {
+        pinnedToZoom.current = false;
+        setHoveringState(true);
+        return;
+      }
+      // Delay hide so the cursor can travel onto the preview. If the preview
+      // overlaps the card, hit-testing passes through (pointer-events: none) or
+      // we pin open while the pointer remains inside the preview bounds — that
+      // stops the show/hide flicker loop.
+      hoverHideTimer.current = setTimeout(() => {
+        hoverHideTimer.current = null;
+        if (pointerInZoom()) {
+          pinnedToZoom.current = true;
+          return;
+        }
+        pinnedToZoom.current = false;
+        setHoveringState(false);
+      }, 200);
+    },
+    [pointerInZoom],
+  );
+
   useEffect(() => {
+    const onMove = (e) => {
+      lastPointer.current = { x: e.clientX, y: e.clientY };
+      if (!pinnedToZoom.current) return;
+      if (!pointerInZoom()) {
+        pinnedToZoom.current = false;
+        setHoveringState(false);
+      }
+    };
+    window.addEventListener("pointermove", onMove);
     return () => {
+      window.removeEventListener("pointermove", onMove);
       if (hoverHideTimer.current) clearTimeout(hoverHideTimer.current);
     };
-  }, []);
+  }, [pointerInZoom]);
   const [readyToPlaceOnFieldFromHand, setReadyToPlaceOnFieldFromHand] =
     useState(false);
   const reduxCurrentCard = useSelector((state) => state.card.currentCard);
+  const reduxCurrentCardEquipment = useSelector(
+    (state) => state.card.currentCardEquipment || [],
+  );
   const uiChromeHidden = useSelector((state) => state.gameState.uiChromeHidden);
 
   // The board reports the scale it computed; the side panels (HP, leader, play
@@ -85,10 +124,11 @@ export default function Game(callback) {
           be wrapped in a transform (that would reparent its containing block
           and collapse it). It scales itself via the scale prop instead. */}
       <ZoomedCard
+        ref={zoomRef}
         name={reduxCurrentCard}
+        equipment={reduxCurrentCardEquipment}
         hovering={hovering}
         scale={sideScale}
-        setHovering={setHovering}
       />
       <Selection
         setSelectedOption={setSelectedOption}
@@ -160,6 +200,7 @@ export default function Game(callback) {
       {/* Right side — portraits / HP / PP stay visible while other chrome is hidden */}
       {!uiChromeHidden && <ChoiceModal setHovering={setHovering} />}
       {!uiChromeHidden && <AutomatedControls />}
+      <TestingPanel />
 
       <div className={"rightSideCanvas"}>
         <div style={rightScaleStyle}>

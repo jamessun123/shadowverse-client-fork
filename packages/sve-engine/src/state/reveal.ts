@@ -8,7 +8,7 @@ export interface RevealedCard {
 
 /** Deck searches to hand reveal by default; cemetery returns do not. */
 export function shouldRevealBeforeHand(
-  to: "hand" | "exArea" | "field",
+  to: "hand" | "exArea" | "field" | "cemetery",
   fromZone: string,
   explicit?: boolean,
 ): boolean {

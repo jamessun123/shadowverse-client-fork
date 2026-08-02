@@ -1,5 +1,5 @@
 import { getCardDef } from "../cards/registry";
-import { destinationForDestroyedCard } from "../cards/tokens";
+import { placeLeavingPlay } from "../cards/tokens";
 import { resetCardInstanceState } from "../state/card-reset";
 import { canEffectResolve, resolveEffect } from "../effects/resolver";
 import { isBoxed } from "../state/passives";
@@ -15,7 +15,16 @@ import {
   queueFanfare,
   queueLastWords,
 } from "./trigger-queue";
-import { findInstance, getPlayer, getEffectiveStats, hasKeyword, resolveCardNo } from "../state/queries";
+import { recordUnionBurstActivated } from "./union-burst";
+import {
+  fieldOccupancy,
+  findInstance,
+  getPlayer,
+  getEffectiveStats,
+  hasKeyword,
+  isEquippedAttachment,
+  resolveCardNo,
+} from "../state/queries";
 import { destroyFollower, drawCard, removeFromField } from "../state/zones";
 import { GameState, PendingTrigger, PlayerId, TriggerTiming } from "../types";
 
@@ -98,17 +107,18 @@ function enforceFieldLimits(state: GameState): GameState {
   let next = structuredClone(state);
   for (const pid of [0, 1] as PlayerId[]) {
     const p = next.players[pid];
-    while (p.zones.field.length > p.fieldLimit) {
-      const excess = p.zones.field.pop()!;
-      const dest = destinationForDestroyedCard(excess.name);
+    while (fieldOccupancy(p.zones.field) > p.fieldLimit) {
+      let idx = p.zones.field.length - 1;
+      while (idx >= 0 && isEquippedAttachment(p.zones.field[idx])) idx -= 1;
+      if (idx < 0) break;
+      const [excess] = p.zones.field.splice(idx, 1);
       resetCardInstanceState(excess);
-      p.zones[dest].push(excess);
+      placeLeavingPlay(p.zones, excess, "cemetery");
     }
     while (p.zones.exArea.length > p.exLimit) {
       const excess = p.zones.exArea.pop()!;
-      const dest = destinationForDestroyedCard(excess.name);
       resetCardInstanceState(excess);
-      p.zones[dest].push(excess);
+      placeLeavingPlay(p.zones, excess, "cemetery");
     }
   }
   return next;
@@ -160,6 +170,8 @@ function markTriggerAbilityUsed(state: GameState, trigger: PendingTrigger): void
     "onAllyFollowerEnter",
     "onOpponentDeckToCemetery",
     "onAbilityDamageTaken",
+    "onAbilityDamageDealt",
+    "onUnionBurstActivated",
   ];
   if (!markableTimings.includes(trigger.timing)) return;
   const found = findInstance(state, trigger.sourceInstanceId);
@@ -178,10 +190,12 @@ export function resolveOneTrigger(state: GameState, trigger: PendingTrigger): Ga
   next.pendingTriggers = next.pendingTriggers.filter((t) => t.id !== trigger.id);
   // Set source before canEffectResolve — self-target effects (e.g. Apostle of Disdain
   // buff/Storm) need sourceInstanceId to see any candidates.
+  const enteredId = trigger.ability.useEnteredTarget ? trigger.forcedTargetId : undefined;
   next.resolutionContext = {
     ...contextForTriggerResolution(next, trigger.sourceInstanceId, trigger.ability.effect),
-    // Only auto-target the entered follower when the ability opts in.
-    forcedTargetId: trigger.ability.useEnteredTarget ? trigger.forcedTargetId : undefined,
+    // Auto-target the entered/activator follower when the ability opts in.
+    forcedTargetId: enteredId,
+    lastSelectedTargetId: enteredId,
   };
   // Comprehensive Rules 10.7.3.2: if it cannot be played, remove pending status only.
   if (!canEffectResolve(next, trigger.controller, trigger.ability.effect)) {
@@ -192,6 +206,7 @@ export function resolveOneTrigger(state: GameState, trigger: PendingTrigger): Ga
   }
   next = resolveEffect(next, trigger.ability.effect, trigger.controller);
   markTriggerAbilityUsed(next, trigger);
+  recordUnionBurstActivated(next, trigger.controller, trigger.sourceInstanceId, trigger.ability);
   if (shouldClearResolutionContext(next)) {
     next.resolutionContext = null;
   }

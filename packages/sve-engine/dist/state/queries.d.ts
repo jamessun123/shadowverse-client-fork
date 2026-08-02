@@ -1,5 +1,10 @@
 import { AbilityDefinition, CardInstance, GameState, Keyword, PlayerId } from "../types";
 export declare function getPlayer(state: GameState, player: PlayerId): import("../types").PlayerState;
+/** Equipment sits on the field zone but does not occupy a board slot. */
+export declare function isEquippedAttachment(card: CardInstance): boolean;
+/** Board occupants only (followers/amulets that are not attached equipment). */
+export declare function fieldOccupancy(field: CardInstance[]): number;
+export declare function hasFieldSpace(field: CardInstance[], fieldLimit: number): boolean;
 export declare function findInstance(state: GameState, instanceId: string): {
     card: CardInstance;
     player: PlayerId;
@@ -59,7 +64,10 @@ export declare function getActivatedAbilities(state: GameState, card: CardInstan
 }[];
 export declare function evolveCardsMatch(fieldCardNo: string, evoCardNo: string): boolean;
 export declare function findMatchingEvolveCard(state: GameState, player: PlayerId, fieldInstanceId: string): CardInstance | null;
-export declare function getStrikeAbilities(state: GameState, card: CardInstance): AbilityDefinition[];
+export declare function getStrikeAbilities(state: GameState, card: CardInstance): {
+    ability: AbilityDefinition;
+    key: string;
+}[];
 export declare function opponentOf(player: PlayerId): PlayerId;
 export declare function isOverflowActive(state: GameState, player: PlayerId): boolean;
 export declare function canAttackLeader(state: GameState, attacker: CardInstance, player: PlayerId): boolean;

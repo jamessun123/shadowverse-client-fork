@@ -11,7 +11,14 @@ import {
   resolveCardNo,
 } from "./queries";
 
-export function cardMatchesFilter(cardNo: string, filter: DeckFilter): boolean {
+export function cardMatchesFilter(
+  cardNo: string,
+  filter: DeckFilter,
+  state?: GameState,
+): boolean {
+  if (filter.anyOf?.length) {
+    return filter.anyOf.some((alt) => cardMatchesFilter(cardNo, alt, state));
+  }
   const def = getCardDef(cardNo);
   if (!def) return false;
   const filterName = filter.name || filter.cardNo;
@@ -45,6 +52,12 @@ export function cardMatchesFilter(cardNo: string, filter: DeckFilter): boolean {
     const excluded = normalizeIdentityName(filter.excludeIdentityName);
     if (normalizeIdentityName(def.name) === excluded) return false;
   }
+  if (filter.excludeLastSelectedIdentity) {
+    const last = state?.resolutionContext?.lastSelectedCardName;
+    if (last && normalizeIdentityName(def.name) === normalizeIdentityName(last)) {
+      return false;
+    }
+  }
   return true;
 }
 
@@ -67,6 +80,8 @@ export function evalCondition(state: GameState, player: PlayerId, condition: Con
       return isOverflowActive(state, player);
     case "combo":
       return getPlayer(state, player).flags.cardsPlayedThisTurn >= condition.count;
+    case "spellPlayedThisTurn":
+      return (getPlayer(state, player).flags.spellsPlayedThisTurn ?? 0) >= 1;
     case "namedFollowerOnField":
       return getPlayer(state, player).zones.field.some((c) => c.name === condition.name);
     case "namedFollowerOnFieldByName":
@@ -180,6 +195,26 @@ export function evalCondition(state: GameState, player: PlayerId, condition: Con
       return countTraitInZone(state, player, "field", condition.trait) >= condition.count;
     case "leaderDefMax":
       return getPlayer(state, player).leaderDef <= condition.count;
+    case "unionBurstActivatedMin":
+      return (getPlayer(state, player).flags.unionBurstsActivatedThisTurn ?? 0) >= condition.count;
+    case "maxPpMin":
+      return getPlayer(state, player).maxPp >= condition.count;
+    case "maxPpEquals":
+      return getPlayer(state, player).maxPp === condition.count;
+    case "fieldFollowerMin": {
+      const count = getPlayer(state, player).zones.field.filter((c) => {
+        const def = getCardDef(resolveCardNo(state, c));
+        return def?.cardType === "follower";
+      }).length;
+      return count >= condition.count;
+    }
+    case "fieldFollowerMinCostAny": {
+      return getPlayer(state, player).zones.field.some((c) => {
+        const def = getCardDef(resolveCardNo(state, c));
+        if (!def || def.cardType !== "follower") return false;
+        return resolveCardDefCost(c.name) >= condition.minCost;
+      });
+    }
     default:
       return false;
   }
