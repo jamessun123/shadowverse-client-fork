@@ -165,6 +165,23 @@ function markTriggerAbilityUsed(state, trigger) {
         found.card.counters[abilityKey] = (found.card.counters[abilityKey] ?? 0) + 1;
     }
 }
+/** True when a pending trigger's effect can currently resolve (with source context). */
+function isTriggerResolvable(state, trigger) {
+    const probe = structuredClone(state);
+    const enteredId = trigger.ability.useEnteredTarget ? trigger.forcedTargetId : undefined;
+    probe.resolutionContext = {
+        ...(0, effect_utils_1.contextForTriggerResolution)(probe, trigger.sourceInstanceId, trigger.ability.effect),
+        forcedTargetId: enteredId,
+        lastSelectedTargetId: enteredId,
+    };
+    return (0, resolver_1.canEffectResolve)(probe, trigger.controller, trigger.ability.effect);
+}
+/** Drop triggers that would no-op (e.g. Fanfare 2PP with insufficient PP). */
+function pruneUnresolvableTriggers(state) {
+    const next = structuredClone(state);
+    next.pendingTriggers = next.pendingTriggers.filter((t) => isTriggerResolvable(next, t));
+    return next;
+}
 function resolveOneTrigger(state, trigger) {
     let next = structuredClone(state);
     next.pendingTriggers = next.pendingTriggers.filter((t) => t.id !== trigger.id);
@@ -256,6 +273,14 @@ function runConfirmationTiming(state) {
             return next;
         if ((0, effect_utils_1.shouldDeferTriggers)(next))
             return next;
+        // Remove fanfares/triggers that cannot resolve before offering order choice
+        // (e.g. Karyl's "2PP: Equip" after spending all PP to play her).
+        const beforePrune = next.pendingTriggers.length;
+        next = pruneUnresolvableTriggers(next);
+        if (next.pendingTriggers.length !== beforePrune) {
+            loop = true;
+            continue;
+        }
         const activeTriggers = next.pendingTriggers.filter((t) => t.controller === next.activePlayer);
         const inactiveTriggers = next.pendingTriggers.filter((t) => t.controller !== next.activePlayer);
         if (activeTriggers.length > 1 && !next.pendingChoices) {

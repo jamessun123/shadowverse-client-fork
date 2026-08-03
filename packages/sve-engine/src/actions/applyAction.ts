@@ -541,10 +541,18 @@ function handleChoiceResponse(state: GameState, player: PlayerId, payload: Recor
     if (choice.maxCount != null && ids.length > choice.maxCount) {
       return fail(state, `Select up to ${choice.maxCount} card(s)`);
     }
+    const seenNames = new Set<string>();
     for (const id of ids) {
       if (!choice.topInstanceIds.includes(id)) return fail(state, "Invalid card");
       const option = choice.options.find((o) => o.instanceId === id);
       if (!option?.eligible) return fail(state, "Card does not match filter");
+      if (choice.distinctNames) {
+        const key = normalizeIdentityName(option.name);
+        if (seenNames.has(key)) {
+          return fail(state, "Selected cards must have different names");
+        }
+        seenNames.add(key);
+      }
       totalCost += option.cost;
     }
     if (choice.maxTotalCost != null && totalCost > choice.maxTotalCost) {
@@ -563,6 +571,9 @@ function handleChoiceResponse(state: GameState, player: PlayerId, payload: Recor
       const idx = next.players[player].zones.deck.findIndex((c) => c.instanceId === id);
       if (idx < 0) continue;
       const [card] = next.players[player].zones.deck.splice(idx, 1);
+      if (choice.playCostReduction) {
+        card.playCostReduction = (card.playCostReduction ?? 0) + choice.playCostReduction;
+      }
       if (to === "exArea") {
         if (next.players[player].zones.exArea.length >= next.players[player].exLimit) break;
         next.players[player].zones.exArea.push(card);

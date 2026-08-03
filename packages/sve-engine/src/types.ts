@@ -514,6 +514,8 @@ export type Effect =
       maxTotalCost?: number;
       /** Cap how many cards may be chosen (default unlimited within cost). */
       maxCount?: number;
+      /** Require each chosen card to have a different identity name. */
+      distinctNames?: boolean;
       /** Destination zone (default field). */
       to?: "field" | "exArea" | "hand";
       /**
@@ -523,6 +525,8 @@ export type Effect =
       remainderTo?: "cemetery" | "deckBottom" | "shuffle";
       /** Reveal when adding to hand (default true). */
       reveal?: boolean;
+      /** Apply this play-cost reduction to each chosen card this turn. */
+      playCostReduction?: number;
     }
   | {
       op: "buryFieldFollowers";
@@ -831,6 +835,8 @@ export type ChoicePrompt = ChoiceSourceContext &
       player: PlayerId;
       maxTotalCost?: number;
       maxCount?: number;
+      distinctNames?: boolean;
+      playCostReduction?: number;
       to?: "field" | "exArea" | "hand";
       filter: DeckFilter;
       topInstanceIds: string[];

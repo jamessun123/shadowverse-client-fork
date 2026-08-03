@@ -326,6 +326,21 @@ export default function ChoiceModal({ setHovering }) {
           }, 0);
           if (currentCost + option.cost > pending.maxTotalCost) return prev;
         }
+        if (pending.distinctNames) {
+          const identity = (name) =>
+            String(name || "")
+              .replace(/\s+Evolved$/i, "")
+              .replace(/\s+TOKEN$/i, "")
+              .trim()
+              .toLowerCase();
+          const selectedKeys = new Set(
+            prev.map((id) => {
+              const o = pending.options.find((x) => x.instanceId === id);
+              return identity(o?.name);
+            }),
+          );
+          if (selectedKeys.has(identity(option.name))) return prev;
+        }
         return [...prev, instanceId];
       }
 
@@ -906,7 +921,18 @@ export default function ChoiceModal({ setHovering }) {
                 ((pending.maxCount != null &&
                   selectedDiscardIds.length >= pending.maxCount) ||
                   (pending.maxTotalCost != null &&
-                    selectedDeckSummonCost + (o.cost ?? 0) > pending.maxTotalCost));
+                    selectedDeckSummonCost + (o.cost ?? 0) > pending.maxTotalCost) ||
+                  (pending.distinctNames &&
+                    selectedDiscardIds.some((id) => {
+                      const other = pending.options.find((x) => x.instanceId === id);
+                      const identity = (name) =>
+                        String(name || "")
+                          .replace(/\s+Evolved$/i, "")
+                          .replace(/\s+TOKEN$/i, "")
+                          .trim()
+                          .toLowerCase();
+                      return identity(other?.name) === identity(o.name);
+                    })));
 
               return (
 

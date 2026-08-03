@@ -25,6 +25,8 @@ function describeEffect(effect) {
             return `deal ${effect.followerAmount} to a follower and ${effect.leaderAmount} to leader`;
         case "draw":
             return `draw ${effect.count}`;
+        case "optionalCost":
+            return effect.label ?? "optional cost";
         case "sequence":
             return effect.steps.map(describeEffect).join(", then ");
         case "if":

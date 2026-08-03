@@ -568,6 +568,8 @@ function promptSelectDeckSummon(
   maxCount?: number,
   to: "field" | "exArea" | "hand" = "field",
   reveal?: boolean,
+  distinctNames?: boolean,
+  playCostReduction?: number,
 ): GameState {
   const next = structuredClone(state);
   const filterLabel = describeDeckFilter(filter);
@@ -575,6 +577,7 @@ function promptSelectDeckSummon(
     to === "exArea" ? "into your EX area" : to === "hand" ? "into your hand" : "onto your field";
   const countLabel =
     maxCount != null ? `up to ${maxCount} ${filterLabel}` : filterLabel;
+  const distinctLabel = distinctNames ? " with different names" : "";
   const costLabel =
     maxTotalCost != null ? ` (total cost ${maxTotalCost} or less)` : "";
   const remainderLabel =
@@ -588,12 +591,14 @@ function promptSelectDeckSummon(
     player,
     maxTotalCost,
     maxCount,
+    distinctNames,
+    playCostReduction,
     to,
     filter,
     topInstanceIds: top.map((c) => c.instanceId),
     remainderTo,
     reveal,
-    reasonLabel: `Select ${countLabel} to put ${destLabel}${costLabel}.${remainderLabel}`,
+    reasonLabel: `Select ${countLabel}${distinctLabel} to put ${destLabel}${costLabel}.${remainderLabel}`,
     options: top.map((c) => ({
       instanceId: c.instanceId,
       label: getCardDef(c.name)?.name || c.name,
@@ -2361,6 +2366,8 @@ export function resolveEffect(
           effect.maxCount,
           effect.to ?? "field",
           effect.reveal,
+          effect.distinctNames,
+          effect.playCostReduction,
         );
       }
       break;
@@ -2566,7 +2573,12 @@ export function canEffectResolve(state: GameState, player: PlayerId, effect: Eff
       }
       return canEffectResolve(state, player, effect.then);
     case "optionalCost":
-      return canEffectResolve(state, player, effect.then);
+      // Optional-cost fanfares (e.g. "2PP: Equip…") must not be offered when the
+      // cost cannot be paid — resolveEffect would silently no-op.
+      return (
+        canSatisfyOptionalCost(state, player, effect.cost) &&
+        canEffectResolve(state, player, effect.then)
+      );
     case "choose":
     case "chooseMultiple":
       return effect.options.some(

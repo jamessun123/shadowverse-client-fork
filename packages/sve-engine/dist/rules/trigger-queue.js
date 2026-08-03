@@ -39,15 +39,20 @@ function canFireLimitedTrigger(fieldCard, key, opts) {
         return false;
     return true;
 }
-function queueOnCardPlayedForCard(state, playedNo, player, fieldCard, idPrefix, matchTimings = ["onCardPlayed", "onCardPlayedOrFused"], queuedTiming = "onCardPlayed") {
+function queueOnCardPlayedForCard(state, playedNo, player, fieldCard, idPrefix, matchTimings = ["onCardPlayed", "onCardPlayedOrFused"], queuedTiming = "onCardPlayed", 
+/** Instance that was just played — never lets that card watch its own play. */
+playedInstanceId) {
     if ((0, passives_1.isBoxed)(fieldCard, state))
+        return;
+    // Defensive: a card's own on-play watchers are not active for its own play.
+    if (playedInstanceId && fieldCard.instanceId === playedInstanceId)
         return;
     const cardNo = (0, queries_1.resolveCardNo)(state, fieldCard);
     const def = (0, registry_1.getCardDef)(cardNo);
     for (const [idx, ability] of (def?.abilities ?? []).entries()) {
         if (!matchTimings.includes(ability.timing))
             continue;
-        if (ability.filter && !(0, conditions_1.cardMatchesFilter)(playedNo, ability.filter))
+        if (ability.filter && !(0, conditions_1.cardMatchesFilter)(playedNo, ability.filter, state))
             continue;
         const key = `${queuedTiming}:${idx}`;
         if (!canFireLimitedTrigger(fieldCard, key, ability))
@@ -106,19 +111,14 @@ function queueOnCardPlayed(state, playedInstanceId, player) {
     const playedNo = (0, queries_1.resolveCardNo)(state, played.card);
     const zones = (0, queries_1.getPlayer)(state, player).zones;
     for (const fieldCard of zones.field) {
-        // A card's own on-play watchers are not active until after it has been played.
-        if (fieldCard.instanceId === playedInstanceId)
-            continue;
-        queueOnCardPlayedForCard(state, playedNo, player, fieldCard, "ocp");
+        queueOnCardPlayedForCard(state, playedNo, player, fieldCard, "ocp", undefined, undefined, playedInstanceId);
     }
     // Crests live in EX and can watch plays; amulets/spells waiting in EX do not.
     for (const exCard of zones.exArea) {
-        if (exCard.instanceId === playedInstanceId)
-            continue;
         const def = (0, registry_1.getCardDef)((0, queries_1.resolveCardNo)(state, exCard));
         if (def?.cardType !== "crest")
             continue;
-        queueOnCardPlayedForCard(state, playedNo, player, exCard, "ocpx");
+        queueOnCardPlayedForCard(state, playedNo, player, exCard, "ocpx", undefined, undefined, playedInstanceId);
     }
 }
 /** Queue watchers for a card that was fused into the EX area. */
@@ -129,15 +129,13 @@ function queueOnCardFused(state, fusedInstanceId, player) {
     const fusedNo = (0, queries_1.resolveCardNo)(state, fused.card);
     const zones = (0, queries_1.getPlayer)(state, player).zones;
     for (const fieldCard of zones.field) {
-        queueOnCardPlayedForCard(state, fusedNo, player, fieldCard, "ocf", ["onCardFused", "onCardPlayedOrFused"], "onCardFused");
+        queueOnCardPlayedForCard(state, fusedNo, player, fieldCard, "ocf", ["onCardFused", "onCardPlayedOrFused"], "onCardFused", fusedInstanceId);
     }
     for (const exCard of zones.exArea) {
-        if (exCard.instanceId === fusedInstanceId)
-            continue;
         const def = (0, registry_1.getCardDef)((0, queries_1.resolveCardNo)(state, exCard));
         if (def?.cardType !== "crest")
             continue;
-        queueOnCardPlayedForCard(state, fusedNo, player, exCard, "ocfx", ["onCardFused", "onCardPlayedOrFused"], "onCardFused");
+        queueOnCardPlayedForCard(state, fusedNo, player, exCard, "ocfx", ["onCardFused", "onCardPlayedOrFused"], "onCardFused", fusedInstanceId);
     }
 }
 /** Queue "When this card is discarded" abilities for a card now in the cemetery. */

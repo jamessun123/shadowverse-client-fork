@@ -418,23 +418,13 @@
         "timing": "fanfare",
         "unionBurst": true,
         "effect": {
-          "op": "sequence",
-          "steps": [
-            {
-              "op": "tutorFromDeck",
-              "filter": { "trait": "Friendship Club" },
-              "to": "exArea",
-              "optional": true,
-              "playCostReduction": 2
-            },
-            {
-              "op": "tutorFromDeck",
-              "filter": { "trait": "Friendship Club", "excludeLastSelectedIdentity": true },
-              "to": "exArea",
-              "optional": true,
-              "playCostReduction": 2
-            }
-          ]
+          "op": "searchDeckSummonMultiple",
+          "filter": { "trait": "Friendship Club" },
+          "maxCount": 2,
+          "distinctNames": true,
+          "to": "exArea",
+          "remainderTo": "shuffle",
+          "playCostReduction": 2
         }
       },
       {

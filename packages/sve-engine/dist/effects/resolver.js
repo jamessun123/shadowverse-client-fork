@@ -398,11 +398,12 @@ function describeDeckFilter(filter) {
         return parts.join(" ");
     return `${parts.join(" ")} card(s)`;
 }
-function promptSelectDeckSummon(state, player, top, filter, maxTotalCost, remainderTo, maxCount, to = "field", reveal) {
+function promptSelectDeckSummon(state, player, top, filter, maxTotalCost, remainderTo, maxCount, to = "field", reveal, distinctNames, playCostReduction) {
     const next = structuredClone(state);
     const filterLabel = describeDeckFilter(filter);
     const destLabel = to === "exArea" ? "into your EX area" : to === "hand" ? "into your hand" : "onto your field";
     const countLabel = maxCount != null ? `up to ${maxCount} ${filterLabel}` : filterLabel;
+    const distinctLabel = distinctNames ? " with different names" : "";
     const costLabel = maxTotalCost != null ? ` (total cost ${maxTotalCost} or less)` : "";
     const remainderLabel = remainderTo === "shuffle"
         ? " Then shuffle your deck."
@@ -414,12 +415,14 @@ function promptSelectDeckSummon(state, player, top, filter, maxTotalCost, remain
         player,
         maxTotalCost,
         maxCount,
+        distinctNames,
+        playCostReduction,
         to,
         filter,
         topInstanceIds: top.map((c) => c.instanceId),
         remainderTo,
         reveal,
-        reasonLabel: `Select ${countLabel} to put ${destLabel}${costLabel}.${remainderLabel}`,
+        reasonLabel: `Select ${countLabel}${distinctLabel} to put ${destLabel}${costLabel}.${remainderLabel}`,
         options: top.map((c) => ({
             instanceId: c.instanceId,
             label: (0, registry_1.getCardDef)(c.name)?.name || c.name,
@@ -1610,7 +1613,7 @@ function resolveEffect(state, effect, player, options) {
             if (top.length === 0)
                 break;
             if (!next.pendingChoices) {
-                return promptSelectDeckSummon(next, player, top, effect.filter, effect.maxTotalCost, effect.remainderTo ?? (fullDeck ? "shuffle" : "deckBottom"), effect.maxCount, effect.to ?? "field", effect.reveal);
+                return promptSelectDeckSummon(next, player, top, effect.filter, effect.maxTotalCost, effect.remainderTo ?? (fullDeck ? "shuffle" : "deckBottom"), effect.maxCount, effect.to ?? "field", effect.reveal, effect.distinctNames, effect.playCostReduction);
             }
             break;
         }
@@ -1799,7 +1802,10 @@ function canEffectResolve(state, player, effect) {
             }
             return canEffectResolve(state, player, effect.then);
         case "optionalCost":
-            return canEffectResolve(state, player, effect.then);
+            // Optional-cost fanfares (e.g. "2PP: Equip…") must not be offered when the
+            // cost cannot be paid — resolveEffect would silently no-op.
+            return (canSatisfyOptionalCost(state, player, effect.cost) &&
+                canEffectResolve(state, player, effect.then));
         case "choose":
         case "chooseMultiple":
             return effect.options.some((o) => (!o.additionalPpCost || state.players[player].pp >= o.additionalPpCost) &&

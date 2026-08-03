@@ -47,14 +47,18 @@ function queueOnCardPlayedForCard(
   idPrefix: string,
   matchTimings: ReadonlyArray<AbilityDefinition["timing"]> = ["onCardPlayed", "onCardPlayedOrFused"],
   queuedTiming: TriggerTiming = "onCardPlayed",
+  /** Instance that was just played — never lets that card watch its own play. */
+  playedInstanceId?: string,
 ): void {
   if (isBoxed(fieldCard, state)) return;
+  // Defensive: a card's own on-play watchers are not active for its own play.
+  if (playedInstanceId && fieldCard.instanceId === playedInstanceId) return;
   const cardNo = resolveCardNo(state, fieldCard);
   const def = getCardDef(cardNo);
 
   for (const [idx, ability] of (def?.abilities ?? []).entries()) {
     if (!matchTimings.includes(ability.timing)) continue;
-    if (ability.filter && !cardMatchesFilter(playedNo, ability.filter)) continue;
+    if (ability.filter && !cardMatchesFilter(playedNo, ability.filter, state)) continue;
     const key = `${queuedTiming}:${idx}`;
     if (!canFireLimitedTrigger(fieldCard, key, ability)) continue;
     pushTrigger(state, fieldCard.instanceId, player, cardNo, ability, queuedTiming, idPrefix, key);
@@ -133,16 +137,31 @@ export function queueOnCardPlayed(
   const zones = getPlayer(state, player).zones;
 
   for (const fieldCard of zones.field) {
-    // A card's own on-play watchers are not active until after it has been played.
-    if (fieldCard.instanceId === playedInstanceId) continue;
-    queueOnCardPlayedForCard(state, playedNo, player, fieldCard, "ocp");
+    queueOnCardPlayedForCard(
+      state,
+      playedNo,
+      player,
+      fieldCard,
+      "ocp",
+      undefined,
+      undefined,
+      playedInstanceId,
+    );
   }
   // Crests live in EX and can watch plays; amulets/spells waiting in EX do not.
   for (const exCard of zones.exArea) {
-    if (exCard.instanceId === playedInstanceId) continue;
     const def = getCardDef(resolveCardNo(state, exCard));
     if (def?.cardType !== "crest") continue;
-    queueOnCardPlayedForCard(state, playedNo, player, exCard, "ocpx");
+    queueOnCardPlayedForCard(
+      state,
+      playedNo,
+      player,
+      exCard,
+      "ocpx",
+      undefined,
+      undefined,
+      playedInstanceId,
+    );
   }
 }
 
@@ -166,10 +185,10 @@ export function queueOnCardFused(
       "ocf",
       ["onCardFused", "onCardPlayedOrFused"],
       "onCardFused",
+      fusedInstanceId,
     );
   }
   for (const exCard of zones.exArea) {
-    if (exCard.instanceId === fusedInstanceId) continue;
     const def = getCardDef(resolveCardNo(state, exCard));
     if (def?.cardType !== "crest") continue;
     queueOnCardPlayedForCard(
@@ -180,6 +199,7 @@ export function queueOnCardFused(
       "ocfx",
       ["onCardFused", "onCardPlayedOrFused"],
       "onCardFused",
+      fusedInstanceId,
     );
   }
 }
