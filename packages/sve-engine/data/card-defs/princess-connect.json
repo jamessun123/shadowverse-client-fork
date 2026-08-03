@@ -138,7 +138,12 @@
           "op": "sequence",
           "steps": [
             { "op": "refreshFollower", "targets": { "type": "selfFollower", "trait": "Princess Connect", "count": 1 } },
-            { "op": "cannotAttack", "targets": { "type": "lastSelected" } }
+            { "op": "cannotAttack", "targets": { "type": "lastSelected" } },
+            {
+              "op": "if",
+              "condition": { "type": "lastSelectedCostMax", "count": 1 },
+              "then": { "op": "draw", "count": 1 }
+            }
           ]
         }
       }
@@ -658,12 +663,12 @@
       },
       {
         "timing": "onCardPlayed",
-        "filter": { "trait": "Friendship Club" },
-        "effect": { "op": "dealDamage", "amount": 1, "targets": { "type": "enemyLeader" } }
-      },
-      {
-        "timing": "onCardPlayed",
-        "filter": { "cardType": "spell", "trait": "Princess Connect" },
+        "filter": {
+          "anyOf": [
+            { "trait": "Friendship Club" },
+            { "trait": "Princess Connect", "cardType": "spell" }
+          ]
+        },
         "effect": { "op": "dealDamage", "amount": 1, "targets": { "type": "enemyLeader" } }
       }
     ]

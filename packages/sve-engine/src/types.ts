@@ -267,6 +267,8 @@ export type Condition =
   | { type: "fieldCardTraitMin"; trait: string; count: number }
   /** True when the player's leader defense is at most `count`. */
   | { type: "leaderDefMax"; count: number }
+  /** True when lastSelected / forced target's printed cost is at most `count`. */
+  | { type: "lastSelectedCostMax"; count: number }
   /** True when the player has activated at least `count` Union Bursts this turn. */
   | { type: "unionBurstActivatedMin"; count: number }
   /** True when the player's max PP is at least `count`. */

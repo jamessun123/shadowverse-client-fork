@@ -378,6 +378,7 @@ function handleChoiceResponse(state, player, payload) {
                     next.resolutionContext = {
                         ...next.resolutionContext,
                         sourceInstanceId: next.resolutionContext?.sourceInstanceId,
+                        resumeOwnerInstanceId: next.resolutionContext?.resumeOwnerInstanceId,
                         effectStack: next.resolutionContext?.effectStack ?? [],
                         resumeAfterChoice: next.resolutionContext?.resumeAfterChoice,
                         deferTriggers: next.resolutionContext?.deferTriggers,
@@ -412,6 +413,7 @@ function handleChoiceResponse(state, player, payload) {
                     next.resolutionContext = {
                         ...next.resolutionContext,
                         sourceInstanceId: next.resolutionContext?.sourceInstanceId,
+                        resumeOwnerInstanceId: next.resolutionContext?.resumeOwnerInstanceId,
                         effectStack: next.resolutionContext?.effectStack ?? [],
                         resumeAfterChoice: next.resolutionContext?.resumeAfterChoice,
                         deferTriggers: next.resolutionContext?.deferTriggers,
@@ -851,6 +853,7 @@ function playCardForFree(state, player, instanceId) {
         next = (0, zones_1.moveCard)(next, instanceId, "resolutionZone", player);
         next.resolutionContext = {
             sourceInstanceId: instanceId,
+            resumeOwnerInstanceId: instanceId,
             effectStack: [],
             resumeAfterChoice: prev?.resumeAfterChoice,
             forcedTargetId: prev?.forcedTargetId,
@@ -870,6 +873,7 @@ function playCardForFree(state, player, instanceId) {
             if (!(next.resolutionContext?.resumeAfterChoice?.length ?? 0)) {
                 next.resolutionContext = {
                     sourceInstanceId: prev?.sourceInstanceId,
+                    resumeOwnerInstanceId: prev?.resumeOwnerInstanceId,
                     effectStack: prev?.effectStack ?? [],
                     resumeAfterChoice: prev?.resumeAfterChoice,
                     forcedTargetId: prev?.forcedTargetId,

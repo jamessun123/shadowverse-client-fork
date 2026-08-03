@@ -195,6 +195,16 @@ function evalCondition(state, player, condition) {
             return countTraitInZone(state, player, "field", condition.trait) >= condition.count;
         case "leaderDefMax":
             return (0, queries_1.getPlayer)(state, player).leaderDef <= condition.count;
+        case "lastSelectedCostMax": {
+            const targetId = state.resolutionContext?.lastSelectedTargetId ??
+                state.resolutionContext?.forcedTargetId;
+            if (!targetId || targetId === "leader" || targetId === "selfLeader")
+                return false;
+            const found = (0, queries_1.findInstance)(state, targetId);
+            if (!found)
+                return false;
+            return (0, queries_1.resolveCardDefCost)((0, queries_1.resolveCardNo)(state, found.card)) <= condition.count;
+        }
         case "unionBurstActivatedMin":
             return ((0, queries_1.getPlayer)(state, player).flags.unionBurstsActivatedThisTurn ?? 0) >= condition.count;
         case "maxPpMin":

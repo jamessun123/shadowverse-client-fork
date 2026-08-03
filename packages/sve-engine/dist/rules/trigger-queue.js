@@ -106,10 +106,15 @@ function queueOnCardPlayed(state, playedInstanceId, player) {
     const playedNo = (0, queries_1.resolveCardNo)(state, played.card);
     const zones = (0, queries_1.getPlayer)(state, player).zones;
     for (const fieldCard of zones.field) {
+        // A card's own on-play watchers are not active until after it has been played.
+        if (fieldCard.instanceId === playedInstanceId)
+            continue;
         queueOnCardPlayedForCard(state, playedNo, player, fieldCard, "ocp");
     }
     // Crests live in EX and can watch plays; amulets/spells waiting in EX do not.
     for (const exCard of zones.exArea) {
+        if (exCard.instanceId === playedInstanceId)
+            continue;
         const def = (0, registry_1.getCardDef)((0, queries_1.resolveCardNo)(state, exCard));
         if (def?.cardType !== "crest")
             continue;

@@ -461,6 +461,7 @@ function handleChoiceResponse(state: GameState, player: PlayerId, payload: Recor
           next.resolutionContext = {
             ...next.resolutionContext,
             sourceInstanceId: next.resolutionContext?.sourceInstanceId,
+            resumeOwnerInstanceId: next.resolutionContext?.resumeOwnerInstanceId,
             effectStack: next.resolutionContext?.effectStack ?? [],
             resumeAfterChoice: next.resolutionContext?.resumeAfterChoice,
             deferTriggers: next.resolutionContext?.deferTriggers,
@@ -492,6 +493,7 @@ function handleChoiceResponse(state: GameState, player: PlayerId, payload: Recor
           next.resolutionContext = {
             ...next.resolutionContext,
             sourceInstanceId: next.resolutionContext?.sourceInstanceId,
+            resumeOwnerInstanceId: next.resolutionContext?.resumeOwnerInstanceId,
             effectStack: next.resolutionContext?.effectStack ?? [],
             resumeAfterChoice: next.resolutionContext?.resumeAfterChoice,
             deferTriggers: next.resolutionContext?.deferTriggers,
@@ -926,6 +928,7 @@ function playCardForFree(
     next = moveCard(next, instanceId, "resolutionZone", player);
     next.resolutionContext = {
       sourceInstanceId: instanceId,
+      resumeOwnerInstanceId: instanceId,
       effectStack: [],
       resumeAfterChoice: prev?.resumeAfterChoice,
       forcedTargetId: prev?.forcedTargetId,
@@ -945,6 +948,7 @@ function playCardForFree(
       if (!(next.resolutionContext?.resumeAfterChoice?.length ?? 0)) {
         next.resolutionContext = {
           sourceInstanceId: prev?.sourceInstanceId,
+          resumeOwnerInstanceId: prev?.resumeOwnerInstanceId,
           effectStack: prev?.effectStack ?? [],
           resumeAfterChoice: prev?.resumeAfterChoice,
           forcedTargetId: prev?.forcedTargetId,

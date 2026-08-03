@@ -307,6 +307,11 @@ export type Condition = {
     type: "leaderDefMax";
     count: number;
 }
+/** True when lastSelected / forced target's printed cost is at most `count`. */
+ | {
+    type: "lastSelectedCostMax";
+    count: number;
+}
 /** True when the player has activated at least `count` Union Bursts this turn. */
  | {
     type: "unionBurstActivatedMin";
