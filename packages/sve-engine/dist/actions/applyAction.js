@@ -876,6 +876,9 @@ function playCardForFree(state, player, instanceId) {
         };
         next = (0, resolver_1.resolveSpell)(next, found.card.name, player);
         if (!next.pendingChoices) {
+            // Queue while the spell still exists — token spells are eliminated on
+            // cemetery move and would otherwise skip on-play watchers (e.g. Barbaros).
+            (0, trigger_queue_1.queueOnCardPlayed)(next, instanceId, player, found.card.name);
             const res = (0, queries_1.findInstance)(next, instanceId);
             if (res?.zone === "resolutionZone") {
                 next = (0, zones_1.moveCard)(next, instanceId, "cemetery", player);
@@ -896,8 +899,13 @@ function playCardForFree(state, player, instanceId) {
                 };
             }
         }
+        else {
+            (0, trigger_queue_1.queueOnCardPlayed)(next, instanceId, player, found.card.name);
+        }
     }
-    (0, trigger_queue_1.queueOnCardPlayed)(next, instanceId, player);
+    if (def.cardType !== "spell") {
+        (0, trigger_queue_1.queueOnCardPlayed)(next, instanceId, player);
+    }
     return next;
 }
 function beginEndPhaseDiscard(state) {
@@ -1004,6 +1012,9 @@ function playCard(state, player, handInstanceId, targets, fromQuickWindow = fals
         // Keep the spell in resolution while a choose/target prompt is open so it
         // is not double-counted in the cemetery and effects can still see it.
         if (!next.pendingChoices) {
+            // Queue while the spell still exists — token spells cease to exist when
+            // moved to cemetery and would otherwise skip on-play watchers.
+            (0, trigger_queue_1.queueOnCardPlayed)(next, handInstanceId, player, found.card.name);
             const res = (0, queries_1.findInstance)(next, handInstanceId);
             if (res) {
                 next = (0, zones_1.moveCard)(next, handInstanceId, "cemetery", player);
@@ -1011,6 +1022,9 @@ function playCard(state, player, handInstanceId, targets, fromQuickWindow = fals
             if ((0, effect_utils_1.shouldClearResolutionContext)(next)) {
                 next.resolutionContext = null;
             }
+        }
+        else {
+            (0, trigger_queue_1.queueOnCardPlayed)(next, handInstanceId, player, found.card.name);
         }
     }
     else if (def.cardType === "follower" || def.cardType === "amulet") {
@@ -1020,8 +1034,8 @@ function playCard(state, player, handInstanceId, targets, fromQuickWindow = fals
             next.resolutionContext = null;
         }
         next = (0, zones_1.moveCard)(next, handInstanceId, "field", player);
+        (0, trigger_queue_1.queueOnCardPlayed)(next, handInstanceId, player);
     }
-    (0, trigger_queue_1.queueOnCardPlayed)(next, handInstanceId, player);
     next = (0, confirmation_1.runConfirmationTiming)(next);
     // After the last playable quick, close the window so the game cannot softlock
     // waiting for a pass the player may not realize is required.

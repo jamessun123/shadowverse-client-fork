@@ -1,5 +1,7 @@
 import { GameState, PlayerId } from "../types";
-export declare function queueOnCardPlayed(state: GameState, playedInstanceId: string, player: PlayerId): void;
+export declare function queueOnCardPlayed(state: GameState, playedInstanceId: string, player: PlayerId, 
+/** Fallback when the played card was already eliminated (e.g. token spell). */
+playedCardName?: string): void;
 /** Queue watchers for a card that was fused into the EX area. */
 export declare function queueOnCardFused(state: GameState, fusedInstanceId: string, player: PlayerId): void;
 /** Queue "When this card is discarded" abilities for a card now in the cemetery. */

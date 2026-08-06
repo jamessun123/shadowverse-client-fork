@@ -104,11 +104,17 @@ playedInstanceId) {
         }
     }
 }
-function queueOnCardPlayed(state, playedInstanceId, player) {
+function queueOnCardPlayed(state, playedInstanceId, player, 
+/** Fallback when the played card was already eliminated (e.g. token spell). */
+playedCardName) {
     const played = (0, queries_1.findInstance)(state, playedInstanceId);
-    if (!played)
+    const playedNo = played
+        ? (0, queries_1.resolveCardNo)(state, played.card)
+        : playedCardName
+            ? ((0, registry_1.getCardDef)(playedCardName)?.name ?? playedCardName)
+            : undefined;
+    if (!playedNo)
         return;
-    const playedNo = (0, queries_1.resolveCardNo)(state, played.card);
     const zones = (0, queries_1.getPlayer)(state, player).zones;
     for (const fieldCard of zones.field) {
         queueOnCardPlayedForCard(state, playedNo, player, fieldCard, "ocp", undefined, undefined, playedInstanceId);
