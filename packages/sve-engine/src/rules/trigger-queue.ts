@@ -130,10 +130,16 @@ export function queueOnCardPlayed(
   state: GameState,
   playedInstanceId: string,
   player: PlayerId,
+  /** Fallback when the played card was already eliminated (e.g. token spell). */
+  playedCardName?: string,
 ): void {
   const played = findInstance(state, playedInstanceId);
-  if (!played) return;
-  const playedNo = resolveCardNo(state, played.card);
+  const playedNo = played
+    ? resolveCardNo(state, played.card)
+    : playedCardName
+      ? (getCardDef(playedCardName)?.name ?? playedCardName)
+      : undefined;
+  if (!playedNo) return;
   const zones = getPlayer(state, player).zones;
 
   for (const fieldCard of zones.field) {

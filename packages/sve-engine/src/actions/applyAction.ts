@@ -951,6 +951,9 @@ function playCardForFree(
     };
     next = resolveSpell(next, found.card.name, player);
     if (!next.pendingChoices) {
+      // Queue while the spell still exists — token spells are eliminated on
+      // cemetery move and would otherwise skip on-play watchers (e.g. Barbaros).
+      queueOnCardPlayed(next, instanceId, player, found.card.name);
       const res = findInstance(next, instanceId);
       if (res?.zone === "resolutionZone") {
         next = moveCard(next, instanceId, "cemetery", player);
@@ -970,10 +973,14 @@ function playCardForFree(
           deferTriggers: true,
         };
       }
+    } else {
+      queueOnCardPlayed(next, instanceId, player, found.card.name);
     }
   }
 
-  queueOnCardPlayed(next, instanceId, player);
+  if (def.cardType !== "spell") {
+    queueOnCardPlayed(next, instanceId, player);
+  }
   return next;
 }
 
@@ -1095,6 +1102,9 @@ function playCard(
     // Keep the spell in resolution while a choose/target prompt is open so it
     // is not double-counted in the cemetery and effects can still see it.
     if (!next.pendingChoices) {
+      // Queue while the spell still exists — token spells cease to exist when
+      // moved to cemetery and would otherwise skip on-play watchers.
+      queueOnCardPlayed(next, handInstanceId, player, found.card.name);
       const res = findInstance(next, handInstanceId);
       if (res) {
         next = moveCard(next, handInstanceId, "cemetery", player);
@@ -1102,6 +1112,8 @@ function playCard(
       if (shouldClearResolutionContext(next)) {
         next.resolutionContext = null;
       }
+    } else {
+      queueOnCardPlayed(next, handInstanceId, player, found.card.name);
     }
   } else if (def.cardType === "follower" || def.cardType === "amulet") {
     // Drop orphaned resolution context so field-entry triggers (e.g. cemetery
@@ -1110,9 +1122,9 @@ function playCard(
       next.resolutionContext = null;
     }
     next = moveCard(next, handInstanceId, "field", player);
+    queueOnCardPlayed(next, handInstanceId, player);
   }
 
-  queueOnCardPlayed(next, handInstanceId, player);
   next = runConfirmationTiming(next);
 
   // After the last playable quick, close the window so the game cannot softlock
