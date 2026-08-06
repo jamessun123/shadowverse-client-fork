@@ -177,6 +177,7 @@ export default function EnemyEvoDeck({ setHovering, ready }) {
                 {card.status && (
                   <Card
                     name={card.card}
+                    evolvedUsed={true}
                     ready={ready}
                     setHovering={setHovering}
                   />

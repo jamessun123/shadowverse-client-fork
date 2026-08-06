@@ -115,10 +115,15 @@ export function createPlayerView(state: GameState, self: PlayerId): PlayerView {
     name: "HIDDEN",
   }));
   view.players[self].zones.evolveDeck = view.players[self].zones.evolveDeck;
-  view.players[opponent].zones.evolveDeck = view.players[opponent].zones.evolveDeck.map((c) => ({
-    ...c,
-    name: "HIDDEN",
-  }));
+  // Used evolve cards are public information (face-up in the evolve area).
+  view.players[opponent].zones.evolveDeck = view.players[opponent].zones.evolveDeck.map((c) =>
+    c.evolveUsed
+      ? c
+      : {
+          ...c,
+          name: "HIDDEN",
+        },
+  );
   view.players[opponent].zones.deck = view.players[opponent].zones.deck.map((c) => ({
     ...c,
     name: "HIDDEN",

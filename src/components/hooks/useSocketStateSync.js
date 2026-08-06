@@ -5,13 +5,14 @@ import { socket } from "../../sockets";
 const useSocketStateSync = () => {
   useEffect(() => {
     socket.on("send_full_state", ({ requesterId }) => {
+      const { card, gameState } = store.getState();
+      if (gameState.gameMode === "automated") return;
       console.log("[useSocketStateSync] received request from", requesterId);
-      const currentState = store.getState().card;
-      console.log("[useSocketStateSync] sending state, keys:", Object.keys(currentState).length);
+      console.log("[useSocketStateSync] sending state, keys:", Object.keys(card).length);
 
       socket.emit("send_full_state", {
         requesterId,
-        fullState: currentState,
+        fullState: card,
       });
     });
 

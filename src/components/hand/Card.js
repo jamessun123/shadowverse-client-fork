@@ -184,7 +184,9 @@ export default function Card({
           }
         }
         className={
-          cardPos(reduxCardSelectedOnField) === idx && opponentField
+          gameMode === "automated"
+            ? "none"
+            : cardPos(reduxCardSelectedOnField) === idx && opponentField
             ? "box2"
             : reduxEnemyCardSelectedOnField === idx && !opponentField
             ? "box2"

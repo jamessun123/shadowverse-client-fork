@@ -15,7 +15,9 @@ const HEARTBEAT_MS = 3000;
 const useHeartbeat = () => {
   useEffect(() => {
     const id = setInterval(() => {
-      const { card } = store.getState();
+      const { card, gameState } = store.getState();
+      // Peer sequence heartbeats are freeform-only; engine games use engine_state.
+      if (gameState.gameMode === "automated") return;
       if (card.room) {
         socket.emit("send msg", { type: "heartbeat", room: card.room });
       }

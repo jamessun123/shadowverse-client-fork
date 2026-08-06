@@ -147,17 +147,23 @@ export default function Scoreboard({ name }) {
             reduxMaxPlayPoints >= idx + 1 ? (
               reduxCurrentPlayPoints >= idx + 1 ? (
                 <div
-                  onClick={() => decrementMultiple(idx + 1)}
+                  onClick={
+                    automated ? undefined : () => decrementMultiple(idx + 1)
+                  }
                   key={`circle-${idx}`}
                   className="circle"
+                  style={automated ? { cursor: "default" } : undefined}
                 >
                   {idx + 1}
                 </div>
               ) : (
                 <div
-                  onClick={() => incrementMultiple(idx + 1)}
+                  onClick={
+                    automated ? undefined : () => incrementMultiple(idx + 1)
+                  }
                   key={`circleFaded-${idx}`}
                   className="circleFaded"
+                  style={automated ? { cursor: "default" } : undefined}
                 >
                   {idx + 1}
                 </div>

@@ -338,9 +338,27 @@ export function engineViewToRedux(view, playerSlot) {
         })
         .filter(Boolean),
     ],
-    enemyEvoDeck: Array(view.opponentEvoDeckCount ?? es.zones.evolveDeck.length)
-      .fill(null)
-      .map(() => ({ card: "Hidden Card", status: false })),
+    enemyEvoDeck: [
+      ...es.zones.evolveDeck.map((c) => {
+        const used = Boolean(c.evolveUsed);
+        const key = instanceKey(c);
+        const hidden = !used || key === "HIDDEN";
+        return {
+          card: hidden ? "Hidden Card" : cardName(c),
+          status: used,
+        };
+      }),
+      // Opponent evolve cards currently on field are public (face-up).
+      ...es.zones.evolveZone
+        .map((link) => {
+          const evo = findEvoInstance(es, link.evolveInstanceId);
+          if (!evo) return null;
+          const key = instanceKey(evo);
+          if (key === "HIDDEN") return { card: "Hidden Card", status: true };
+          return { card: cardName(evo), status: true };
+        })
+        .filter(Boolean),
+    ],
     playPoints: { available: ps.pp, max: ps.maxPp },
     enemyPlayPoints: { available: es.pp, max: es.maxPp },
     evoPoints: ps.evoPoints,

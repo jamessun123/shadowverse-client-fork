@@ -69,7 +69,7 @@ function CardChoiceButton({
     side === "ally"
       ? "2px solid #42a5f5"
       : side === "enemy"
-        ? "2px solid #ef5350"
+        ? "2px solid #90a4ae"
         : "none";
 
   return (
@@ -83,14 +83,14 @@ function CardChoiceButton({
         p: 1,
         minWidth: 130,
         textTransform: "none",
-        outline: selected ? "3px solid #f44336" : sideOutline,
+        outline: selected ? "3px solid #42a5f5" : sideOutline,
         borderRadius: 2,
         opacity: disabled ? 0.45 : 1,
         backgroundColor:
           side === "ally"
             ? "rgba(66, 165, 245, 0.08)"
             : side === "enemy"
-              ? "rgba(239, 83, 80, 0.08)"
+              ? "rgba(144, 164, 174, 0.08)"
               : "transparent",
       }}
     >
@@ -104,9 +104,9 @@ function CardChoiceButton({
             borderRadius: 1,
             fontWeight: 700,
             letterSpacing: 0.3,
-            color: side === "ally" ? "#1565c0" : "#c62828",
+            color: side === "ally" ? "#1565c0" : "#455a64",
             backgroundColor:
-              side === "ally" ? "rgba(66, 165, 245, 0.2)" : "rgba(239, 83, 80, 0.2)",
+              side === "ally" ? "rgba(66, 165, 245, 0.2)" : "rgba(144, 164, 174, 0.25)",
           }}
         >
           {side === "ally" ? "Ally" : "Enemy"}
@@ -682,7 +682,7 @@ export default function ChoiceModal({ setHovering }) {
               <Box sx={{ width: "100%" }}>
                 <Typography
                   variant="subtitle2"
-                  sx={{ mt: 1, mb: 0.5, color: "#c62828", fontWeight: 700 }}
+                  sx={{ mt: 1, mb: 0.5, color: "#455a64", fontWeight: 700 }}
                 >
                   Enemy
                 </Typography>

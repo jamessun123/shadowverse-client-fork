@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { unstable_batchedUpdates } from "react-dom";
 import { socket } from "../../sockets";
+import { store } from "../../redux/store";
 
 import {
   setEnemyAura,
@@ -55,8 +56,9 @@ const useReceiveFullState = () => {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    // Primary path: server has stored state for both players
+    // Primary path: server has stored state for both players (freeform only).
     socket.on("receive_stored_state", ({ ownState, enemyState }) => {
+      if (store.getState().gameState.gameMode === "automated") return;
       console.log(
         "[receive_stored_state] own:",
         !!ownState,
@@ -77,7 +79,9 @@ const useReceiveFullState = () => {
     // overwrite our authoritative local state, causing the very desyncs we are
     // trying to fix. Own-state recovery after a reload/reconnect is handled
     // authoritatively by the server snapshot via `receive_stored_state`.
+    // Rules-enforced mode ignores this entirely — engine_state is source of truth.
     socket.on("receive_full_state", (message) => {
+      if (store.getState().gameState.gameMode === "automated") return;
       console.log("[receive_full_state] peer state received");
       const fullState = message.data || message;
       unstable_batchedUpdates(() => {

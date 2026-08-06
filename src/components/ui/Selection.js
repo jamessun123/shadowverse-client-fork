@@ -172,20 +172,23 @@ export default function Selection({ setSelectedOption }) {
 
   const handleAcceptRematchUI = () => {
     setAcceptRematch(true);
-    dispatch(setRematchStatus(true));
-    // Vote immediately so the server can prompt turn order when both accept.
     if (gameMode === "automated") {
+      // Server notifies the opponent (rematch_requested) and advances when both accept.
       socket.emit("request_rematch");
+      return;
     }
+    dispatch(setRematchStatus(true));
   };
   const handleDeclineRematchUI = () => {
     setAcceptRematch(false);
     setAwaitingTurnOrder(false);
     handleCloseRematchDialog();
-    dispatch(setRematchStatus(false));
+    dispatch(setEnemyRematchStatus(false));
     if (gameMode === "automated") {
       socket.emit("cancel_rematch");
+      return;
     }
+    dispatch(setRematchStatus(false));
   };
 
   const handleChooseTurnOrder = (choice) => {
@@ -235,10 +238,29 @@ export default function Selection({ setSelectedOption }) {
   useEffect(() => {
     if (gameMode !== "automated") return undefined;
 
+    const onRematchRequested = () => {
+      dispatch(setEnemyRematchStatus(true));
+      setRematchOpenDialog(true);
+    };
+
+    const onRematchPending = () => {
+      setAcceptRematch(true);
+      setRematchOpenDialog(true);
+    };
+
+    const onRematchCancelled = () => {
+      setAwaitingTurnOrder(false);
+      setAcceptRematch(false);
+      setRematchOpenDialog(false);
+      dispatch(setEnemyRematchStatus(false));
+    };
+
     const onAwaitingTurnOrder = ({ rematch, slot, isHost } = {}) => {
       if (!rematch) return;
       setAwaitingTurnOrder(true);
+      setAcceptRematch(true);
       setRematchOpenDialog(true);
+      dispatch(setEnemyRematchStatus(true));
       if (slot != null) dispatch(setPlayerSlot(slot));
       else if (isHost === true) dispatch(setPlayerSlot(0));
       else if (isHost === false) dispatch(setPlayerSlot(1));
@@ -248,7 +270,7 @@ export default function Selection({ setSelectedOption }) {
       setAwaitingTurnOrder(false);
       setAcceptRematch(false);
       setRematchOpenDialog(false);
-      dispatch(setRematchStatus(false));
+      dispatch(setEnemyRematchStatus(false));
     };
 
     const onEngineState = () => {
@@ -257,18 +279,23 @@ export default function Selection({ setSelectedOption }) {
           clearSavedState(reduxRoom?.toString?.() || String(reduxRoom || ""));
           setAcceptRematch(false);
           setRematchOpenDialog(false);
-          dispatch(setRematchStatus(false));
           dispatch(setEnemyRematchStatus(false));
         }
         return false;
       });
     };
 
+    socket.on("rematch_requested", onRematchRequested);
+    socket.on("rematch_pending", onRematchPending);
+    socket.on("rematch_cancelled", onRematchCancelled);
     socket.on("awaiting_turn_order", onAwaitingTurnOrder);
     socket.on("turn_order_cancelled", onTurnOrderCancelled);
     socket.on("engine_state", onEngineState);
 
     return () => {
+      socket.off("rematch_requested", onRematchRequested);
+      socket.off("rematch_pending", onRematchPending);
+      socket.off("rematch_cancelled", onRematchCancelled);
       socket.off("awaiting_turn_order", onAwaitingTurnOrder);
       socket.off("turn_order_cancelled", onTurnOrderCancelled);
       socket.off("engine_state", onEngineState);
@@ -539,7 +566,7 @@ export default function Selection({ setSelectedOption }) {
               )}
               {/* has received a rematch request */}
               {!acceptRematch && reduxEnemyRematchStatus && (
-                <Button autoFocus onClick={handleCloseRematchDialog}>
+                <Button autoFocus onClick={handleDeclineRematchUI}>
                   No
                 </Button>
               )}

@@ -257,9 +257,20 @@ io.on("connection", (socket) => {
     if (slot == null) return;
 
     if (!gameRoom.rematchVotes) gameRoom.rematchVotes = new Set();
+    if (gameRoom.rematchVotes.has(slot)) return;
     gameRoom.rematchVotes.add(slot);
 
-    if (gameRoom.rematchVotes.size < 2) return;
+    // First vote: prompt the other player with a confirmation dialog.
+    if (gameRoom.rematchVotes.size === 1) {
+      for (const [socketId, info] of gameRoom.players.entries()) {
+        if (info.slot === slot) {
+          io.to(socketId).emit("rematch_pending", { fromSlot: slot });
+        } else {
+          io.to(socketId).emit("rematch_requested", { fromSlot: slot });
+        }
+      }
+      return;
+    }
 
     // Both accepted — host picks turn order before the new match starts.
     emitAwaitingTurnOrder(gameRoom, { rematch: true });
@@ -272,12 +283,20 @@ io.on("connection", (socket) => {
     if (!gameRoom) return;
     const slot = gameRoom.getSlot(socket.id);
     if (slot == null) return;
-    gameRoom.rematchVotes?.delete(slot);
-    // If we were waiting on turn order for a rematch, cancel that too.
+
+    const hadVotes = (gameRoom.rematchVotes?.size || 0) > 0;
+    gameRoom.rematchVotes = new Set();
+
+    // Cancel turn-order handshake if it already started.
     if (gameRoom.awaitingTurnOrder && gameRoom.state) {
       gameRoom.awaitingTurnOrder = false;
-      gameRoom.rematchVotes = new Set();
       io.to(roomId).emit("turn_order_cancelled");
+      return;
+    }
+
+    // Otherwise clear the pending rematch prompt on both clients.
+    if (hadVotes) {
+      io.to(roomId).emit("rematch_cancelled", { fromSlot: slot });
     }
   });
 

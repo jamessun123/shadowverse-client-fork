@@ -323,6 +323,9 @@ export default function Field({
     };
   }, [onScaleChange]);
 
+  // Legacy peer sync is freeform-only. In rules-enforced mode the server
+  // engine_state broadcast is authoritative; applying peer field/PP snapshots
+  // on top of it is a common cause of intermittent board desync.
   useSocketStateSync();
   useReceiveFullState();
   useStoreState();
@@ -333,6 +336,7 @@ export default function Field({
       if (!reduxRoom) return;
       console.log("Reconnected with socket id:", socket.id);
       if (automated) {
+        socket.emit("rejoin_room", reduxRoom);
         socket.emit("request_engine_state");
         return;
       }
@@ -570,6 +574,9 @@ export default function Field({
   );
 
   useEffect(() => {
+    // Authoritative engine games must not apply peer CardSlice mirrors.
+    if (automated) return;
+
     const handleMessage = (data) => {
       const sender = data._from;
       const seq = data._seq;
@@ -632,7 +639,7 @@ export default function Field({
       socket.off("online");
       socket.off("offline");
     };
-  }, [dispatch, applyMessage, requestResync]);
+  }, [automated, dispatch, applyMessage, requestResync]);
 
   useEffect(() => {
     if (reduxCurrentRoom.length === 0) {
@@ -643,17 +650,18 @@ export default function Field({
       const saved = getSavedRoom();
       if (saved) {
         dispatch(setRoom(saved));
-        // Restore the player's OWN board immediately from this tab's saved
-        // snapshot, before any server round-trip. This is what makes the board
-        // survive a reload even if the server restarted and lost its copy. The
-        // reconnect effect still rejoins + pulls the opponent's live state.
-        const savedState = getSavedState(saved);
-        if (savedState) dispatch(restoreOwnState(savedState));
+        // Freeform only: restore the player's OWN board from this tab's saved
+        // snapshot. Rules-enforced mode must wait for engine_state — restoring
+        // a stale CardSlice snapshot overwrites the authoritative board.
+        if (!automated) {
+          const savedState = getSavedState(saved);
+          if (savedState) dispatch(restoreOwnState(savedState));
+        }
       } else {
         navigate("/");
       }
     }
-  }, [reduxCurrentRoom, navigate, dispatch]);
+  }, [reduxCurrentRoom, navigate, dispatch, automated]);
 
   // Track this client's own connection so the UI can show a disconnected
   // indicator (the WifiOff icon) while we're offline / reconnecting.
@@ -1258,7 +1266,7 @@ export default function Field({
       return { outline: "2px solid #4caf50", borderRadius: "8px", cursor: "pointer" };
     }
     if (isEnemy && selectedAttackerId && isValidAttackTarget(instanceId)) {
-      return { outline: "3px solid #f44336", borderRadius: "8px", cursor: "pointer" };
+      return { outline: "2px solid #ffeb3b", borderRadius: "8px", cursor: "pointer" };
     }
     return {};
   };
@@ -2072,8 +2080,10 @@ export default function Field({
               }}
               onClick={() => {
                 const enemyIdx = cardPos(idx);
-                if (automated && selectedAttackerId) {
-                  handleAutomatedEnemyFieldClick(enemyIdx);
+                if (automated) {
+                  if (selectedAttackerId) {
+                    handleAutomatedEnemyFieldClick(enemyIdx);
+                  }
                   return;
                 }
                 handleSelectEnemyCardOnField(enemyIdx);

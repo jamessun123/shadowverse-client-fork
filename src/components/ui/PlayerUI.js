@@ -327,7 +327,9 @@ export default function PlayerUI({ name }) {
             name="customized-color"
             value={ep}
             max={3}
+            readOnly={automated}
             onChange={(event, newValue) => {
+              if (automated) return;
               handleEP(newValue);
             }}
             icon={<FiberManualRecordIcon fontSize="inherit" />}
