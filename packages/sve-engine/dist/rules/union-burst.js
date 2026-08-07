@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.recordUnionBurstActivated = recordUnionBurstActivated;
+exports.scheduleOrRecordUnionBurstActivated = scheduleOrRecordUnionBurstActivated;
+exports.flushPendingUnionBurst = flushPendingUnionBurst;
+exports.markResolvingUnionBurst = markResolvingUnionBurst;
 const actionLog_1 = require("../actions/actionLog");
 const trigger_queue_1 = require("./trigger-queue");
 /** Record that a Union Burst ability resolved and queue cross-card triggers. */
@@ -8,9 +11,59 @@ function recordUnionBurstActivated(state, player, sourceInstanceId, ability) {
     if (!ability?.unionBurst)
         return state;
     const next = state;
-    const count = (next.players[player].flags.unionBurstsActivatedThisTurn ?? 0) + 1;
-    next.players[player].flags.unionBurstsActivatedThisTurn = count;
+    const flags = next.players[player].flags;
+    const ids = flags.unionBurstSourceIdsThisTurn ?? [];
+    ids.push(sourceInstanceId);
+    flags.unionBurstSourceIdsThisTurn = ids;
+    const count = ids.length;
+    flags.unionBurstsActivatedThisTurn = count;
     (0, trigger_queue_1.queueOnUnionBurstActivated)(next, sourceInstanceId, player);
     (0, actionLog_1.appendUnionBurstLogEntry)(next, player, sourceInstanceId, count);
+    return next;
+}
+function abilityStillResolving(state) {
+    if (state.pendingChoices)
+        return true;
+    return (state.resolutionContext?.resumeAfterChoice?.length ?? 0) > 0;
+}
+/**
+ * Record a Union Burst only once its effect has fully finished.
+ * If the ability paused on a target/choose prompt, stash it on the resolution
+ * context so mid-ability checks (e.g. Eris / Ameth "2 other UBs") do not count
+ * the current activation.
+ */
+function scheduleOrRecordUnionBurstActivated(state, player, sourceInstanceId, ability) {
+    if (!ability?.unionBurst)
+        return state;
+    if (abilityStillResolving(state)) {
+        const next = state;
+        if (!next.resolutionContext) {
+            next.resolutionContext = { effectStack: [ability.effect] };
+        }
+        next.resolutionContext.pendingUnionBurst = { player, sourceInstanceId, ability };
+        next.resolutionContext.resolvingUnionBurstSourceId = sourceInstanceId;
+        return next;
+    }
+    return recordUnionBurstActivated(state, player, sourceInstanceId, ability);
+}
+/** Flush a stashed Union Burst once choices/resume work are done. */
+function flushPendingUnionBurst(state) {
+    const pending = state.resolutionContext?.pendingUnionBurst;
+    if (!pending || abilityStillResolving(state))
+        return state;
+    const next = recordUnionBurstActivated(state, pending.player, pending.sourceInstanceId, pending.ability);
+    if (next.resolutionContext) {
+        delete next.resolutionContext.pendingUnionBurst;
+        delete next.resolutionContext.resolvingUnionBurstSourceId;
+    }
+    return next;
+}
+/** Mark that a Union Burst from this source is currently resolving. */
+function markResolvingUnionBurst(state, sourceInstanceId) {
+    const next = state;
+    if (!next.resolutionContext) {
+        next.resolutionContext = { effectStack: [] };
+    }
+    next.resolutionContext.resolvingUnionBurstSourceId = sourceInstanceId;
     return next;
 }

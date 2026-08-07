@@ -35,6 +35,9 @@ function moveCard(state, instanceId, toZone, toPlayer) {
             host.card.equippedInstanceIds = host.card.equippedInstanceIds.filter((id) => id !== instanceId);
             // Strip modifiers sourced from this equipment.
             host.card.modifiers = host.card.modifiers.filter((m) => m.sourceId !== instanceId);
+            if (host.card.grantedOnCardPlayed?.length) {
+                host.card.grantedOnCardPlayed = host.card.grantedOnCardPlayed.filter((g) => g.sourceId !== instanceId);
+            }
             host.card.grantedKeywords = host.card.grantedKeywords.filter(() => true);
             // Recalculate damage bonuses from remaining equipment modifiers.
             host.card.damageDealtBonus = host.card.modifiers.reduce((sum, m) => sum + (m.damageDealtBonus ?? 0), 0) || undefined;
@@ -85,6 +88,9 @@ function removeFromField(state, instanceId) {
         if (host?.card.equippedInstanceIds) {
             host.card.equippedInstanceIds = host.card.equippedInstanceIds.filter((id) => id !== instanceId);
             host.card.modifiers = host.card.modifiers.filter((m) => m.sourceId !== instanceId);
+            if (host.card.grantedOnCardPlayed?.length) {
+                host.card.grantedOnCardPlayed = host.card.grantedOnCardPlayed.filter((g) => g.sourceId !== instanceId);
+            }
         }
         card.equippedToInstanceId = undefined;
     }

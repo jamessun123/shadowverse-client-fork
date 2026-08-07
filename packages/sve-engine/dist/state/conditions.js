@@ -205,8 +205,33 @@ function evalCondition(state, player, condition) {
                 return false;
             return (0, queries_1.resolveCardDefCost)((0, queries_1.resolveCardNo)(state, found.card)) <= condition.count;
         }
-        case "unionBurstActivatedMin":
-            return ((0, queries_1.getPlayer)(state, player).flags.unionBurstsActivatedThisTurn ?? 0) >= condition.count;
+        case "unionBurstActivatedMin": {
+            const flags = (0, queries_1.getPlayer)(state, player).flags;
+            const ids = flags.unionBurstSourceIdsThisTurn ?? [];
+            if (condition.excludeSource) {
+                const excludeId = state.resolutionContext?.resolvingUnionBurstSourceId ??
+                    state.resolutionContext?.pendingUnionBurst?.sourceInstanceId ??
+                    state.resolutionContext?.sourceInstanceId;
+                // Prefer instance-id list so the resolving card can be filtered out even if
+                // it was already recorded (early-record paths).
+                if (ids.length > 0) {
+                    const otherCount = excludeId
+                        ? ids.filter((id) => id !== excludeId).length
+                        : ids.length;
+                    return otherCount >= condition.count;
+                }
+                // Numeric fallback (no id list yet): deferred activations aren't in the
+                // count; if somehow already counted, drop one while resolving.
+                const n = flags.unionBurstsActivatedThisTurn ?? 0;
+                if (state.resolutionContext?.pendingUnionBurst)
+                    return n >= condition.count;
+                if (excludeId && n > 0)
+                    return Math.max(0, n - 1) >= condition.count;
+                return n >= condition.count;
+            }
+            const count = ids.length > 0 ? ids.length : (flags.unionBurstsActivatedThisTurn ?? 0);
+            return count >= condition.count;
+        }
         case "maxPpMin":
             return (0, queries_1.getPlayer)(state, player).maxPp >= condition.count;
         case "maxPpEquals":

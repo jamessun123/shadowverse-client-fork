@@ -4,6 +4,7 @@ exports.appendResumeEffects = appendResumeEffects;
 exports.buryDeckCards = buryDeckCards;
 exports.moveZoneCardTo = moveZoneCardTo;
 exports.resolveEffect = resolveEffect;
+exports.canChooseOptionResolve = canChooseOptionResolve;
 exports.canEffectResolve = canEffectResolve;
 exports.canPlayCardFromZones = canPlayCardFromZones;
 exports.resolveSpell = resolveSpell;
@@ -39,6 +40,8 @@ function appendResumeEffects(state, effects) {
         lastDiscardedCardName: prev?.lastDiscardedCardName,
         lastSelectedCardName: prev?.lastSelectedCardName,
         engagedAsCostCount: prev?.engagedAsCostCount,
+        pendingUnionBurst: prev?.pendingUnionBurst,
+        resolvingUnionBurstSourceId: prev?.resolvingUnionBurstSourceId,
         deferTriggers: true,
     };
     return next;
@@ -571,6 +574,8 @@ function resolveEffect(state, effect, player, options) {
             lastDiscardedCardName: next.resolutionContext?.lastDiscardedCardName,
             lastSelectedCardName: next.resolutionContext?.lastSelectedCardName,
             engagedAsCostCount: next.resolutionContext?.engagedAsCostCount,
+            pendingUnionBurst: next.resolutionContext?.pendingUnionBurst,
+            resolvingUnionBurstSourceId: next.resolutionContext?.resolvingUnionBurstSourceId,
             deferTriggers: true,
         };
     }
@@ -901,6 +906,8 @@ function resolveEffect(state, effect, player, options) {
                 lastDiscardedCardName: next.resolutionContext?.lastDiscardedCardName,
                 lastSelectedCardName: next.resolutionContext?.lastSelectedCardName,
                 engagedAsCostCount: next.resolutionContext?.engagedAsCostCount,
+                pendingUnionBurst: next.resolutionContext?.pendingUnionBurst,
+                resolvingUnionBurstSourceId: next.resolutionContext?.resolvingUnionBurstSourceId,
                 deferTriggers: true,
             };
             for (let i = 0; i < effect.steps.length; i++) {
@@ -933,7 +940,7 @@ function resolveEffect(state, effect, player, options) {
                 }))
                     .filter((o) => !(alreadyChosen?.has(o.index) || alreadyChosenLabels?.has(o.label)))
                     .filter((o) => (!o.additionalPpCost || next.players[player].pp >= o.additionalPpCost) &&
-                    canEffectResolve(next, player, o.effect));
+                    canChooseOptionResolve(next, player, o.effect));
                 if (affordableOptions.length === 0)
                     break;
                 next.pendingChoices = (0, effect_utils_1.withChoiceContext)(next, {
@@ -1279,6 +1286,21 @@ function resolveEffect(state, effect, player, options) {
                         }
                     }
                 }
+                // Card text: "The follower equipped with this has … when you play a spell…"
+                // Mirror equipment onCardPlayed watchers onto the host so they fire with the
+                // follower as source (half-attack, max-per-turn, etc.).
+                if (ability.timing === "onCardPlayed" || ability.timing === "onCardPlayedOrFused") {
+                    if (!hostLive.card.grantedOnCardPlayed)
+                        hostLive.card.grantedOnCardPlayed = [];
+                    hostLive.card.grantedOnCardPlayed.push({
+                        filter: ability.filter,
+                        effect: ability.effect,
+                        oncePerTurn: ability.oncePerTurn,
+                        maxPerTurn: ability.maxPerTurn,
+                        label: ability.label ?? eqDef?.name,
+                        sourceId: token.instanceId,
+                    });
+                }
                 if (ability.timing === "onEquip") {
                     const prevCtx = next.resolutionContext;
                     next.resolutionContext = {
@@ -1312,9 +1334,18 @@ function resolveEffect(state, effect, player, options) {
             next.resolutionContext = {
                 sourceInstanceId: target.card.instanceId,
                 effectStack: [ub.effect],
+                resumeAfterChoice: prevCtx?.resumeAfterChoice,
+                resumeOwnerInstanceId: prevCtx?.resumeOwnerInstanceId ?? prevCtx?.sourceInstanceId,
+                pendingUnionBurst: prevCtx?.pendingUnionBurst,
+                resolvingUnionBurstSourceId: target.card.instanceId,
+                deferTriggers: prevCtx?.deferTriggers,
             };
             next = resolveEffect(next, ub.effect, player);
-            (0, union_burst_1.recordUnionBurstActivated)(next, player, target.card.instanceId, ub);
+            next = (0, union_burst_1.scheduleOrRecordUnionBurstActivated)(next, player, target.card.instanceId, ub);
+            if (next.pendingChoices || (next.resolutionContext?.resumeAfterChoice?.length ?? 0) > 0) {
+                // Nested UB paused — keep its context (plus any stashed parent UB).
+                break;
+            }
             next.resolutionContext = prevCtx;
             break;
         }
@@ -1752,6 +1783,18 @@ function resolveEffect(state, effect, player, options) {
     next = (0, effect_utils_1.finishDeferredTriggers)(next);
     return (0, confirmation_2.runConfirmationTiming)(next);
 }
+/**
+ * Whether a choose-modal option should be offered. Pure if-then options (no else)
+ * are gated on the condition so text like "if you've activated 2 other UBs…"
+ * does not appear as a selectable no-op.
+ */
+function canChooseOptionResolve(state, player, effect) {
+    if (effect.op === "if" && !effect.else) {
+        return ((0, conditions_1.evalCondition)(state, player, effect.condition) &&
+            canEffectResolve(state, player, effect.then));
+    }
+    return canEffectResolve(state, player, effect);
+}
 function canEffectResolve(state, player, effect) {
     switch (effect.op) {
         case "buff":
@@ -1809,7 +1852,7 @@ function canEffectResolve(state, player, effect) {
         case "choose":
         case "chooseMultiple":
             return effect.options.some((o) => (!o.additionalPpCost || state.players[player].pp >= o.additionalPpCost) &&
-                canEffectResolve(state, player, o.effect));
+                canChooseOptionResolve(state, player, o.effect));
         case "tutorFromDeck": {
             if (effect.optional)
                 return true;

@@ -75,6 +75,7 @@ function emptyPlayer(player) {
             cardsPlayedThisTurn: 0,
             spellsPlayedThisTurn: 0,
             unionBurstsActivatedThisTurn: 0,
+            unionBurstSourceIdsThisTurn: [],
             mulliganDone: false,
             leaderLostDefThisTurn: false,
             owedDraws: 0,

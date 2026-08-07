@@ -77,6 +77,7 @@ export function emptyPlayer(player: PlayerId): PlayerState {
       cardsPlayedThisTurn: 0,
       spellsPlayedThisTurn: 0,
       unionBurstsActivatedThisTurn: 0,
+      unionBurstSourceIdsThisTurn: [],
       mulliganDone: false,
       leaderLostDefThisTurn: false,
       owedDraws: 0,

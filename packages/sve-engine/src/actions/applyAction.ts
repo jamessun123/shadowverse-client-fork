@@ -35,7 +35,12 @@ import {
   queueOnDiscard,
   queueStartOfEndAbilities,
 } from "../rules/trigger-queue";
-import { recordUnionBurstActivated } from "../rules/union-burst";
+import {
+  flushPendingUnionBurst,
+  markResolvingUnionBurst,
+  recordUnionBurstActivated,
+  scheduleOrRecordUnionBurstActivated,
+} from "../rules/union-burst";
 import { cardMatchesFilter } from "../state/conditions";
 import { resetCardInstanceState } from "../state/card-reset";
 import {
@@ -163,6 +168,8 @@ function preserveResumeContext(
     lastDiscardedCardName: prev?.lastDiscardedCardName,
     lastSelectedCardName: prev?.lastSelectedCardName,
     engagedAsCostCount: prev?.engagedAsCostCount,
+    pendingUnionBurst: prev?.pendingUnionBurst,
+    resolvingUnionBurstSourceId: prev?.resolvingUnionBurstSourceId,
     deferTriggers: true,
   };
   return next;
@@ -199,6 +206,8 @@ function continueAfterChoice(state: GameState, player: PlayerId): GameState {
       lastDiscardedCardName: prev?.lastDiscardedCardName,
       lastSelectedCardName: prev?.lastSelectedCardName,
       engagedAsCostCount: prev?.engagedAsCostCount,
+      pendingUnionBurst: prev?.pendingUnionBurst,
+      resolvingUnionBurstSourceId: prev?.resolvingUnionBurstSourceId,
       deferTriggers: true,
     };
     next = resolveEffect(next, head, player, { deferConfirmation: true });
@@ -216,6 +225,7 @@ function continueAfterChoice(state: GameState, player: PlayerId): GameState {
         next = moveCard(next, sourceId, "cemetery", src.player);
       }
     }
+    next = flushPendingUnionBurst(next);
     if (shouldClearResolutionContext(next)) {
       next.resolutionContext = null;
     }
@@ -1304,6 +1314,9 @@ function resolveCombat(state: GameState): GameState {
   for (let i = strikeStart; i < strikeAbilities.length; i++) {
     const { ability, key } = strikeAbilities[i];
     next.resolutionContext = { sourceInstanceId: combat.attackerId, effectStack: [ability.effect] };
+    if (ability.unionBurst) {
+      next = markResolvingUnionBurst(next, combat.attackerId);
+    }
     next = resolveEffect(next, ability.effect, attackerFound.player, {
       deferConfirmation: true,
     });
@@ -1537,12 +1550,16 @@ function finishActivateAfterCost(
     sourceInstanceId,
     effectStack: [ability.effect],
   };
+  if (ability.unionBurst) {
+    next = markResolvingUnionBurst(next, sourceInstanceId);
+  }
   next = resolveEffect(next, ability.effect, player);
   if (ability.cost?.fuse) {
     queueOnCardFused(next, sourceInstanceId, player);
   }
-  recordUnionBurstActivated(next, player, sourceInstanceId, ability);
+  next = scheduleOrRecordUnionBurstActivated(next, player, sourceInstanceId, ability);
   if (shouldClearResolutionContext(next)) {
+    next = flushPendingUnionBurst(next);
     next.resolutionContext = null;
   }
   return next;

@@ -102,6 +102,8 @@ function preserveResumeContext(next, sourceId, stack, tail) {
         lastDiscardedCardName: prev?.lastDiscardedCardName,
         lastSelectedCardName: prev?.lastSelectedCardName,
         engagedAsCostCount: prev?.engagedAsCostCount,
+        pendingUnionBurst: prev?.pendingUnionBurst,
+        resolvingUnionBurstSourceId: prev?.resolvingUnionBurstSourceId,
         deferTriggers: true,
     };
     return next;
@@ -136,6 +138,8 @@ function continueAfterChoice(state, player) {
             lastDiscardedCardName: prev?.lastDiscardedCardName,
             lastSelectedCardName: prev?.lastSelectedCardName,
             engagedAsCostCount: prev?.engagedAsCostCount,
+            pendingUnionBurst: prev?.pendingUnionBurst,
+            resolvingUnionBurstSourceId: prev?.resolvingUnionBurstSourceId,
             deferTriggers: true,
         };
         next = (0, resolver_1.resolveEffect)(next, head, player, { deferConfirmation: true });
@@ -152,6 +156,7 @@ function continueAfterChoice(state, player) {
                 next = (0, zones_1.moveCard)(next, sourceId, "cemetery", src.player);
             }
         }
+        next = (0, union_burst_1.flushPendingUnionBurst)(next);
         if ((0, effect_utils_1.shouldClearResolutionContext)(next)) {
             next.resolutionContext = null;
         }
@@ -1193,6 +1198,9 @@ function resolveCombat(state) {
     for (let i = strikeStart; i < strikeAbilities.length; i++) {
         const { ability, key } = strikeAbilities[i];
         next.resolutionContext = { sourceInstanceId: combat.attackerId, effectStack: [ability.effect] };
+        if (ability.unionBurst) {
+            next = (0, union_burst_1.markResolvingUnionBurst)(next, combat.attackerId);
+        }
         next = (0, resolver_1.resolveEffect)(next, ability.effect, attackerFound.player, {
             deferConfirmation: true,
         });
@@ -1396,12 +1404,16 @@ function finishActivateAfterCost(state, player, sourceInstanceId, zone, abilityK
         sourceInstanceId,
         effectStack: [ability.effect],
     };
+    if (ability.unionBurst) {
+        next = (0, union_burst_1.markResolvingUnionBurst)(next, sourceInstanceId);
+    }
     next = (0, resolver_1.resolveEffect)(next, ability.effect, player);
     if (ability.cost?.fuse) {
         (0, trigger_queue_1.queueOnCardFused)(next, sourceInstanceId, player);
     }
-    (0, union_burst_1.recordUnionBurstActivated)(next, player, sourceInstanceId, ability);
+    next = (0, union_burst_1.scheduleOrRecordUnionBurstActivated)(next, player, sourceInstanceId, ability);
     if ((0, effect_utils_1.shouldClearResolutionContext)(next)) {
+        next = (0, union_burst_1.flushPendingUnionBurst)(next);
         next.resolutionContext = null;
     }
     return next;

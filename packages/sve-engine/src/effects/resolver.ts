@@ -12,7 +12,7 @@ import {
   queueOnAbilityDamageTaken,
   queueOnAbilityDamageDealt,
 } from "../rules/trigger-queue";
-import { recordUnionBurstActivated } from "../rules/union-burst";
+import { scheduleOrRecordUnionBurstActivated } from "../rules/union-burst";
 import {
   contextForTriggerResolution,
   finishDeferredTriggers,
@@ -69,6 +69,8 @@ export function appendResumeEffects(state: GameState, effects: Effect[]): GameSt
     lastDiscardedCardName: prev?.lastDiscardedCardName,
     lastSelectedCardName: prev?.lastSelectedCardName,
     engagedAsCostCount: prev?.engagedAsCostCount,
+    pendingUnionBurst: prev?.pendingUnionBurst,
+    resolvingUnionBurstSourceId: prev?.resolvingUnionBurstSourceId,
     deferTriggers: true,
   };
   return next;
@@ -827,6 +829,8 @@ export function resolveEffect(
       lastDiscardedCardName: next.resolutionContext?.lastDiscardedCardName,
       lastSelectedCardName: next.resolutionContext?.lastSelectedCardName,
       engagedAsCostCount: next.resolutionContext?.engagedAsCostCount,
+      pendingUnionBurst: next.resolutionContext?.pendingUnionBurst,
+      resolvingUnionBurstSourceId: next.resolutionContext?.resolvingUnionBurstSourceId,
       deferTriggers: true,
     };
   }
@@ -1270,6 +1274,8 @@ export function resolveEffect(
         lastDiscardedCardName: next.resolutionContext?.lastDiscardedCardName,
         lastSelectedCardName: next.resolutionContext?.lastSelectedCardName,
         engagedAsCostCount: next.resolutionContext?.engagedAsCostCount,
+        pendingUnionBurst: next.resolutionContext?.pendingUnionBurst,
+        resolvingUnionBurstSourceId: next.resolutionContext?.resolvingUnionBurstSourceId,
         deferTriggers: true,
       };
       for (let i = 0; i < effect.steps.length; i++) {
@@ -1313,7 +1319,7 @@ export function resolveEffect(
           .filter(
             (o) =>
               (!o.additionalPpCost || next.players[player].pp >= o.additionalPpCost) &&
-              canEffectResolve(next, player, o.effect),
+              canChooseOptionResolve(next, player, o.effect),
           );
         if (affordableOptions.length === 0) break;
         next.pendingChoices = withChoiceContext(next, {
@@ -1839,6 +1845,20 @@ export function resolveEffect(
             }
           }
         }
+        // Card text: "The follower equipped with this has … when you play a spell…"
+        // Mirror equipment onCardPlayed watchers onto the host so they fire with the
+        // follower as source (half-attack, max-per-turn, etc.).
+        if (ability.timing === "onCardPlayed" || ability.timing === "onCardPlayedOrFused") {
+          if (!hostLive.card.grantedOnCardPlayed) hostLive.card.grantedOnCardPlayed = [];
+          hostLive.card.grantedOnCardPlayed.push({
+            filter: ability.filter,
+            effect: ability.effect,
+            oncePerTurn: ability.oncePerTurn,
+            maxPerTurn: ability.maxPerTurn,
+            label: ability.label ?? eqDef?.name,
+            sourceId: token.instanceId,
+          });
+        }
         if (ability.timing === "onEquip") {
           const prevCtx = next.resolutionContext;
           next.resolutionContext = {
@@ -1874,9 +1894,18 @@ export function resolveEffect(
       next.resolutionContext = {
         sourceInstanceId: target.card.instanceId,
         effectStack: [ub.effect],
+        resumeAfterChoice: prevCtx?.resumeAfterChoice,
+        resumeOwnerInstanceId: prevCtx?.resumeOwnerInstanceId ?? prevCtx?.sourceInstanceId,
+        pendingUnionBurst: prevCtx?.pendingUnionBurst,
+        resolvingUnionBurstSourceId: target.card.instanceId,
+        deferTriggers: prevCtx?.deferTriggers,
       };
       next = resolveEffect(next, ub.effect, player);
-      recordUnionBurstActivated(next, player, target.card.instanceId, ub);
+      next = scheduleOrRecordUnionBurstActivated(next, player, target.card.instanceId, ub);
+      if (next.pendingChoices || (next.resolutionContext?.resumeAfterChoice?.length ?? 0) > 0) {
+        // Nested UB paused — keep its context (plus any stashed parent UB).
+        break;
+      }
       next.resolutionContext = prevCtx;
       break;
     }
@@ -2519,6 +2548,25 @@ export function resolveEffect(
 
 
 
+/**
+ * Whether a choose-modal option should be offered. Pure if-then options (no else)
+ * are gated on the condition so text like "if you've activated 2 other UBs…"
+ * does not appear as a selectable no-op.
+ */
+export function canChooseOptionResolve(
+  state: GameState,
+  player: PlayerId,
+  effect: Effect,
+): boolean {
+  if (effect.op === "if" && !effect.else) {
+    return (
+      evalCondition(state, player, effect.condition) &&
+      canEffectResolve(state, player, effect.then)
+    );
+  }
+  return canEffectResolve(state, player, effect);
+}
+
 export function canEffectResolve(state: GameState, player: PlayerId, effect: Effect): boolean {
   switch (effect.op) {
     case "buff":
@@ -2584,7 +2632,7 @@ export function canEffectResolve(state: GameState, player: PlayerId, effect: Eff
       return effect.options.some(
         (o) =>
           (!o.additionalPpCost || state.players[player].pp >= o.additionalPpCost) &&
-          canEffectResolve(state, player, o.effect),
+          canChooseOptionResolve(state, player, o.effect),
       );
     case "tutorFromDeck": {
       if (effect.optional) return true;

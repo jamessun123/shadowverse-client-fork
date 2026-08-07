@@ -2,7 +2,7 @@ import { getCardDef } from "../cards/registry";
 import { describeAbility } from "./trigger-labels";
 import { cardMatchesFilter, evalCondition } from "../state/conditions";
 import { isBoxed } from "../state/passives";
-import { findInstance, getPlayer, isFollowerCard, resolveCardNo } from "../state/queries";
+import { findInstance, getPlayer, isEquippedAttachment, isFollowerCard, resolveCardNo } from "../state/queries";
 import { matchesExAreaEntryFilter } from "../state/passives";
 import { AbilityDefinition, CardInstance, GameState, PlayerId, TriggerTiming } from "../types";
 
@@ -143,6 +143,9 @@ export function queueOnCardPlayed(
   const zones = getPlayer(state, player).zones;
 
   for (const fieldCard of zones.field) {
+    // Equipment tokens grant their on-play watchers to the host on equip.
+    // Skip them here so those abilities do not double-fire.
+    if (isEquippedAttachment(fieldCard)) continue;
     queueOnCardPlayedForCard(
       state,
       playedNo,
@@ -183,6 +186,7 @@ export function queueOnCardFused(
   const zones = getPlayer(state, player).zones;
 
   for (const fieldCard of zones.field) {
+    if (isEquippedAttachment(fieldCard)) continue;
     queueOnCardPlayedForCard(
       state,
       fusedNo,

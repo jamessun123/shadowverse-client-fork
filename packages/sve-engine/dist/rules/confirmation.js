@@ -194,6 +194,9 @@ function resolveOneTrigger(state, trigger) {
         forcedTargetId: enteredId,
         lastSelectedTargetId: enteredId,
     };
+    if (trigger.ability.unionBurst) {
+        next = (0, union_burst_1.markResolvingUnionBurst)(next, trigger.sourceInstanceId);
+    }
     // Comprehensive Rules 10.7.3.2: if it cannot be played, remove pending status only.
     if (!(0, resolver_1.canEffectResolve)(next, trigger.controller, trigger.ability.effect)) {
         if ((0, effect_utils_1.shouldClearResolutionContext)(next)) {
@@ -203,8 +206,9 @@ function resolveOneTrigger(state, trigger) {
     }
     next = (0, resolver_1.resolveEffect)(next, trigger.ability.effect, trigger.controller);
     markTriggerAbilityUsed(next, trigger);
-    (0, union_burst_1.recordUnionBurstActivated)(next, trigger.controller, trigger.sourceInstanceId, trigger.ability);
+    next = (0, union_burst_1.scheduleOrRecordUnionBurstActivated)(next, trigger.controller, trigger.sourceInstanceId, trigger.ability);
     if ((0, effect_utils_1.shouldClearResolutionContext)(next)) {
+        next = (0, union_burst_1.flushPendingUnionBurst)(next);
         next.resolutionContext = null;
     }
     return next;

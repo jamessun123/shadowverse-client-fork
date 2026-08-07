@@ -87,7 +87,7 @@
             },
             {
               "op": "if",
-              "condition": { "type": "unionBurstActivatedMin", "count": 2 },
+              "condition": { "type": "unionBurstActivatedMin", "count": 2, "excludeSource": true },
               "then": {
                 "op": "grantKeyword",
                 "keyword": "storm",
@@ -1588,7 +1588,7 @@
               "label": "Activate another follower's Union Burst without paying the cost",
               "effect": {
                 "op": "if",
-                "condition": { "type": "unionBurstActivatedMin", "count": 2 },
+                "condition": { "type": "unionBurstActivatedMin", "count": 2, "excludeSource": true },
                 "then": {
                   "op": "activateUnionBurst",
                   "targets": {

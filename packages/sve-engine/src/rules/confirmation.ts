@@ -15,7 +15,11 @@ import {
   queueFanfare,
   queueLastWords,
 } from "./trigger-queue";
-import { recordUnionBurstActivated } from "./union-burst";
+import {
+  flushPendingUnionBurst,
+  markResolvingUnionBurst,
+  scheduleOrRecordUnionBurstActivated,
+} from "./union-burst";
 import {
   fieldOccupancy,
   findInstance,
@@ -216,6 +220,9 @@ export function resolveOneTrigger(state: GameState, trigger: PendingTrigger): Ga
     forcedTargetId: enteredId,
     lastSelectedTargetId: enteredId,
   };
+  if (trigger.ability.unionBurst) {
+    next = markResolvingUnionBurst(next, trigger.sourceInstanceId);
+  }
   // Comprehensive Rules 10.7.3.2: if it cannot be played, remove pending status only.
   if (!canEffectResolve(next, trigger.controller, trigger.ability.effect)) {
     if (shouldClearResolutionContext(next)) {
@@ -225,8 +232,14 @@ export function resolveOneTrigger(state: GameState, trigger: PendingTrigger): Ga
   }
   next = resolveEffect(next, trigger.ability.effect, trigger.controller);
   markTriggerAbilityUsed(next, trigger);
-  recordUnionBurstActivated(next, trigger.controller, trigger.sourceInstanceId, trigger.ability);
+  next = scheduleOrRecordUnionBurstActivated(
+    next,
+    trigger.controller,
+    trigger.sourceInstanceId,
+    trigger.ability,
+  );
   if (shouldClearResolutionContext(next)) {
+    next = flushPendingUnionBurst(next);
     next.resolutionContext = null;
   }
   return next;

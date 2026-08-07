@@ -88,6 +88,8 @@ function contextForTriggerResolution(state, sourceInstanceId, effect) {
         lastDiscardedCardName: prev?.lastDiscardedCardName,
         lastSelectedCardName: prev?.lastSelectedCardName,
         engagedAsCostCount: prev?.engagedAsCostCount,
+        pendingUnionBurst: prev?.pendingUnionBurst,
+        resolvingUnionBurstSourceId: prev?.resolvingUnionBurstSourceId,
     };
 }
 function getChoiceContext(state) {

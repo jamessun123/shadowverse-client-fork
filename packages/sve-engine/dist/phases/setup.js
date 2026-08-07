@@ -119,6 +119,7 @@ function beginStartPhase(state) {
     p.flags.cardsPlayedThisTurn = 0;
     p.flags.spellsPlayedThisTurn = 0;
     p.flags.unionBurstsActivatedThisTurn = 0;
+    p.flags.unionBurstSourceIdsThisTurn = [];
     p.flags.leaderLostDefThisTurn = false;
     p.flags.chosenChooseOptionTracksThisTurn = {};
     p.flags.chosenChooseOptionLabelsThisTurn = {};

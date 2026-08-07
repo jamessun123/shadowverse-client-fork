@@ -117,6 +117,10 @@ playedCardName) {
         return;
     const zones = (0, queries_1.getPlayer)(state, player).zones;
     for (const fieldCard of zones.field) {
+        // Equipment tokens grant their on-play watchers to the host on equip.
+        // Skip them here so those abilities do not double-fire.
+        if ((0, queries_1.isEquippedAttachment)(fieldCard))
+            continue;
         queueOnCardPlayedForCard(state, playedNo, player, fieldCard, "ocp", undefined, undefined, playedInstanceId);
     }
     // Crests live in EX and can watch plays; amulets/spells waiting in EX do not.
@@ -135,6 +139,8 @@ function queueOnCardFused(state, fusedInstanceId, player) {
     const fusedNo = (0, queries_1.resolveCardNo)(state, fused.card);
     const zones = (0, queries_1.getPlayer)(state, player).zones;
     for (const fieldCard of zones.field) {
+        if ((0, queries_1.isEquippedAttachment)(fieldCard))
+            continue;
         queueOnCardPlayedForCard(state, fusedNo, player, fieldCard, "ocf", ["onCardFused", "onCardPlayedOrFused"], "onCardFused", fusedInstanceId);
     }
     for (const exCard of zones.exArea) {

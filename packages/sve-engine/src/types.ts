@@ -139,6 +139,8 @@ export interface GrantedOnCardPlayed {
   oncePerTurn?: boolean;
   maxPerTurn?: number;
   label?: string;
+  /** Equipment instance that granted this (stripped when that equipment leaves). */
+  sourceId?: string;
 }
 
 export type TargetSelector =
@@ -269,8 +271,10 @@ export type Condition =
   | { type: "leaderDefMax"; count: number }
   /** True when lastSelected / forced target's printed cost is at most `count`. */
   | { type: "lastSelectedCostMax"; count: number }
-  /** True when the player has activated at least `count` Union Bursts this turn. */
-  | { type: "unionBurstActivatedMin"; count: number }
+  /** True when the player has activated at least `count` Union Bursts this turn.
+   * When `excludeSource` is set, the currently resolving card's UB is not counted
+   * (for text like "2 other Union Burst abilities"). */
+  | { type: "unionBurstActivatedMin"; count: number; excludeSource?: boolean }
   /** True when the player's max PP is at least `count`. */
   | { type: "maxPpMin"; count: number }
   /** True when the player's max PP equals `count`. */
@@ -657,6 +661,8 @@ export interface PlayerFlags {
   spellsPlayedThisTurn: number;
   /** Union Burst abilities resolved this turn (any timing). */
   unionBurstsActivatedThisTurn: number;
+  /** Instance ids of cards whose Union Burst resolved this turn (parallel to the count). */
+  unionBurstSourceIdsThisTurn?: string[];
   mulliganDone: boolean;
   leaderLostDefThisTurn: boolean;
   /** Unfulfilled draw obligations (checked for deck-out loss after rules handling). */
@@ -904,6 +910,18 @@ export interface ResolutionContext {
   lastSelectedCardName?: string;
   /** Number of cards engaged via engageFromFieldAsCost this resolution. */
   engagedAsCostCount?: number;
+  /**
+   * Union Burst whose activation is in progress (paused on a choice).
+   * Counted only after the ability fully finishes so "N other UBs" checks
+   * do not include the current activation.
+   */
+  pendingUnionBurst?: {
+    player: PlayerId;
+    sourceInstanceId: string;
+    ability: AbilityDefinition;
+  };
+  /** Source currently resolving a Union Burst (for excludeSource conditions). */
+  resolvingUnionBurstSourceId?: string;
 }
 
 export interface RevealedCardInfo {
