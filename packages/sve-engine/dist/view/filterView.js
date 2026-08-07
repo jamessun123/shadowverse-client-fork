@@ -191,7 +191,7 @@ function createPlayerView(state, self) {
         ];
         for (const { card, fromZone } of quickZones) {
             const def = (0, registry_1.getCardDef)(card.name);
-            if (!def?.abilities?.some((a) => a.quick))
+            if (!def?.keywords?.includes("quick") && !def?.abilities?.some((a) => a.quick))
                 continue;
             const cost = (0, queries_1.getEffectivePlayCost)(card, card.name, state, self, fromZone);
             if (pp >= cost && (0, resolver_1.canPlayCardFromZones)(state, self, card.name)) {

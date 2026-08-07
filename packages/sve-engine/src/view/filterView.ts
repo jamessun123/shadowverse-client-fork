@@ -251,7 +251,7 @@ export function createPlayerView(state: GameState, self: PlayerId): PlayerView {
     ];
     for (const { card, fromZone } of quickZones) {
       const def = getCardDef(card.name);
-      if (!def?.abilities?.some((a) => a.quick)) continue;
+      if (!def?.keywords?.includes("quick") && !def?.abilities?.some((a) => a.quick)) continue;
       const cost = getEffectivePlayCost(card, card.name, state, self, fromZone);
       if (pp >= cost && canPlayCardFromZones(state, self, card.name)) {
         legalActions.push(`QUICK_PLAY:${card.instanceId}`);

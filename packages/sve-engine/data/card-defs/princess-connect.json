@@ -121,6 +121,59 @@
       }
     ]
   },
+  "Shiori": {
+    "cardNo": "CP04-005EN",
+    "name": "Shiori",
+    "class": "forest",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 2,
+    "attack": 2,
+    "defense": 2,
+    "traits": ["Princess Connect", "Elizabeth Park"],
+    "keywords": ["fanfare", "evolve"],
+    "cardText": "Evolve (1): Evolve this.\nFanfare Select a Princess Connect follower on your field and refresh it. It can't attack enemies this turn.",
+    "evolvesTo": "Shiori Evolved",
+    "evolveCost": 1,
+    "abilities": [
+      { "timing": "evolve", "cost": { "pp": 1 }, "effect": { "op": "noop" } },
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "refreshFollower",
+              "targets": { "type": "selfFollower", "trait": "Princess Connect", "count": 1 }
+            },
+            { "op": "cannotAttack", "targets": { "type": "lastSelected" } }
+          ]
+        }
+      }
+    ]
+  },
+  "Shiori Evolved": {
+    "cardNo": "CP04-006EN",
+    "name": "Shiori Evolved",
+    "class": "forest",
+    "cardType": "follower",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 3,
+    "defense": 3,
+    "traits": ["Princess Connect", "Elizabeth Park"],
+    "keywords": ["onEvolve"],
+    "cardText": "[Union Burst] On Evolve - Deal 2 damage to each enemy leader.",
+    "evolvesFrom": "Shiori",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "unionBurst": true,
+        "effect": { "op": "dealDamage", "amount": 2, "targets": { "type": "enemyLeader" } }
+      }
+    ]
+  },
   "Aurora Healing": {
     "cardNo": "CP04-018EN",
     "name": "Aurora Healing",
@@ -513,6 +566,7 @@
     "abilities": [
       {
         "timing": "spell",
+        "quick": true,
         "effect": {
           "op": "sequence",
           "steps": [
@@ -717,6 +771,7 @@
     "abilities": [
       {
         "timing": "spell",
+        "quick": true,
         "effect": {
           "op": "sequence",
           "steps": [

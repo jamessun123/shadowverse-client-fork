@@ -20,6 +20,13 @@ const actionLog_1 = require("./actionLog");
 function fail(state, error) {
     return { ok: false, state, error };
 }
+function isQuickCard(def) {
+    if (!def)
+        return false;
+    if (def.keywords?.includes("quick"))
+        return true;
+    return Boolean(def.abilities?.some((a) => a.quick));
+}
 function hasPlayableQuickCards(state, player) {
     const pp = state.players[player].pp;
     const quickZones = [
@@ -28,7 +35,7 @@ function hasPlayableQuickCards(state, player) {
     ];
     for (const { card, fromZone } of quickZones) {
         const def = (0, registry_1.getCardDef)(card.name);
-        if (!def?.abilities?.some((a) => a.quick))
+        if (!isQuickCard(def))
             continue;
         const cost = (0, queries_1.getEffectivePlayCost)(card, card.name, state, player, fromZone);
         if (pp >= cost && (0, resolver_1.canPlayCardFromZones)(state, player, card.name))
@@ -976,7 +983,7 @@ function playCard(state, player, handInstanceId, targets, fromQuickWindow = fals
     if (def.cardType === "crest") {
         return fail(state, "Crests cannot be played");
     }
-    if (inQuickWindow && !def.abilities?.some((a) => a.quick)) {
+    if (inQuickWindow && !isQuickCard(def)) {
         return fail(state, "Not a quick card");
     }
     if (def.cardType === "spell" && !(0, resolver_1.canPlayCardFromZones)(state, player, found.card.name)) {

@@ -68,6 +68,12 @@ function fail(state: GameState, error: string): ActionResult {
   return { ok: false, state, error };
 }
 
+function isQuickCard(def: ReturnType<typeof getCardDef> | undefined): boolean {
+  if (!def) return false;
+  if (def.keywords?.includes("quick")) return true;
+  return Boolean(def.abilities?.some((a) => a.quick));
+}
+
 function hasPlayableQuickCards(state: GameState, player: PlayerId): boolean {
   const pp = state.players[player].pp;
   const quickZones: Array<{
@@ -79,7 +85,7 @@ function hasPlayableQuickCards(state: GameState, player: PlayerId): boolean {
   ];
   for (const { card, fromZone } of quickZones) {
     const def = getCardDef(card.name);
-    if (!def?.abilities?.some((a) => a.quick)) continue;
+    if (!isQuickCard(def)) continue;
     const cost = getEffectivePlayCost(card, card.name, state, player, fromZone);
     if (pp >= cost && canPlayCardFromZones(state, player, card.name)) return true;
   }
@@ -1061,7 +1067,7 @@ function playCard(
     return fail(state, "Crests cannot be played");
   }
 
-  if (inQuickWindow && !def.abilities?.some((a) => a.quick)) {
+  if (inQuickWindow && !isQuickCard(def)) {
     return fail(state, "Not a quick card");
   }
 
