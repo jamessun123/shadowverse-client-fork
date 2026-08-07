@@ -70,18 +70,21 @@ function removeFromField(state, instanceId) {
     if (!found || found.zone !== "field")
         return null;
     let next = structuredClone(state);
-    const p = next.players[found.player];
+    const player = found.player;
+    let p = next.players[player];
     const idx = p.zones.field.findIndex((c) => c.instanceId === instanceId);
     if (idx < 0)
         return null;
     const [card] = p.zones.field.splice(idx, 1);
     // Host leaving: dump equipment first (while still tracked on the card).
+    // moveCard clones state, so re-bind `p` after each call before placing the host.
     if (card.equippedInstanceIds?.length) {
         const equipIds = [...card.equippedInstanceIds];
         card.equippedInstanceIds = [];
         for (const eqId of equipIds) {
-            next = moveCard(next, eqId, "cemetery", found.player);
+            next = moveCard(next, eqId, "cemetery", player);
         }
+        p = next.players[player];
     }
     if (card.equippedToInstanceId) {
         const host = (0, queries_1.findInstance)(next, card.equippedToInstanceId);
@@ -96,7 +99,7 @@ function removeFromField(state, instanceId) {
     }
     (0, card_reset_1.resetCardInstanceState)(card);
     (0, tokens_1.placeLeavingPlay)(p.zones, card, "cemetery");
-    return { state: next, card, player: found.player };
+    return { state: next, card, player };
 }
 function destroyFollower(state, instanceId) {
     const removed = removeFromField(state, instanceId);
