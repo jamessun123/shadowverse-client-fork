@@ -8,6 +8,7 @@ exports.canChooseOptionResolve = canChooseOptionResolve;
 exports.canEffectResolve = canEffectResolve;
 exports.canPlayCardFromZones = canPlayCardFromZones;
 exports.resolveSpell = resolveSpell;
+const crests_1 = require("../cards/crests");
 const registry_1 = require("../cards/registry");
 const reprints_1 = require("../cards/reprints");
 const tokens_1 = require("../cards/tokens");
@@ -449,7 +450,12 @@ function buryDeckCards(state, player, instanceIds) {
     }
     return next;
 }
-function moveZoneCardTo(state, player, instanceId, fromZone, to) {
+function moveZoneCardTo(state, player, instanceId, fromZone, to, 
+/**
+ * Full-deck searches shuffle afterwards; "look at the top N" effects must not,
+ * since the cards below the looked-at ones keep their order.
+ */
+shuffleDeckAfter = true) {
     let next = structuredClone(state);
     const p = next.players[player];
     const list = p.zones[fromZone];
@@ -461,7 +467,7 @@ function moveZoneCardTo(state, player, instanceId, fromZone, to) {
         p.zones.hand.push(card);
     }
     else if (to === "exArea") {
-        if (p.zones.exArea.length >= p.exLimit) {
+        if (p.zones.exArea.length >= p.exLimit || (0, crests_1.crestAlreadyInExArea)(next, player, card.name)) {
             // Restore original deck order — do not orphan or shuffle on a failed move.
             list.splice(idx, 0, card);
             return state;
@@ -497,7 +503,7 @@ function moveZoneCardTo(state, player, instanceId, fromZone, to) {
     else {
         list.push(card);
     }
-    if (fromZone === "deck")
+    if (fromZone === "deck" && shuffleDeckAfter)
         return (0, zones_1.shuffleDeck)(next, player);
     return next;
 }
@@ -819,7 +825,10 @@ function resolveEffect(state, effect, player, options) {
                 const tokenKey = effect.tokenName ?? effect.tokenCardNo;
                 if (!tokenKey)
                     break;
-                const token = (0, factory_1.createCardInstance)((0, registry_1.resolveTokenName)(tokenKey), player, player);
+                const tokenName = (0, registry_1.resolveTokenName)(tokenKey);
+                if (effect.zone === "exArea" && (0, crests_1.crestAlreadyInExArea)(next, player, tokenName))
+                    break;
+                const token = (0, factory_1.createCardInstance)(tokenName, player, player);
                 if (!(0, registry_1.getCardDef)(token.name))
                     break;
                 zone.push(token);
@@ -861,10 +870,10 @@ function resolveEffect(state, effect, player, options) {
         }
         case "if":
             if ((0, conditions_1.evalCondition)(next, player, effect.condition)) {
-                next = resolveEffect(next, effect.then, player);
+                next = resolveEffect(next, effect.then, player, options);
             }
             else if (effect.else) {
-                next = resolveEffect(next, effect.else, player);
+                next = resolveEffect(next, effect.else, player, options);
             }
             break;
         case "noop":
@@ -1439,6 +1448,8 @@ function resolveEffect(state, effect, player, options) {
             }
             if (fromZone === null || idx < 0)
                 break;
+            if ((0, crests_1.crestAlreadyInExArea)(next, player, p.zones[fromZone][idx].name))
+                break;
             const [card] = p.zones[fromZone].splice(idx, 1);
             p.zones.exArea.push(card);
             (0, confirmation_1.onCardEntersExArea)(next, card.instanceId, player);
@@ -1784,14 +1795,17 @@ function resolveEffect(state, effect, player, options) {
     return (0, confirmation_2.runConfirmationTiming)(next);
 }
 /**
- * Whether a choose-modal option should be offered. Pure if-then options (no else)
- * are gated on the condition so text like "if you've activated 2 other UBs…"
- * does not appear as a selectable no-op.
+ * Whether a choose-modal option should be offered. If-then options whose else is
+ * missing or a noop are gated on the condition (and the then-branch resolving),
+ * so modes like Croce's X=N / Ameth's "2 other UBs" are not selectable no-ops.
  */
 function canChooseOptionResolve(state, player, effect) {
-    if (effect.op === "if" && !effect.else) {
-        return ((0, conditions_1.evalCondition)(state, player, effect.condition) &&
-            canEffectResolve(state, player, effect.then));
+    if (effect.op === "if") {
+        const elseIsNoop = !effect.else || effect.else.op === "noop";
+        if (elseIsNoop) {
+            return ((0, conditions_1.evalCondition)(state, player, effect.condition) &&
+                canEffectResolve(state, player, effect.then));
+        }
     }
     return canEffectResolve(state, player, effect);
 }

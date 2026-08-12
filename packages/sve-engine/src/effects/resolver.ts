@@ -1,3 +1,4 @@
+import { crestAlreadyInExArea } from "../cards/crests";
 import { getCardDef, resolveTokenName } from "../cards/registry";
 import { normalizeIdentityName } from "../cards/reprints";
 import { placeLeavingPlay } from "../cards/tokens";
@@ -650,6 +651,12 @@ export function moveZoneCardTo(
 
   to: "hand" | "exArea" | "field" | "cemetery",
 
+  /**
+   * Full-deck searches shuffle afterwards; "look at the top N" effects must not,
+   * since the cards below the looked-at ones keep their order.
+   */
+  shuffleDeckAfter = true,
+
 ): GameState {
 
   let next = structuredClone(state);
@@ -670,7 +677,7 @@ export function moveZoneCardTo(
 
   } else if (to === "exArea") {
 
-    if (p.zones.exArea.length >= p.exLimit) {
+    if (p.zones.exArea.length >= p.exLimit || crestAlreadyInExArea(next, player, card.name)) {
       // Restore original deck order — do not orphan or shuffle on a failed move.
       list.splice(idx, 0, card);
       return state;
@@ -711,7 +718,7 @@ export function moveZoneCardTo(
 
   }
 
-  if (fromZone === "deck") return shuffleDeck(next, player);
+  if (fromZone === "deck" && shuffleDeckAfter) return shuffleDeck(next, player);
 
   return next;
 
@@ -1153,7 +1160,9 @@ export function resolveEffect(
       for (let i = 0; i < effect.count && hasRoom(); i++) {
         const tokenKey = effect.tokenName ?? effect.tokenCardNo;
         if (!tokenKey) break;
-        const token = createCardInstance(resolveTokenName(tokenKey), player, player);
+        const tokenName = resolveTokenName(tokenKey);
+        if (effect.zone === "exArea" && crestAlreadyInExArea(next, player, tokenName)) break;
+        const token = createCardInstance(tokenName, player, player);
         if (!getCardDef(token.name)) break;
         zone.push(token);
 
@@ -1221,11 +1230,11 @@ export function resolveEffect(
 
       if (evalCondition(next, player, effect.condition)) {
 
-        next = resolveEffect(next, effect.then, player);
+        next = resolveEffect(next, effect.then, player, options);
 
       } else if (effect.else) {
 
-        next = resolveEffect(next, effect.else, player);
+        next = resolveEffect(next, effect.else, player, options);
 
       }
 
@@ -2073,6 +2082,8 @@ export function resolveEffect(
 
       if (fromZone === null || idx < 0) break;
 
+      if (crestAlreadyInExArea(next, player, p.zones[fromZone][idx].name)) break;
+
       const [card] = p.zones[fromZone].splice(idx, 1);
 
       p.zones.exArea.push(card);
@@ -2549,20 +2560,23 @@ export function resolveEffect(
 
 
 /**
- * Whether a choose-modal option should be offered. Pure if-then options (no else)
- * are gated on the condition so text like "if you've activated 2 other UBs…"
- * does not appear as a selectable no-op.
+ * Whether a choose-modal option should be offered. If-then options whose else is
+ * missing or a noop are gated on the condition (and the then-branch resolving),
+ * so modes like Croce's X=N / Ameth's "2 other UBs" are not selectable no-ops.
  */
 export function canChooseOptionResolve(
   state: GameState,
   player: PlayerId,
   effect: Effect,
 ): boolean {
-  if (effect.op === "if" && !effect.else) {
-    return (
-      evalCondition(state, player, effect.condition) &&
-      canEffectResolve(state, player, effect.then)
-    );
+  if (effect.op === "if") {
+    const elseIsNoop = !effect.else || effect.else.op === "noop";
+    if (elseIsNoop) {
+      return (
+        evalCondition(state, player, effect.condition) &&
+        canEffectResolve(state, player, effect.then)
+      );
+    }
   }
   return canEffectResolve(state, player, effect);
 }

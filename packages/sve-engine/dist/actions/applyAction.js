@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.applyAction = applyAction;
 exports.advanceCombatIfNeeded = advanceCombatIfNeeded;
+const crests_1 = require("../cards/crests");
 const registry_1 = require("../cards/registry");
 const reprints_1 = require("../cards/reprints");
 const tokens_1 = require("../cards/tokens");
@@ -10,6 +11,7 @@ const setup_1 = require("../phases/setup");
 const confirmation_1 = require("../rules/confirmation");
 const effect_utils_1 = require("../rules/effect-utils");
 const reveal_1 = require("../state/reveal");
+const trigger_labels_1 = require("../rules/trigger-labels");
 const trigger_queue_1 = require("../rules/trigger-queue");
 const union_burst_1 = require("../rules/union-burst");
 const conditions_1 = require("../state/conditions");
@@ -340,6 +342,8 @@ function handleChoiceResponse(state, player, payload) {
             lastDiscardedCardName: prev?.lastDiscardedCardName,
             lastSelectedCardName: prev?.lastSelectedCardName,
             engagedAsCostCount: prev?.engagedAsCostCount,
+            pendingUnionBurst: prev?.pendingUnionBurst,
+            resolvingUnionBurstSourceId: prev?.resolvingUnionBurstSourceId,
             deferTriggers: true,
         };
         // Defer confirmation so multi-step spells (e.g. Disdainful Rending) finish
@@ -707,7 +711,7 @@ function handleChoiceResponse(state, player, payload) {
             next = (0, resolver_1.buryDeckCards)(next, player, [instanceId]);
         }
         else {
-            next = (0, resolver_1.moveZoneCardTo)(next, player, instanceId, "deck", choice.to);
+            next = (0, resolver_1.moveZoneCardTo)(next, player, instanceId, "deck", choice.to, false);
         }
         if (choice.to === "exArea") {
             const moved = (0, queries_1.findInstance)(next, instanceId);
@@ -798,8 +802,16 @@ function handleChoiceResponse(state, player, payload) {
         });
         next.resolutionContext = {
             sourceInstanceId: next.resolutionContext?.sourceInstanceId,
+            resumeOwnerInstanceId: next.resolutionContext?.resumeOwnerInstanceId,
             effectStack: [],
             resumeAfterChoice: effects,
+            pendingUnionBurst: next.resolutionContext?.pendingUnionBurst,
+            resolvingUnionBurstSourceId: next.resolutionContext?.resolvingUnionBurstSourceId,
+            buriedCosts: next.resolutionContext?.buriedCosts,
+            lastDiscardedCardName: next.resolutionContext?.lastDiscardedCardName,
+            lastSelectedCardName: next.resolutionContext?.lastSelectedCardName,
+            lastSelectedTargetId: next.resolutionContext?.lastSelectedTargetId,
+            engagedAsCostCount: next.resolutionContext?.engagedAsCostCount,
             deferTriggers: true,
         };
         return ok(finishChoiceResolution(next, player));
@@ -837,6 +849,8 @@ function playCardForFree(state, player, instanceId) {
     (0, queries_1.consumeGrantedPlayCostReductions)(next, player, found.card.name);
     if (def.cardType === "crest") {
         if (p.zones.exArea.length >= p.exLimit)
+            return state;
+        if ((0, crests_1.crestAlreadyInExArea)(next, player, found.card.name, instanceId))
             return state;
         next = (0, zones_1.moveCard)(next, instanceId, "exArea", player);
         next.resolutionContext = {
@@ -1313,50 +1327,30 @@ function evolve(state, player, fieldInstanceId, evolveDeckInstanceId, useSuperEv
     const onSEAbs = fieldOnNext.card.superEvolved
         ? (evoDef?.abilities?.filter((a) => a.timing === "onSuperEvolve") ?? [])
         : [];
-    if (fieldOnNext.card.superEvolved && onEvolveAbs.length > 0 && onSEAbs.length > 0) {
-        next.pendingChoices = (0, effect_utils_1.withChoiceContext)(next, {
-            type: "chooseMultiple",
-            player,
-            reasonLabel: "Choose the order of Evolve and Super Evolve effects",
-            options: [
-                { index: 0, label: "On Evolve", effect: onEvolveAbs[0].effect },
-                { index: 1, label: "On Super Evolve", effect: onSEAbs[0].effect },
-            ],
-            min: 2,
-            max: 2,
-        });
-        next.resolutionContext = {
+    // Queue as confirmation triggers so Union Burst recording / cross-card watchers
+    // (Eris Storm, Yuni spell discount) run through the same path as fanfares.
+    const evoCardNo = evoFound.card.name;
+    for (const [idx, ability] of onEvolveAbs.entries()) {
+        next.pendingTriggers.push({
+            id: `onEvolve_${fieldInstanceId}_${idx}_${next.pendingTriggers.length}`,
+            controller: player,
             sourceInstanceId: fieldInstanceId,
-            effectStack: [],
-            resumeAfterChoice: [],
-        };
-        next = (0, confirmation_1.runConfirmationTiming)(next);
-        return ok(next);
+            ability,
+            timing: "onEvolve",
+            label: ability.label ?? (0, trigger_labels_1.describeAbility)(evoCardNo, ability),
+            abilityKey: `onEvolve:${idx}`,
+        });
     }
-    const evolveEffects = [
-        ...onEvolveAbs.map((a) => a.effect),
-        ...onSEAbs.map((a) => a.effect),
-    ];
-    for (let i = 0; i < evolveEffects.length; i++) {
-        next.resolutionContext = (0, effect_utils_1.contextForTriggerResolution)(next, fieldInstanceId, evolveEffects[i]);
-        next = (0, resolver_1.resolveEffect)(next, evolveEffects[i], player);
-        if ((0, effect_utils_1.shouldClearResolutionContext)(next)) {
-            next.resolutionContext = null;
-        }
-        if (next.pendingChoices) {
-            const tail = evolveEffects.slice(i + 1);
-            if (tail.length > 0) {
-                next.resolutionContext = {
-                    sourceInstanceId: fieldInstanceId,
-                    effectStack: [],
-                    resumeAfterChoice: [
-                        ...tail,
-                        ...(next.resolutionContext?.resumeAfterChoice ?? []),
-                    ],
-                };
-            }
-            break;
-        }
+    for (const [idx, ability] of onSEAbs.entries()) {
+        next.pendingTriggers.push({
+            id: `onSuperEvolve_${fieldInstanceId}_${idx}_${next.pendingTriggers.length}`,
+            controller: player,
+            sourceInstanceId: fieldInstanceId,
+            ability,
+            timing: "onSuperEvolve",
+            label: ability.label ?? (0, trigger_labels_1.describeAbility)(evoCardNo, ability),
+            abilityKey: `onSuperEvolve:${idx}`,
+        });
     }
     next = (0, confirmation_1.runConfirmationTiming)(next);
     return ok(next);

@@ -85,12 +85,13 @@ function loadDecks(state, decks) {
 function applyMulligan(state, player, redraw) {
     let next = structuredClone(state);
     if (redraw) {
-        const hand = next.players[player].zones.hand.splice(0);
-        next.players[player].zones.deck.push(...hand);
-        next = (0, zones_1.shuffleDeck)(next, player);
-        for (let i = 0; i < 4; i++) {
+        const returned = next.players[player].zones.hand.splice(0);
+        // The new hand comes off the top before the old cards go under, so a redraw
+        // can never hand back the cards it just returned.
+        for (let i = 0; i < returned.length; i++) {
             next = (0, zones_1.drawCard)(next, player);
         }
+        next.players[player].zones.deck.push(...returned);
     }
     next.players[player].flags.mulliganDone = true;
     next.eventLog.push({ type: "mulligan", player, data: { redraw } });
