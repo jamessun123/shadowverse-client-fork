@@ -1644,8 +1644,7 @@
                     { "op": "removePersistentCounter", "key": "battery", "amount": 1 },
                     { "op": "tutorFromDeck", "filter": { "trait": "Gio Teogonia", "cardType": "follower", "maxCost": 1, "excludeIdentityName": "Croce" }, "to": "field" }
                   ]
-                },
-                "else": { "op": "noop" }
+                }
               }
             },
             {
@@ -1660,8 +1659,7 @@
                     { "op": "removePersistentCounter", "key": "battery", "amount": 2 },
                     { "op": "tutorFromDeck", "filter": { "trait": "Gio Teogonia", "cardType": "follower", "maxCost": 2, "excludeIdentityName": "Croce" }, "to": "field" }
                   ]
-                },
-                "else": { "op": "noop" }
+                }
               }
             },
             {
@@ -1676,8 +1674,7 @@
                     { "op": "removePersistentCounter", "key": "battery", "amount": 3 },
                     { "op": "tutorFromDeck", "filter": { "trait": "Gio Teogonia", "cardType": "follower", "maxCost": 3, "excludeIdentityName": "Croce" }, "to": "field" }
                   ]
-                },
-                "else": { "op": "noop" }
+                }
               }
             },
             {
@@ -1692,8 +1689,7 @@
                     { "op": "removePersistentCounter", "key": "battery", "amount": 4 },
                     { "op": "tutorFromDeck", "filter": { "trait": "Gio Teogonia", "cardType": "follower", "maxCost": 4, "excludeIdentityName": "Croce" }, "to": "field" }
                   ]
-                },
-                "else": { "op": "noop" }
+                }
               }
             },
             {
@@ -1708,8 +1704,7 @@
                     { "op": "removePersistentCounter", "key": "battery", "amount": 5 },
                     { "op": "tutorFromDeck", "filter": { "trait": "Gio Teogonia", "cardType": "follower", "maxCost": 5, "excludeIdentityName": "Croce" }, "to": "field" }
                   ]
-                },
-                "else": { "op": "noop" }
+                }
               }
             },
             {
@@ -1724,8 +1719,7 @@
                     { "op": "removePersistentCounter", "key": "battery", "amount": 6 },
                     { "op": "tutorFromDeck", "filter": { "trait": "Gio Teogonia", "cardType": "follower", "maxCost": 6, "excludeIdentityName": "Croce" }, "to": "field" }
                   ]
-                },
-                "else": { "op": "noop" }
+                }
               }
             },
             {
@@ -1740,8 +1734,7 @@
                     { "op": "removePersistentCounter", "key": "battery", "amount": 7 },
                     { "op": "tutorFromDeck", "filter": { "trait": "Gio Teogonia", "cardType": "follower", "maxCost": 7, "excludeIdentityName": "Croce" }, "to": "field" }
                   ]
-                },
-                "else": { "op": "noop" }
+                }
               }
             }
           ]

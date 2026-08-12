@@ -220,12 +220,9 @@ export function evalCondition(state: GameState, player: PlayerId, condition: Con
             : ids.length;
           return otherCount >= condition.count;
         }
-        // Numeric fallback (no id list yet): deferred activations aren't in the
-        // count; if somehow already counted, drop one while resolving.
-        const n = flags.unionBurstsActivatedThisTurn ?? 0;
-        if (state.resolutionContext?.pendingUnionBurst) return n >= condition.count;
-        if (excludeId && n > 0) return Math.max(0, n - 1) >= condition.count;
-        return n >= condition.count;
+        // Numeric flag only counts completed UBs; a deferred current activation is
+        // not included, so do not subtract an extra "self".
+        return (flags.unionBurstsActivatedThisTurn ?? 0) >= condition.count;
       }
       const count = ids.length > 0 ? ids.length : (flags.unionBurstsActivatedThisTurn ?? 0);
       return count >= condition.count;

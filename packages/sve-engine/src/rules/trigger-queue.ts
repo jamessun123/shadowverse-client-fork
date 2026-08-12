@@ -541,8 +541,14 @@ export function queueOnUnionBurstActivated(
   activatorInstanceId: string,
   player: PlayerId,
 ): void {
+  const activator = findInstance(state, activatorInstanceId);
+  // Card text is keyed off another follower's Union Burst.
+  if (!activator || activator.zone !== "field" || !isFollowerCard(activator.card, state)) {
+    return;
+  }
   for (const fieldCard of getPlayer(state, player).zones.field) {
     if (fieldCard.instanceId === activatorInstanceId) continue;
+    if (isEquippedAttachment(fieldCard)) continue;
     if (isBoxed(fieldCard, state)) continue;
     const def = getCardDef(resolveCardNo(state, fieldCard));
     for (const [idx, ability] of (def?.abilities ?? []).entries()) {

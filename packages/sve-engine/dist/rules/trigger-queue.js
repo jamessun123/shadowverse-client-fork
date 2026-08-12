@@ -403,8 +403,15 @@ function onCardEntersExAreaTriggers(state, instanceId, player) {
 }
 /** Queue onUnionBurstActivated abilities on other ally field followers. */
 function queueOnUnionBurstActivated(state, activatorInstanceId, player) {
+    const activator = (0, queries_1.findInstance)(state, activatorInstanceId);
+    // Card text is keyed off another follower's Union Burst.
+    if (!activator || activator.zone !== "field" || !(0, queries_1.isFollowerCard)(activator.card, state)) {
+        return;
+    }
     for (const fieldCard of (0, queries_1.getPlayer)(state, player).zones.field) {
         if (fieldCard.instanceId === activatorInstanceId)
+            continue;
+        if ((0, queries_1.isEquippedAttachment)(fieldCard))
             continue;
         if ((0, passives_1.isBoxed)(fieldCard, state))
             continue;

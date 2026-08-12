@@ -1,3 +1,4 @@
+import { crestAlreadyInExArea } from "../cards/crests";
 import { isTokenCard, placeLeavingPlay } from "../cards/tokens";
 import { onCardEntersExArea, onFollowerEntersField } from "../rules/confirmation";
 import { resetCardInstanceState } from "./card-reset";
@@ -12,6 +13,12 @@ export function moveCard(
 ): GameState {
   const found = findInstance(state, instanceId);
   if (!found) return state;
+  if (
+    toZone === "exArea" &&
+    crestAlreadyInExArea(state, toPlayer, found.card.name, instanceId)
+  ) {
+    return state;
+  }
   let next = structuredClone(state);
   const fromZones = next.players[found.player].zones;
   const fromList = fromZones[found.zone as keyof typeof fromZones] as CardInstance[];

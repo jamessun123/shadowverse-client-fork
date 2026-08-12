@@ -1,3 +1,4 @@
+import { crestAlreadyInExArea } from "../cards/crests";
 import { getCardDef } from "../cards/registry";
 import { normalizeIdentityName } from "../cards/reprints";
 import { placeLeavingPlay } from "../cards/tokens";
@@ -28,6 +29,7 @@ import {
   withChoiceContext,
 } from "../rules/effect-utils";
 import { clearRevealedCards, revealCard, shouldRevealBeforeHand } from "../state/reveal";
+import { describeAbility } from "../rules/trigger-labels";
 import {
   queueLastWords,
   queueOnCardPlayed,
@@ -426,6 +428,8 @@ function handleChoiceResponse(state: GameState, player: PlayerId, payload: Recor
       lastDiscardedCardName: prev?.lastDiscardedCardName,
       lastSelectedCardName: prev?.lastSelectedCardName,
       engagedAsCostCount: prev?.engagedAsCostCount,
+      pendingUnionBurst: prev?.pendingUnionBurst,
+      resolvingUnionBurstSourceId: prev?.resolvingUnionBurstSourceId,
       deferTriggers: true,
     };
     // Defer confirmation so multi-step spells (e.g. Disdainful Rending) finish
@@ -780,7 +784,7 @@ function handleChoiceResponse(state: GameState, player: PlayerId, payload: Recor
     if (choice.to === "cemetery") {
       next = buryDeckCards(next, player, [instanceId]);
     } else {
-      next = moveZoneCardTo(next, player, instanceId, "deck", choice.to);
+      next = moveZoneCardTo(next, player, instanceId, "deck", choice.to, false);
     }
     if (choice.to === "exArea") {
       const moved = findInstance(next, instanceId);
@@ -872,8 +876,16 @@ function handleChoiceResponse(state: GameState, player: PlayerId, payload: Recor
     });
     next.resolutionContext = {
       sourceInstanceId: next.resolutionContext?.sourceInstanceId,
+      resumeOwnerInstanceId: next.resolutionContext?.resumeOwnerInstanceId,
       effectStack: [],
       resumeAfterChoice: effects,
+      pendingUnionBurst: next.resolutionContext?.pendingUnionBurst,
+      resolvingUnionBurstSourceId: next.resolutionContext?.resolvingUnionBurstSourceId,
+      buriedCosts: next.resolutionContext?.buriedCosts,
+      lastDiscardedCardName: next.resolutionContext?.lastDiscardedCardName,
+      lastSelectedCardName: next.resolutionContext?.lastSelectedCardName,
+      lastSelectedTargetId: next.resolutionContext?.lastSelectedTargetId,
+      engagedAsCostCount: next.resolutionContext?.engagedAsCostCount,
       deferTriggers: true,
     };
     return ok(finishChoiceResolution(next, player));
@@ -920,6 +932,7 @@ function playCardForFree(
 
   if (def.cardType === "crest") {
     if (p.zones.exArea.length >= p.exLimit) return state;
+    if (crestAlreadyInExArea(next, player, found.card.name, instanceId)) return state;
     next = moveCard(next, instanceId, "exArea", player);
     next.resolutionContext = {
       sourceInstanceId: prev?.sourceInstanceId,
@@ -1448,51 +1461,30 @@ function evolve(
     ? (evoDef?.abilities?.filter((a) => a.timing === "onSuperEvolve") ?? [])
     : [];
 
-  if (fieldOnNext.card.superEvolved && onEvolveAbs.length > 0 && onSEAbs.length > 0) {
-    next.pendingChoices = withChoiceContext(next, {
-      type: "chooseMultiple",
-      player,
-      reasonLabel: "Choose the order of Evolve and Super Evolve effects",
-      options: [
-        { index: 0, label: "On Evolve", effect: onEvolveAbs[0].effect },
-        { index: 1, label: "On Super Evolve", effect: onSEAbs[0].effect },
-      ],
-      min: 2,
-      max: 2,
-    });
-    next.resolutionContext = {
+  // Queue as confirmation triggers so Union Burst recording / cross-card watchers
+  // (Eris Storm, Yuni spell discount) run through the same path as fanfares.
+  const evoCardNo = evoFound.card.name;
+  for (const [idx, ability] of onEvolveAbs.entries()) {
+    next.pendingTriggers.push({
+      id: `onEvolve_${fieldInstanceId}_${idx}_${next.pendingTriggers.length}`,
+      controller: player,
       sourceInstanceId: fieldInstanceId,
-      effectStack: [],
-      resumeAfterChoice: [],
-    };
-    next = runConfirmationTiming(next);
-    return ok(next);
+      ability,
+      timing: "onEvolve",
+      label: ability.label ?? describeAbility(evoCardNo, ability),
+      abilityKey: `onEvolve:${idx}`,
+    });
   }
-
-  const evolveEffects: Effect[] = [
-    ...onEvolveAbs.map((a) => a.effect),
-    ...onSEAbs.map((a) => a.effect),
-  ];
-  for (let i = 0; i < evolveEffects.length; i++) {
-    next.resolutionContext = contextForTriggerResolution(next, fieldInstanceId, evolveEffects[i]);
-    next = resolveEffect(next, evolveEffects[i], player);
-    if (shouldClearResolutionContext(next)) {
-      next.resolutionContext = null;
-    }
-    if (next.pendingChoices) {
-      const tail = evolveEffects.slice(i + 1);
-      if (tail.length > 0) {
-        next.resolutionContext = {
-          sourceInstanceId: fieldInstanceId,
-          effectStack: [],
-          resumeAfterChoice: [
-            ...tail,
-            ...(next.resolutionContext?.resumeAfterChoice ?? []),
-          ],
-        };
-      }
-      break;
-    }
+  for (const [idx, ability] of onSEAbs.entries()) {
+    next.pendingTriggers.push({
+      id: `onSuperEvolve_${fieldInstanceId}_${idx}_${next.pendingTriggers.length}`,
+      controller: player,
+      sourceInstanceId: fieldInstanceId,
+      ability,
+      timing: "onSuperEvolve",
+      label: ability.label ?? describeAbility(evoCardNo, ability),
+      abilityKey: `onSuperEvolve:${idx}`,
+    });
   }
 
   next = runConfirmationTiming(next);

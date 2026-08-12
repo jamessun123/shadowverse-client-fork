@@ -38,15 +38,46 @@ const reprints_1 = require("../cards/reprints");
 const conditions_1 = require("./conditions");
 const passives_1 = require("./passives");
 const effect_utils_1 = require("../rules/effect-utils");
-function canActivateEffectResolve(state, player, effect) {
+function canActivateEffectResolve(state, player, effect, sourceInstanceId) {
+    const probe = sourceInstanceId != null
+        ? {
+            ...state,
+            resolutionContext: {
+                sourceInstanceId,
+                effectStack: state.resolutionContext?.effectStack ?? [],
+                resumeAfterChoice: state.resolutionContext?.resumeAfterChoice,
+                pendingUnionBurst: state.resolutionContext?.pendingUnionBurst,
+                resolvingUnionBurstSourceId: state.resolutionContext?.resolvingUnionBurstSourceId,
+            },
+        }
+        : state;
     switch (effect.op) {
         case "sequence":
-            return effect.steps.every((step) => canActivateEffectResolve(state, player, step));
-        case "if":
-            return canActivateEffectResolve(state, player, effect.then);
+            return effect.steps.every((step) => canActivateEffectResolve(probe, player, step, sourceInstanceId));
+        case "if": {
+            // Treat missing else / noop else as a gate (same as choose-option filtering).
+            const elseIsNoop = !effect.else || effect.else.op === "noop";
+            if (elseIsNoop) {
+                return ((0, conditions_1.evalCondition)(probe, player, effect.condition) &&
+                    canActivateEffectResolve(probe, player, effect.then, sourceInstanceId));
+            }
+            if (!(0, conditions_1.evalCondition)(probe, player, effect.condition)) {
+                return canActivateEffectResolve(probe, player, effect.else, sourceInstanceId);
+            }
+            return canActivateEffectResolve(probe, player, effect.then, sourceInstanceId);
+        }
+        case "choose":
+        case "chooseMultiple":
+            return effect.options.some((o) => (!o.additionalPpCost || getPlayer(probe, player).pp >= o.additionalPpCost) &&
+                canActivateEffectResolve(probe, player, o.effect, sourceInstanceId));
+        case "tutorFromDeck": {
+            if (effect.optional)
+                return true;
+            return getPlayer(probe, player).zones.deck.some((c) => (0, conditions_1.cardMatchesFilter)(c.name, effect.filter, probe));
+        }
         case "discardFromHand": {
             const need = effect.count ?? 1;
-            return getPlayer(state, player).zones.hand.filter((c) => (0, conditions_1.cardMatchesFilter)(c.name, effect.filter)).length >= need;
+            return (getPlayer(probe, player).zones.hand.filter((c) => (0, conditions_1.cardMatchesFilter)(c.name, effect.filter)).length >= need);
         }
         default:
             return true;
@@ -447,7 +478,7 @@ function getActivatedAbilities(state, card, player, zone) {
             continue;
         if (zone === "field" && a.cost?.engage && card.engaged)
             continue;
-        if (!canActivateEffectResolve(state, player, a.effect))
+        if (!canActivateEffectResolve(state, player, a.effect, card.instanceId))
             continue;
         results.push({ ability: a, key });
     }
@@ -476,7 +507,7 @@ function getActivatedAbilities(state, card, player, zone) {
                     continue;
                 if (a.cost?.engage && card.engaged)
                     continue;
-                if (!canActivateEffectResolve(state, player, a.effect))
+                if (!canActivateEffectResolve(state, player, a.effect, card.instanceId))
                     continue;
                 results.push({ ability: a, key });
             }

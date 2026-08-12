@@ -5,6 +5,7 @@ exports.removeFromField = removeFromField;
 exports.destroyFollower = destroyFollower;
 exports.drawCard = drawCard;
 exports.shuffleDeck = shuffleDeck;
+const crests_1 = require("../cards/crests");
 const tokens_1 = require("../cards/tokens");
 const confirmation_1 = require("../rules/confirmation");
 const card_reset_1 = require("./card-reset");
@@ -13,6 +14,10 @@ function moveCard(state, instanceId, toZone, toPlayer) {
     const found = (0, queries_1.findInstance)(state, instanceId);
     if (!found)
         return state;
+    if (toZone === "exArea" &&
+        (0, crests_1.crestAlreadyInExArea)(state, toPlayer, found.card.name, instanceId)) {
+        return state;
+    }
     let next = structuredClone(state);
     const fromZones = next.players[found.player].zones;
     const fromList = fromZones[found.zone];
