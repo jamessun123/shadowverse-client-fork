@@ -879,5 +879,192 @@
         }
       }
     ]
+  },
+  "Bazooka Goblins": {
+    "name": "Bazooka Goblins",
+    "cardNo": "BP06-115EN",
+    "class": "neutral",
+    "printingType": "base",
+    "cost": 4,
+    "attack": 3,
+    "defense": 3,
+    "cardType": "follower",
+    "traits": ["Goblinoid"],
+    "keywords": ["evolve", "fanfare"],
+    "evolveCost": 2,
+    "evolvesTo": "Bazooka Goblins Evolved",
+    "cardText": "[evolve] [cost02]: Evolve this follower. [fanfare] Select an enemy card that costs 2 or less on the field and destroy it.",
+    "abilities": [
+      {
+        "timing": "evolve",
+        "cost": { "pp": 2 },
+        "effect": { "op": "noop" }
+      },
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "destroy",
+          "targets": { "type": "enemyFieldCard", "count": 1, "maxCost": 2 }
+        }
+      }
+    ]
+  },
+  "Bazooka Goblins Evolved": {
+    "name": "Bazooka Goblins Evolved",
+    "cardNo": "BP06-116EN",
+    "class": "neutral",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 5,
+    "defense": 5,
+    "cardType": "follower",
+    "traits": ["Goblinoid"],
+    "keywords": ["onEvolve"],
+    "evolvesFrom": "Bazooka Goblins",
+    "cardText": "On Evolve: Select an enemy card that costs 2 or less on the field and destroy it.",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "effect": {
+          "op": "destroy",
+          "targets": { "type": "enemyFieldCard", "count": 1, "maxCost": 2 }
+        }
+      }
+    ]
+  },
+  "Chain Lightning": {
+    "name": "Chain Lightning",
+    "cardNo": "BP12-050EN",
+    "class": "rune",
+    "printingType": "base",
+    "cost": 3,
+    "cardType": "spell",
+    "traits": ["Mage"],
+    "keywords": [],
+    "cardText": "At the start of your end phase, if this card is in your EX area, bury it. ---------- Deal 4 damage to each enemy leader. If there are at least 2 Mage followers on your field, put this card into its owner's EX area.",
+    "abilities": [
+      {
+        "timing": "startOfEnd",
+        "label": "Chain Lightning: bury if still in EX",
+        "effect": { "op": "burySelfIfInExArea" }
+      },
+      {
+        "timing": "spell",
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            {
+              "op": "dealDamage",
+              "amount": 4,
+              "targets": { "type": "enemyLeader" }
+            },
+            {
+              "op": "if",
+              "condition": { "type": "fieldTraitMin", "trait": "Mage", "count": 2 },
+              "then": { "op": "moveSourceToExArea" }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "Merlin": {
+    "name": "Merlin",
+    "cardNo": "BP01-052EN",
+    "class": "rune",
+    "printingType": "base",
+    "cost": 3,
+    "attack": 3,
+    "defense": 2,
+    "cardType": "follower",
+    "traits": ["Mage"],
+    "keywords": ["evolve", "fanfare"],
+    "evolveCost": 2,
+    "evolvesTo": "Merlin Evolved",
+    "cardText": "[evolve] [cost02]: Evolve this follower. [fanfare] Search your deck for a spell, reveal it, and add it to your hand.",
+    "abilities": [
+      {
+        "timing": "evolve",
+        "cost": { "pp": 2 },
+        "effect": { "op": "noop" }
+      },
+      {
+        "timing": "fanfare",
+        "effect": {
+          "op": "tutorFromDeck",
+          "filter": { "cardType": "spell" },
+          "to": "hand",
+          "reveal": true
+        }
+      }
+    ]
+  },
+  "Merlin Evolved": {
+    "name": "Merlin Evolved",
+    "cardNo": "BP01-053EN",
+    "class": "rune",
+    "printingType": "evolved",
+    "specialType": "evolved",
+    "cost": 0,
+    "attack": 4,
+    "defense": 3,
+    "cardType": "follower",
+    "traits": ["Mage"],
+    "keywords": ["onEvolve"],
+    "evolvesFrom": "Merlin",
+    "cardText": "On Evolve: Select a spell that costs 3 play points or less in your cemetery and play it for 0 play points.",
+    "abilities": [
+      {
+        "timing": "onEvolve",
+        "effect": {
+          "op": "playFromCemetery",
+          "filter": { "cardType": "spell", "maxCost": 3 }
+        }
+      }
+    ]
+  },
+  "Prophetess of Creation": {
+    "name": "Prophetess of Creation",
+    "cardNo": "BP08-037EN",
+    "class": "rune",
+    "printingType": "base",
+    "cost": 10,
+    "attack": 10,
+    "defense": 10,
+    "cardType": "follower",
+    "traits": ["Mage"],
+    "keywords": ["ward", "aura", "fanfare"],
+    "cardText": "When playing this card, banish 10 cards with different base costs ranging from 1 to 10 from your cemetery: This card costs 10 less to play. ---------- Ward. Aura. This card can't be destroyed by abilities. (It can still be destroyed by ability damage.) [act] Discard this card: Draw a card. Discard a card.",
+    "abilities": [
+      {
+        "timing": "passive",
+        "condition": { "type": "cemeteryDistinctCostRange", "from": 1, "to": 10 },
+        "effect": { "op": "playCostReduction", "amount": 10 }
+      },
+      {
+        "timing": "passive",
+        "effect": { "op": "cannotBeDestroyedByAbilities" }
+      },
+      {
+        "timing": "fanfare",
+        "condition": { "type": "cemeteryDistinctCostRange", "from": 1, "to": 10 },
+        "label": "Prophetess of Creation: banish the discounted cemetery cards",
+        "effect": { "op": "banishCemeteryDistinctCosts", "from": 1, "to": 10 }
+      },
+      {
+        "timing": "activated",
+        "activateFrom": "hand",
+        "label": "Discard this: draw a card, then discard a card",
+        "cost": { "discardSelf": true },
+        "effect": {
+          "op": "sequence",
+          "steps": [
+            { "op": "draw", "count": 1 },
+            { "op": "discard", "count": 1 }
+          ]
+        }
+      }
+    ]
   }
 }

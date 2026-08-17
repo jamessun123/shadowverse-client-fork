@@ -31,6 +31,7 @@ function activateLabel(ability: AbilityDefinition): string {
     costBits.push(`fuse ${n}`);
   }
   if (ability.cost?.burySelf) costBits.push("bury this");
+  if (ability.cost?.discardSelf) costBits.push("discard this");
   const effect = describeEffect(ability.effect);
   const costSuffix = costBits.length ? ` (${costBits.join(", ")})` : "";
   return `Activate${costSuffix}: ${effect}`;

@@ -68,6 +68,24 @@ export function getMaxDamagePerHit(state: GameState, card: CardInstance, player:
   return null;
 }
 
+/**
+ * "This card can't be destroyed by abilities." Burying and lethal damage (including
+ * ability damage) still remove the card — only the destroy op is blocked.
+ */
+export function isDestroyImmuneToAbilities(
+  state: GameState,
+  card: CardInstance,
+  player: PlayerId,
+): boolean {
+  if (isBoxed(card, state)) return false;
+  for (const ability of abilitiesFor(state, card)) {
+    if (ability.timing !== "passive") continue;
+    if (ability.condition && !evalCondition(state, player, ability.condition)) continue;
+    if (ability.effect.op === "cannotBeDestroyedByAbilities") return true;
+  }
+  return false;
+}
+
 export function hasNamedFollowerOnFieldByIdentity(
   state: GameState,
   player: PlayerId,

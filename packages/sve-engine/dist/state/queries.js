@@ -476,6 +476,8 @@ function getActivatedAbilities(state, card, player, zone) {
         }
         if (a.cost?.burySelf && zone !== "field")
             continue;
+        if (a.cost?.discardSelf && zone !== "hand")
+            continue;
         if (zone === "field" && a.cost?.engage && card.engaged)
             continue;
         if (!canActivateEffectResolve(state, player, a.effect, card.instanceId))

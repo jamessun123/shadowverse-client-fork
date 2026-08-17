@@ -2507,7 +2507,7 @@ function cardImageExact(cardName) {
       return "../textures/BP08-035EN.png";
     case "Sweet-Tooth Medusa Evolved":
       return "../textures/BP08-036EN.png";
-    case "Prophetless of Creation":
+    case "Prophetess of Creation":
       return "../textures/BP08-U03EN.png";
     case "Unbodied Witch":
       return "../textures/BP08-038EN.png";

@@ -41,9 +41,11 @@ import {
   resolveCardNo,
   isFollowerCard,
 } from "../state/queries";
+import { isDestroyImmuneToAbilities } from "../state/passives";
 import { resetCardInstanceState } from "../state/card-reset";
 import { destroyFollower, drawCard, moveCard, shuffleDeck } from "../state/zones";
 import {
+  CardInstance,
   DamageAmount,
   DeckFilter,
   Effect,
@@ -83,13 +85,20 @@ function getTargetCandidates(
   selector: TargetSelector,
 ): string[] {
   const enemy = opponentOf(player);
-  const matchesExtra = (c: { name: string; instanceId: string }) => {
+  const matchesExtra = (c: CardInstance) => {
     const def = getCardDef(c.name);
     if (!def) return false;
     if ("trait" in selector && selector.trait && !def.traits?.includes(selector.trait)) {
       return false;
     }
     if ("cardType" in selector && selector.cardType && def.cardType !== selector.cardType) {
+      return false;
+    }
+    if (
+      "maxCost" in selector &&
+      selector.maxCost != null &&
+      resolveCardDefCost(resolveCardNo(state, c)) > selector.maxCost
+    ) {
       return false;
     }
     if (
@@ -110,6 +119,12 @@ function getTargetCandidates(
     case "enemyFollower":
       return getPlayer(state, enemy).zones.field
         .filter((c) => isFollowerCard(c, state))
+        .filter((c) => !hasKeyword(c, "aura", state, enemy))
+        .filter(matchesExtra)
+        .map((c) => c.instanceId);
+    case "enemyFieldCard":
+      return getPlayer(state, enemy).zones.field
+        .filter((c) => !isEquippedAttachment(c))
         .filter((c) => !hasKeyword(c, "aura", state, enemy))
         .filter(matchesExtra)
         .map((c) => c.instanceId);
@@ -1136,6 +1151,9 @@ export function resolveEffect(
         if (!found || !isFollowerCard(found.card, next)) break;
       }
 
+      const target = findInstance(next, targetId);
+      if (target && isDestroyImmuneToAbilities(next, target.card, target.player)) break;
+
       queueLastWords(next, targetId, player);
 
       next = destroyFollower(next, targetId);
@@ -2008,6 +2026,25 @@ export function resolveEffect(
 
 
 
+    case "banishCemeteryDistinctCosts": {
+
+      const p = next.players[player];
+
+      // One card per base cost, cheapest first, so a card that could cover two
+      // costs is never spent on the wrong one.
+      for (let cost = effect.from; cost <= effect.to; cost++) {
+        const idx = p.zones.cemetery.findIndex((c) => resolveCardDefCost(c.name) === cost);
+        if (idx < 0) continue;
+        const [card] = p.zones.cemetery.splice(idx, 1);
+        placeLeavingPlay(p.zones, card, "banish");
+      }
+
+      break;
+
+    }
+
+
+
     case "banishFromExArea": {
 
       const p = next.players[player];
@@ -2066,17 +2103,22 @@ export function resolveEffect(
 
       if (p.zones.exArea.length >= p.exLimit) break;
 
-      let fromZone: "cemetery" | "hand" | null = null;
+      // resolutionZone covers a spell moving itself into EX as part of its own effect.
+      let fromZone: "cemetery" | "hand" | "resolutionZone" | null = null;
 
-      let idx = p.zones.cemetery.findIndex((c) => c.instanceId === sourceId);
+      let idx = -1;
 
-      if (idx >= 0) fromZone = "cemetery";
+      for (const candidate of ["cemetery", "hand", "resolutionZone"] as const) {
 
-      if (fromZone === null) {
+        idx = p.zones[candidate].findIndex((c) => c.instanceId === sourceId);
 
-        idx = p.zones.hand.findIndex((c) => c.instanceId === sourceId);
+        if (idx >= 0) {
 
-        if (idx >= 0) fromZone = "hand";
+          fromZone = candidate;
+
+          break;
+
+        }
 
       }
 

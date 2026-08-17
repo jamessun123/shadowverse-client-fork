@@ -1620,7 +1620,7 @@ export const allCards = [
   "Godsend Stride",
 
   "Sweet-Tooth Medusa",
-  "Prophetless of Creation",
+  "Prophetess of Creation",
   "Unbodied Witch",
   "Lovely-Heart Monika",
   "Edict of Truth",
@@ -3881,7 +3881,7 @@ export const set8 = [
   "Godsend Stride",
 
   "Sweet-Tooth Medusa",
-  "Prophetless of Creation",
+  "Prophetess of Creation",
   "Unbodied Witch",
   "Lovely-Heart Monika",
   "Edict of Truth",
@@ -5921,7 +5921,7 @@ export const rune = [
   "Staff of Whirlwinds",
 
   "Sweet-Tooth Medusa",
-  "Prophetless of Creation",
+  "Prophetess of Creation",
   "Unbodied Witch",
   "Lovely-Heart Monika",
   "Edict of Truth",
