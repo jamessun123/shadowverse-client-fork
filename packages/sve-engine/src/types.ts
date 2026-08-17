@@ -106,6 +106,8 @@ export interface AbilityDefinition {
     };
     /** Remove persistent counters from the source as an activate cost. */
     removePersistentCounter?: { key: string; amount?: number };
+    /** Discard the source from hand as the cost (hand-activated abilities only). */
+    discardSelf?: boolean;
   };
   quick?: boolean;
   condition?: Condition;
@@ -156,6 +158,18 @@ export type TargetSelector =
       cardType?: CardType;
       excludeSelf?: boolean;
       /** Exclude cards whose normalized identity name equals this value. */
+      excludeIdentityName?: string;
+    }
+  /** Enemy field card (follower or amulet), optionally cost/trait-filtered. */
+  | {
+      type: "enemyFieldCard";
+      count?: number;
+      minCount?: number;
+      maxCount?: number;
+      trait?: string;
+      cardType?: CardType;
+      /** Printed play cost ceiling (e.g. "an enemy card that costs 2 or less"). */
+      maxCost?: number;
       excludeIdentityName?: string;
     }
   /** Enemy leader or an enemy follower (player chooses). */
@@ -264,6 +278,11 @@ export type Condition =
   | { type: "discardedCardType"; cardType: CardType }
   | { type: "handMin"; count: number }
   | { type: "ownCemeteryMin"; count: number }
+  /**
+   * True when the cemetery holds at least one card of every base cost from
+   * `from` to `to` (e.g. Prophetess of Creation's costs 1 through 10).
+   */
+  | { type: "cemeteryDistinctCostRange"; from: number; to: number }
   | { type: "fieldTraitMax"; trait: string; count: number }
   /** Count all field cards (followers + amulets) with the trait. */
   | { type: "fieldCardTraitMin"; trait: string; count: number }
@@ -321,7 +340,7 @@ export type Effect =
     }
   | {
       op: "buffFieldTrait";
-      trait: string;
+      trait?: string;
       atk?: number;
       def?: number;
       keyword?: Keyword;
@@ -422,6 +441,10 @@ export type Effect =
       maxTotalCost?: number;
       /** Selected cards must have different normalized identity names. */
       distinctNames?: boolean;
+      /** Destination zone (default field). */
+      to?: "field" | "exArea";
+      /** Apply this play-cost reduction to each chosen card this turn. */
+      playCostReduction?: number;
     }
   | { op: "putHandCardOnDeck"; position: "top" | "bottom" }
   | { op: "grantLastWords"; effect: Effect }
@@ -437,6 +460,8 @@ export type Effect =
     }
   | { op: "noop" }
   | { op: "optionalCost"; label?: string; cost: Effect; then: Effect }
+  /** Internal: record a stashed optional-cost Union Burst after the cost is paid. */
+  | { op: "commitPendingUnionBurst" }
   | { op: "exAreaPlayCostReduction"; amount: number }
   | {
       op: "searchDeckChoose";
@@ -453,6 +478,8 @@ export type Effect =
       reveal?: boolean;
     }
   | { op: "passiveKeywords"; keywords: Keyword[] }
+  /** Passive: destroy abilities cannot remove this card (ability damage still can). */
+  | { op: "cannotBeDestroyedByAbilities" }
   | { op: "playCostReduction"; amount: number }
   | { op: "auraGrantKeyword"; keyword: Keyword; trait?: string; excludeSelf?: boolean }
   | { op: "damageCap"; maxPerHit: number }
@@ -494,6 +521,8 @@ export type Effect =
   | { op: "box"; targets: TargetSelector }
   | { op: "grantPlayCostReduction"; amount: number; targets: TargetSelector }
   | { op: "banishFromCemetery"; filter: DeckFilter; count: number }
+  /** Banish one cemetery card of each base cost from `from` to `to`. */
+  | { op: "banishCemeteryDistinctCosts"; from: number; to: number }
   | { op: "banishFromExArea"; filter: DeckFilter; count: number }
   | { op: "reviveSelfFromCemetery" }
   | { op: "moveSourceToExArea" }
@@ -539,7 +568,7 @@ export type Effect =
       excludeSelf?: boolean;
       sourceOnly?: boolean;
     }
-  | { op: "dealDamageAllEnemies"; amount: DamageAmount; followersOnly?: boolean; leadersOnly?: boolean }
+  | { op: "dealDamageAllEnemies"; amount: DamageAmount; followersOnly?: boolean; leadersOnly?: boolean; excludeLastSelected?: boolean }
   /** Deal damage to every follower on both fields. */
   | { op: "dealDamageAllFollowers"; amount: DamageAmount }
   | {
@@ -765,6 +794,11 @@ export type ChoicePrompt = ChoiceSourceContext &
       trackChosenKey?: string;
       /** Source card for excludeChosenThisTurn tracking (survives nested prompts). */
       sourceInstanceId?: string;
+      /**
+       * Optional-cost Union Burst: paying (index 0) records the UB; skipping
+       * cancels the stashed activation.
+       */
+      commitUnionBurstOnPay?: boolean;
     }
   | {
       type: "chooseMultiple";
@@ -834,6 +868,8 @@ export type ChoicePrompt = ChoiceSourceContext &
       maxTotalCost?: number;
       distinctNames?: boolean;
       filter: DeckFilter;
+      to?: "field" | "exArea";
+      playCostReduction?: number;
       options: { instanceId: string; label: string; name: string; cost: number }[];
     }
   | {

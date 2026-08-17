@@ -340,6 +340,8 @@ function handleChoiceResponse(state, player, payload) {
             lastDiscardedCardName: prev?.lastDiscardedCardName,
             lastSelectedCardName: prev?.lastSelectedCardName,
             engagedAsCostCount: prev?.engagedAsCostCount,
+            pendingUnionBurst: prev?.pendingUnionBurst,
+            resolvingUnionBurstSourceId: prev?.resolvingUnionBurstSourceId,
             deferTriggers: true,
         };
         // Defer confirmation so multi-step spells (e.g. Disdainful Rending) finish
@@ -564,15 +566,25 @@ function handleChoiceResponse(state, player, payload) {
             return fail(state, `Total cost must be ${choice.maxTotalCost} or less`);
         }
         const slots = p.fieldLimit - (0, queries_1.fieldOccupancy)(p.zones.field);
-        if (ids.length > slots)
+        const toZone = choice.to ?? "field";
+        if (toZone === "field" && ids.length > slots)
             return fail(state, "Not enough field space");
         for (const id of ids) {
             const idx = p.zones.cemetery.findIndex((c) => c.instanceId === id);
             if (idx < 0)
                 continue;
             const [card] = p.zones.cemetery.splice(idx, 1);
-            p.zones.field.push(card);
-            (0, confirmation_1.onFollowerEntersField)(next, card.instanceId, player);
+            if (choice.playCostReduction) {
+                card.playCostReduction = (card.playCostReduction ?? 0) + choice.playCostReduction;
+            }
+            if (toZone === "exArea") {
+                p.zones.exArea.push(card);
+                (0, confirmation_1.onCardEntersExArea)(next, card.instanceId, player);
+            }
+            else {
+                p.zones.field.push(card);
+                (0, confirmation_1.onFollowerEntersField)(next, card.instanceId, player);
+            }
         }
         return ok(finishChoiceResolution(next, player));
     }
@@ -771,6 +783,9 @@ function handleChoiceResponse(state, player, payload) {
             if (usedIdx.has(index) || usedLabels.has(opt.label)) {
                 return fail(state, "Already chose that option this turn");
             }
+        }
+        if (choice.commitUnionBurstOnPay && index !== 0) {
+            next = (0, union_burst_1.cancelPendingUnionBurst)(next);
         }
         // Defer confirmation so nested target prompts don't race with turn cleanup.
         next = (0, resolver_1.resolveEffect)(next, opt.effect, player, { deferConfirmation: true });
@@ -1199,7 +1214,11 @@ function resolveCombat(state) {
         const { ability, key } = strikeAbilities[i];
         next.resolutionContext = { sourceInstanceId: combat.attackerId, effectStack: [ability.effect] };
         if (ability.unionBurst) {
-            next = (0, union_burst_1.markResolvingUnionBurst)(next, combat.attackerId);
+            next = (0, union_burst_1.beginUnionBurstActivation)(next, attackerFound.player, combat.attackerId, ability);
+        }
+        const hostAtStart = (0, queries_1.findInstance)(next, combat.attackerId);
+        if (hostAtStart && ability.oncePerTurn && !hostAtStart.card.abilitiesActivatedThisTurn.includes(key)) {
+            hostAtStart.card.abilitiesActivatedThisTurn.push(key);
         }
         next = (0, resolver_1.resolveEffect)(next, ability.effect, attackerFound.player, {
             deferConfirmation: true,
@@ -1214,11 +1233,6 @@ function resolveCombat(state) {
             next.quickWindowPlayer = null;
             return next;
         }
-        const host = (0, queries_1.findInstance)(next, combat.attackerId);
-        if (host && ability.oncePerTurn && !host.card.abilitiesActivatedThisTurn.includes(key)) {
-            host.card.abilitiesActivatedThisTurn.push(key);
-        }
-        next = (0, union_burst_1.recordUnionBurstActivated)(next, attackerFound.player, combat.attackerId, ability);
         next.resolutionContext = null;
         next = abortCombatIfAttackerGone(next);
         if (!next.combat)
@@ -1273,8 +1287,6 @@ function evolve(state, player, fieldInstanceId, evolveDeckInstanceId, useSuperEv
     if (evoFound.card.evolveUsed)
         return fail(state, "Evolve card already used");
     const evolveDeckInstanceIdResolved = evoCard.instanceId;
-    const baseDef = (0, registry_1.getCardDef)(fieldFound.card.name);
-    const evoDef = (0, registry_1.getCardDef)(evoFound.card.name);
     if (!(0, queries_1.evolveCardsMatch)(fieldFound.card.name, evoFound.card.name)) {
         return fail(state, "Cards do not match");
     }
@@ -1309,55 +1321,7 @@ function evolve(state, player, fieldInstanceId, evolveDeckInstanceId, useSuperEv
         fieldInstanceId,
         evolveInstanceId: evolveDeckInstanceIdResolved,
     });
-    const onEvolveAbs = evoDef?.abilities?.filter((a) => a.timing === "onEvolve") ?? [];
-    const onSEAbs = fieldOnNext.card.superEvolved
-        ? (evoDef?.abilities?.filter((a) => a.timing === "onSuperEvolve") ?? [])
-        : [];
-    if (fieldOnNext.card.superEvolved && onEvolveAbs.length > 0 && onSEAbs.length > 0) {
-        next.pendingChoices = (0, effect_utils_1.withChoiceContext)(next, {
-            type: "chooseMultiple",
-            player,
-            reasonLabel: "Choose the order of Evolve and Super Evolve effects",
-            options: [
-                { index: 0, label: "On Evolve", effect: onEvolveAbs[0].effect },
-                { index: 1, label: "On Super Evolve", effect: onSEAbs[0].effect },
-            ],
-            min: 2,
-            max: 2,
-        });
-        next.resolutionContext = {
-            sourceInstanceId: fieldInstanceId,
-            effectStack: [],
-            resumeAfterChoice: [],
-        };
-        next = (0, confirmation_1.runConfirmationTiming)(next);
-        return ok(next);
-    }
-    const evolveEffects = [
-        ...onEvolveAbs.map((a) => a.effect),
-        ...onSEAbs.map((a) => a.effect),
-    ];
-    for (let i = 0; i < evolveEffects.length; i++) {
-        next.resolutionContext = (0, effect_utils_1.contextForTriggerResolution)(next, fieldInstanceId, evolveEffects[i]);
-        next = (0, resolver_1.resolveEffect)(next, evolveEffects[i], player);
-        if ((0, effect_utils_1.shouldClearResolutionContext)(next)) {
-            next.resolutionContext = null;
-        }
-        if (next.pendingChoices) {
-            const tail = evolveEffects.slice(i + 1);
-            if (tail.length > 0) {
-                next.resolutionContext = {
-                    sourceInstanceId: fieldInstanceId,
-                    effectStack: [],
-                    resumeAfterChoice: [
-                        ...tail,
-                        ...(next.resolutionContext?.resumeAfterChoice ?? []),
-                    ],
-                };
-            }
-            break;
-        }
-    }
+    (0, trigger_queue_1.queueOnEvolveAbilities)(next, fieldInstanceId, player, Boolean(fieldOnNext.card.superEvolved));
     next = (0, confirmation_1.runConfirmationTiming)(next);
     return ok(next);
 }
@@ -1405,13 +1369,12 @@ function finishActivateAfterCost(state, player, sourceInstanceId, zone, abilityK
         effectStack: [ability.effect],
     };
     if (ability.unionBurst) {
-        next = (0, union_burst_1.markResolvingUnionBurst)(next, sourceInstanceId);
+        next = (0, union_burst_1.beginUnionBurstActivation)(next, player, sourceInstanceId, ability);
     }
     next = (0, resolver_1.resolveEffect)(next, ability.effect, player);
     if (ability.cost?.fuse) {
         (0, trigger_queue_1.queueOnCardFused)(next, sourceInstanceId, player);
     }
-    next = (0, union_burst_1.scheduleOrRecordUnionBurstActivated)(next, player, sourceInstanceId, ability);
     if ((0, effect_utils_1.shouldClearResolutionContext)(next)) {
         next = (0, union_burst_1.flushPendingUnionBurst)(next);
         next.resolutionContext = null;

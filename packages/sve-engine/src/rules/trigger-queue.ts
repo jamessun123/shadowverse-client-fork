@@ -265,6 +265,26 @@ export function queueFanfare(state: GameState, instanceId: string, player: Playe
   }
 }
 
+/** Queue On Evolve / On Super Evolve so Union Burst flags survive confirmation. */
+export function queueOnEvolveAbilities(
+  state: GameState,
+  instanceId: string,
+  player: PlayerId,
+  includeSuperEvolve = false,
+): void {
+  const found = findInstance(state, instanceId);
+  if (!found || isBoxed(found.card, state)) return;
+  const def = getCardDef(resolveCardNo(state, found.card));
+  for (const ability of def?.abilities ?? []) {
+    if (ability.timing === "onEvolve") {
+      pushTrigger(state, instanceId, player, found.card.name, ability, "onEvolve", "oe");
+    }
+    if (includeSuperEvolve && ability.timing === "onSuperEvolve") {
+      pushTrigger(state, instanceId, player, found.card.name, ability, "onSuperEvolve", "ose");
+    }
+  }
+}
+
 export function queueStartOfEndAbilities(state: GameState, player: PlayerId): void {
   for (const card of [...getPlayer(state, player).zones.field]) {
     if (isBoxed(card, state)) continue;
@@ -290,9 +310,15 @@ export function queueStartOfEndAbilities(state: GameState, player: PlayerId): vo
       );
     }
   }
-  // Granted start-of-end on EX cards (e.g. Kyoka: bury if still in EX).
+  // Start-of-end on EX cards, printed (e.g. Chain Lightning: bury itself) or
+  // granted (e.g. Kyoka: bury if still in EX).
   for (const card of [...getPlayer(state, player).zones.exArea]) {
     if (isBoxed(card, state)) continue;
+    const def = getCardDef(resolveCardNo(state, card));
+    for (const ability of def?.abilities ?? []) {
+      if (ability.timing !== "startOfEnd") continue;
+      pushTrigger(state, card.instanceId, player, card.name, ability, "startOfEnd", "soe");
+    }
     for (const [idx, granted] of (card.grantedStartOfEnd ?? []).entries()) {
       const ability: AbilityDefinition = {
         timing: "startOfEnd",
@@ -544,6 +570,8 @@ export function queueOnUnionBurstActivated(
   for (const fieldCard of getPlayer(state, player).zones.field) {
     if (fieldCard.instanceId === activatorInstanceId) continue;
     if (isBoxed(fieldCard, state)) continue;
+    if (isEquippedAttachment(fieldCard)) continue;
+    if (!isFollowerCard(fieldCard, state)) continue;
     const def = getCardDef(resolveCardNo(state, fieldCard));
     for (const [idx, ability] of (def?.abilities ?? []).entries()) {
       if (ability.timing !== "onUnionBurstActivated") continue;

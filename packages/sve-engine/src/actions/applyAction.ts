@@ -33,13 +33,14 @@ import {
   queueOnCardPlayed,
   queueOnCardFused,
   queueOnDiscard,
+  queueOnEvolveAbilities,
   queueStartOfEndAbilities,
 } from "../rules/trigger-queue";
 import {
+  beginUnionBurstActivation,
+  cancelPendingUnionBurst,
+  commitPendingUnionBurst,
   flushPendingUnionBurst,
-  markResolvingUnionBurst,
-  recordUnionBurstActivated,
-  scheduleOrRecordUnionBurstActivated,
 } from "../rules/union-burst";
 import { cardMatchesFilter } from "../state/conditions";
 import { resetCardInstanceState } from "../state/card-reset";
@@ -426,6 +427,8 @@ function handleChoiceResponse(state: GameState, player: PlayerId, payload: Recor
       lastDiscardedCardName: prev?.lastDiscardedCardName,
       lastSelectedCardName: prev?.lastSelectedCardName,
       engagedAsCostCount: prev?.engagedAsCostCount,
+      pendingUnionBurst: prev?.pendingUnionBurst,
+      resolvingUnionBurstSourceId: prev?.resolvingUnionBurstSourceId,
       deferTriggers: true,
     };
     // Defer confirmation so multi-step spells (e.g. Disdainful Rending) finish
@@ -642,13 +645,22 @@ function handleChoiceResponse(state: GameState, player: PlayerId, payload: Recor
       return fail(state, `Total cost must be ${choice.maxTotalCost} or less`);
     }
     const slots = p.fieldLimit - fieldOccupancy(p.zones.field);
-    if (ids.length > slots) return fail(state, "Not enough field space");
+    const toZone = choice.to ?? "field";
+    if (toZone === "field" && ids.length > slots) return fail(state, "Not enough field space");
     for (const id of ids) {
       const idx = p.zones.cemetery.findIndex((c) => c.instanceId === id);
       if (idx < 0) continue;
       const [card] = p.zones.cemetery.splice(idx, 1);
-      p.zones.field.push(card);
-      onFollowerEntersField(next, card.instanceId, player);
+      if (choice.playCostReduction) {
+        card.playCostReduction = (card.playCostReduction ?? 0) + choice.playCostReduction;
+      }
+      if (toZone === "exArea") {
+        p.zones.exArea.push(card);
+        onCardEntersExArea(next, card.instanceId, player);
+      } else {
+        p.zones.field.push(card);
+        onFollowerEntersField(next, card.instanceId, player);
+      }
     }
     return ok(finishChoiceResolution(next, player));
   }
@@ -847,6 +859,9 @@ function handleChoiceResponse(state: GameState, player: PlayerId, payload: Recor
       if (usedIdx.has(index) || usedLabels.has(opt.label)) {
         return fail(state, "Already chose that option this turn");
       }
+    }
+    if (choice.commitUnionBurstOnPay && index !== 0) {
+      next = cancelPendingUnionBurst(next);
     }
     // Defer confirmation so nested target prompts don't race with turn cleanup.
     next = resolveEffect(next, opt.effect, player, { deferConfirmation: true });
@@ -1122,7 +1137,8 @@ function playCard(
       // moved to cemetery and would otherwise skip on-play watchers.
       queueOnCardPlayed(next, handInstanceId, player, found.card.name);
       const res = findInstance(next, handInstanceId);
-      if (res) {
+      // A spell that relocated itself (e.g. Chain Lightning into EX) must stay put.
+      if (res?.zone === "resolutionZone") {
         next = moveCard(next, handInstanceId, "cemetery", player);
       }
       if (shouldClearResolutionContext(next)) {
@@ -1315,7 +1331,11 @@ function resolveCombat(state: GameState): GameState {
     const { ability, key } = strikeAbilities[i];
     next.resolutionContext = { sourceInstanceId: combat.attackerId, effectStack: [ability.effect] };
     if (ability.unionBurst) {
-      next = markResolvingUnionBurst(next, combat.attackerId);
+      next = beginUnionBurstActivation(next, attackerFound.player, combat.attackerId, ability);
+    }
+    const hostAtStart = findInstance(next, combat.attackerId);
+    if (hostAtStart && ability.oncePerTurn && !hostAtStart.card.abilitiesActivatedThisTurn.includes(key)) {
+      hostAtStart.card.abilitiesActivatedThisTurn.push(key);
     }
     next = resolveEffect(next, ability.effect, attackerFound.player, {
       deferConfirmation: true,
@@ -1332,11 +1352,6 @@ function resolveCombat(state: GameState): GameState {
       next.quickWindowPlayer = null;
       return next;
     }
-    const host = findInstance(next, combat.attackerId);
-    if (host && ability.oncePerTurn && !host.card.abilitiesActivatedThisTurn.includes(key)) {
-      host.card.abilitiesActivatedThisTurn.push(key);
-    }
-    next = recordUnionBurstActivated(next, attackerFound.player, combat.attackerId, ability);
     next.resolutionContext = null;
     next = abortCombatIfAttackerGone(next);
     if (!next.combat) return next;
@@ -1401,8 +1416,6 @@ function evolve(
   if (evoFound.card.evolveUsed) return fail(state, "Evolve card already used");
   const evolveDeckInstanceIdResolved = evoCard.instanceId;
 
-  const baseDef = getCardDef(fieldFound.card.name);
-  const evoDef = getCardDef(evoFound.card.name);
   if (!evolveCardsMatch(fieldFound.card.name, evoFound.card.name)) {
     return fail(state, "Cards do not match");
   }
@@ -1443,58 +1456,7 @@ function evolve(
     evolveInstanceId: evolveDeckInstanceIdResolved,
   });
 
-  const onEvolveAbs = evoDef?.abilities?.filter((a) => a.timing === "onEvolve") ?? [];
-  const onSEAbs = fieldOnNext.card.superEvolved
-    ? (evoDef?.abilities?.filter((a) => a.timing === "onSuperEvolve") ?? [])
-    : [];
-
-  if (fieldOnNext.card.superEvolved && onEvolveAbs.length > 0 && onSEAbs.length > 0) {
-    next.pendingChoices = withChoiceContext(next, {
-      type: "chooseMultiple",
-      player,
-      reasonLabel: "Choose the order of Evolve and Super Evolve effects",
-      options: [
-        { index: 0, label: "On Evolve", effect: onEvolveAbs[0].effect },
-        { index: 1, label: "On Super Evolve", effect: onSEAbs[0].effect },
-      ],
-      min: 2,
-      max: 2,
-    });
-    next.resolutionContext = {
-      sourceInstanceId: fieldInstanceId,
-      effectStack: [],
-      resumeAfterChoice: [],
-    };
-    next = runConfirmationTiming(next);
-    return ok(next);
-  }
-
-  const evolveEffects: Effect[] = [
-    ...onEvolveAbs.map((a) => a.effect),
-    ...onSEAbs.map((a) => a.effect),
-  ];
-  for (let i = 0; i < evolveEffects.length; i++) {
-    next.resolutionContext = contextForTriggerResolution(next, fieldInstanceId, evolveEffects[i]);
-    next = resolveEffect(next, evolveEffects[i], player);
-    if (shouldClearResolutionContext(next)) {
-      next.resolutionContext = null;
-    }
-    if (next.pendingChoices) {
-      const tail = evolveEffects.slice(i + 1);
-      if (tail.length > 0) {
-        next.resolutionContext = {
-          sourceInstanceId: fieldInstanceId,
-          effectStack: [],
-          resumeAfterChoice: [
-            ...tail,
-            ...(next.resolutionContext?.resumeAfterChoice ?? []),
-          ],
-        };
-      }
-      break;
-    }
-  }
-
+  queueOnEvolveAbilities(next, fieldInstanceId, player, Boolean(fieldOnNext.card.superEvolved));
   next = runConfirmationTiming(next);
   return ok(next);
 }
@@ -1546,18 +1508,24 @@ function finishActivateAfterCost(
     }
   }
 
+  if (ability.cost?.discardSelf) {
+    const src = findInstance(next, sourceInstanceId);
+    if (src?.zone !== "hand") return state;
+    next = moveCard(next, sourceInstanceId, "cemetery", player);
+    queueOnDiscard(next, sourceInstanceId, player);
+  }
+
   next.resolutionContext = {
     sourceInstanceId,
     effectStack: [ability.effect],
   };
   if (ability.unionBurst) {
-    next = markResolvingUnionBurst(next, sourceInstanceId);
+    next = beginUnionBurstActivation(next, player, sourceInstanceId, ability);
   }
   next = resolveEffect(next, ability.effect, player);
   if (ability.cost?.fuse) {
     queueOnCardFused(next, sourceInstanceId, player);
   }
-  next = scheduleOrRecordUnionBurstActivated(next, player, sourceInstanceId, ability);
   if (shouldClearResolutionContext(next)) {
     next = flushPendingUnionBurst(next);
     next.resolutionContext = null;

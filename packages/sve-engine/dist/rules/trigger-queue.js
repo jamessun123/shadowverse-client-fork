@@ -5,6 +5,7 @@ exports.queueOnCardFused = queueOnCardFused;
 exports.queueOnDiscard = queueOnDiscard;
 exports.queueLastWords = queueLastWords;
 exports.queueFanfare = queueFanfare;
+exports.queueOnEvolveAbilities = queueOnEvolveAbilities;
 exports.queueStartOfEndAbilities = queueStartOfEndAbilities;
 exports.queueStartOfMainAbilities = queueStartOfMainAbilities;
 exports.queueOnOpponentDeckToCemetery = queueOnOpponentDeckToCemetery;
@@ -192,6 +193,21 @@ function queueFanfare(state, instanceId, player) {
     for (const ability of def?.abilities ?? []) {
         if (ability.timing === "fanfare") {
             pushTrigger(state, instanceId, player, found.card.name, ability, "fanfare", "ff");
+        }
+    }
+}
+/** Queue On Evolve / On Super Evolve so Union Burst flags survive confirmation. */
+function queueOnEvolveAbilities(state, instanceId, player, includeSuperEvolve = false) {
+    const found = (0, queries_1.findInstance)(state, instanceId);
+    if (!found || (0, passives_1.isBoxed)(found.card, state))
+        return;
+    const def = (0, registry_1.getCardDef)((0, queries_1.resolveCardNo)(state, found.card));
+    for (const ability of def?.abilities ?? []) {
+        if (ability.timing === "onEvolve") {
+            pushTrigger(state, instanceId, player, found.card.name, ability, "onEvolve", "oe");
+        }
+        if (includeSuperEvolve && ability.timing === "onSuperEvolve") {
+            pushTrigger(state, instanceId, player, found.card.name, ability, "onSuperEvolve", "ose");
         }
     }
 }
@@ -407,6 +423,10 @@ function queueOnUnionBurstActivated(state, activatorInstanceId, player) {
         if (fieldCard.instanceId === activatorInstanceId)
             continue;
         if ((0, passives_1.isBoxed)(fieldCard, state))
+            continue;
+        if ((0, queries_1.isEquippedAttachment)(fieldCard))
+            continue;
+        if (!(0, queries_1.isFollowerCard)(fieldCard, state))
             continue;
         const def = (0, registry_1.getCardDef)((0, queries_1.resolveCardNo)(state, fieldCard));
         for (const [idx, ability] of (def?.abilities ?? []).entries()) {

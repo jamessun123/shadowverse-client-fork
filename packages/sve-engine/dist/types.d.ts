@@ -394,7 +394,7 @@ export type Effect = {
     targets: TargetSelector;
 } | {
     op: "buffFieldTrait";
-    trait: string;
+    trait?: string;
     atk?: number;
     def?: number;
     keyword?: Keyword;
@@ -555,6 +555,10 @@ export type Effect = {
     maxTotalCost?: number;
     /** Selected cards must have different normalized identity names. */
     distinctNames?: boolean;
+    /** Destination zone (default field). */
+    to?: "field" | "exArea";
+    /** Apply this play-cost reduction to each chosen card this turn. */
+    playCostReduction?: number;
 } | {
     op: "putHandCardOnDeck";
     position: "top" | "bottom";
@@ -578,6 +582,10 @@ export type Effect = {
     label?: string;
     cost: Effect;
     then: Effect;
+}
+/** Internal: record a stashed optional-cost Union Burst after the cost is paid. */
+ | {
+    op: "commitPendingUnionBurst";
 } | {
     op: "exAreaPlayCostReduction";
     amount: number;
@@ -708,6 +716,7 @@ export type Effect = {
     amount: DamageAmount;
     followersOnly?: boolean;
     leadersOnly?: boolean;
+    excludeLastSelected?: boolean;
 }
 /** Deal damage to every follower on both fields. */
  | {
@@ -937,6 +946,11 @@ export type ChoicePrompt = ChoiceSourceContext & ({
     trackChosenKey?: string;
     /** Source card for excludeChosenThisTurn tracking (survives nested prompts). */
     sourceInstanceId?: string;
+    /**
+     * Optional-cost Union Burst: paying (index 0) records the UB; skipping
+     * cancels the stashed activation.
+     */
+    commitUnionBurstOnPay?: boolean;
 } | {
     type: "chooseMultiple";
     player: PlayerId;
@@ -1025,6 +1039,8 @@ export type ChoicePrompt = ChoiceSourceContext & ({
     maxTotalCost?: number;
     distinctNames?: boolean;
     filter: DeckFilter;
+    to?: "field" | "exArea";
+    playCostReduction?: number;
     options: {
         instanceId: string;
         label: string;

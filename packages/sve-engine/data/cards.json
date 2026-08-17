@@ -15730,5 +15730,131 @@
       "BP15-PR10EN"
     ],
     "specialType": "token"
+  },
+  "Bazooka Goblins": {
+    "cardNo": "BP06-115EN",
+    "name": "Bazooka Goblins",
+    "class": "neutral",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 4,
+    "attack": 3,
+    "defense": 3,
+    "traits": [
+      "Goblinoid"
+    ],
+    "keywords": [
+      "evolve",
+      "fanfare"
+    ],
+    "cardText": "[evolve] [cost02]: Evolve this follower. [fanfare] Select an enemy card that costs 2 or less on the field and destroy it.",
+    "evolvesTo": "Bazooka Goblins Evolved",
+    "printings": [
+      "BP06-115EN"
+    ]
+  },
+  "Bazooka Goblins Evolved": {
+    "cardNo": "BP06-116EN",
+    "name": "Bazooka Goblins Evolved",
+    "class": "neutral",
+    "cardType": "follower",
+    "printingType": "evolved",
+    "cost": 0,
+    "attack": 5,
+    "defense": 5,
+    "traits": [
+      "Goblinoid"
+    ],
+    "keywords": [
+      "onEvolve"
+    ],
+    "cardText": "On Evolve: Select an enemy card that costs 2 or less on the field and destroy it.",
+    "evolvesFrom": "Bazooka Goblins",
+    "printings": [
+      "BP06-116EN"
+    ],
+    "specialType": "evolved"
+  },
+  "Chain Lightning": {
+    "cardNo": "BP12-050EN",
+    "name": "Chain Lightning",
+    "class": "rune",
+    "cardType": "spell",
+    "printingType": "base",
+    "cost": 3,
+    "traits": [
+      "Mage"
+    ],
+    "keywords": [],
+    "cardText": "At the start of your end phase, if this card is in your EX area, bury it. ---------- Deal 4 damage to each enemy leader. If there are at least 2 Mage followers on your field, put this card into its owner's EX area.",
+    "printings": [
+      "BP12-050EN"
+    ]
+  },
+  "Merlin": {
+    "cardNo": "BP01-052EN",
+    "name": "Merlin",
+    "class": "rune",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 3,
+    "attack": 3,
+    "defense": 2,
+    "traits": [
+      "Mage"
+    ],
+    "keywords": [
+      "evolve",
+      "fanfare"
+    ],
+    "cardText": "[evolve] [cost02]: Evolve this follower. [fanfare] Search your deck for a spell, reveal it, and add it to your hand.",
+    "evolvesTo": "Merlin Evolved",
+    "printings": [
+      "BP01-052EN"
+    ]
+  },
+  "Merlin Evolved": {
+    "cardNo": "BP01-053EN",
+    "name": "Merlin Evolved",
+    "class": "rune",
+    "cardType": "follower",
+    "printingType": "evolved",
+    "cost": 0,
+    "attack": 4,
+    "defense": 3,
+    "traits": [
+      "Mage"
+    ],
+    "keywords": [
+      "onEvolve"
+    ],
+    "cardText": "On Evolve: Select a spell that costs 3 play points or less in your cemetery and play it for 0 play points.",
+    "evolvesFrom": "Merlin",
+    "printings": [
+      "BP01-053EN"
+    ],
+    "specialType": "evolved"
+  },
+  "Prophetess of Creation": {
+    "cardNo": "BP08-037EN",
+    "name": "Prophetess of Creation",
+    "class": "rune",
+    "cardType": "follower",
+    "printingType": "base",
+    "cost": 10,
+    "attack": 10,
+    "defense": 10,
+    "traits": [
+      "Mage"
+    ],
+    "keywords": [
+      "ward",
+      "aura",
+      "fanfare"
+    ],
+    "cardText": "When playing this card, banish 10 cards with different base costs ranging from 1 to 10 from your cemetery: This card costs 10 less to play. ---------- Ward. Aura. This card can't be destroyed by abilities. (It can still be destroyed by ability damage.) [act] Discard this card: Draw a card. Discard a card.",
+    "printings": [
+      "BP08-037EN"
+    ]
   }
 }

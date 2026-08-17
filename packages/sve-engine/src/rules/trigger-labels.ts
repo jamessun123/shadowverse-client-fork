@@ -45,6 +45,8 @@ export function describeAbility(sourceCardNo: string, ability: AbilityDefinition
           ? "Last Words"
           : ability.timing === "onEvolve"
             ? "On Evolve"
+            : ability.timing === "onSuperEvolve"
+              ? "On Super Evolve"
             : ability.timing === "startOfEnd"
               ? "End of turn"
               : ability.timing === "onDiscard"

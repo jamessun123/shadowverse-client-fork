@@ -8,6 +8,8 @@ export declare function queueOnCardFused(state: GameState, fusedInstanceId: stri
 export declare function queueOnDiscard(state: GameState, instanceId: string, player: PlayerId): void;
 export declare function queueLastWords(state: GameState, instanceId: string, player: PlayerId): void;
 export declare function queueFanfare(state: GameState, instanceId: string, player: PlayerId): void;
+/** Queue On Evolve / On Super Evolve so Union Burst flags survive confirmation. */
+export declare function queueOnEvolveAbilities(state: GameState, instanceId: string, player: PlayerId, includeSuperEvolve?: boolean): void;
 export declare function queueStartOfEndAbilities(state: GameState, player: PlayerId): void;
 export declare function queueStartOfMainAbilities(state: GameState, player: PlayerId): void;
 /** During the active player's turn, when a card leaves an opponent's deck into cemetery. */
