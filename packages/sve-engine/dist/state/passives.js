@@ -4,6 +4,7 @@ exports.isBoxed = isBoxed;
 exports.getPassiveKeywords = getPassiveKeywords;
 exports.getAuraKeywords = getAuraKeywords;
 exports.getMaxDamagePerHit = getMaxDamagePerHit;
+exports.isDestroyImmuneToAbilities = isDestroyImmuneToAbilities;
 exports.hasNamedFollowerOnFieldByIdentity = hasNamedFollowerOnFieldByIdentity;
 exports.matchesExAreaEntryFilter = matchesExAreaEntryFilter;
 const registry_1 = require("../cards/registry");
@@ -73,6 +74,23 @@ function getMaxDamagePerHit(state, card, player) {
             return effect.maxPerHit;
     }
     return null;
+}
+/**
+ * "This card can't be destroyed by abilities." Burying and lethal damage (including
+ * ability damage) still remove the card — only the destroy op is blocked.
+ */
+function isDestroyImmuneToAbilities(state, card, player) {
+    if (isBoxed(card, state))
+        return false;
+    for (const ability of abilitiesFor(state, card)) {
+        if (ability.timing !== "passive")
+            continue;
+        if (ability.condition && !(0, conditions_1.evalCondition)(state, player, ability.condition))
+            continue;
+        if (ability.effect.op === "cannotBeDestroyedByAbilities")
+            return true;
+    }
+    return false;
 }
 function hasNamedFollowerOnFieldByIdentity(state, player, identityName) {
     const target = (0, reprints_1.normalizeIdentityName)(identityName);

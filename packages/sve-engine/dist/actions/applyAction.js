@@ -1042,7 +1042,8 @@ function playCard(state, player, handInstanceId, targets, fromQuickWindow = fals
             // moved to cemetery and would otherwise skip on-play watchers.
             (0, trigger_queue_1.queueOnCardPlayed)(next, handInstanceId, player, found.card.name);
             const res = (0, queries_1.findInstance)(next, handInstanceId);
-            if (res) {
+            // A spell that relocated itself (e.g. Chain Lightning into EX) must stay put.
+            if (res?.zone === "resolutionZone") {
                 next = (0, zones_1.moveCard)(next, handInstanceId, "cemetery", player);
             }
             if ((0, effect_utils_1.shouldClearResolutionContext)(next)) {
@@ -1393,6 +1394,13 @@ function finishActivateAfterCost(state, player, sourceInstanceId, zone, abilityK
             (0, trigger_queue_1.queueLastWords)(next, sourceInstanceId, player);
             next = (0, zones_1.destroyFollower)(next, sourceInstanceId);
         }
+    }
+    if (ability.cost?.discardSelf) {
+        const src = (0, queries_1.findInstance)(next, sourceInstanceId);
+        if (src?.zone !== "hand")
+            return state;
+        next = (0, zones_1.moveCard)(next, sourceInstanceId, "cemetery", player);
+        (0, trigger_queue_1.queueOnDiscard)(next, sourceInstanceId, player);
     }
     next.resolutionContext = {
         sourceInstanceId,

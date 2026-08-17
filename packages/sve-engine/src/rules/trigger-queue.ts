@@ -290,9 +290,15 @@ export function queueStartOfEndAbilities(state: GameState, player: PlayerId): vo
       );
     }
   }
-  // Granted start-of-end on EX cards (e.g. Kyoka: bury if still in EX).
+  // Start-of-end on EX cards, printed (e.g. Chain Lightning: bury itself) or
+  // granted (e.g. Kyoka: bury if still in EX).
   for (const card of [...getPlayer(state, player).zones.exArea]) {
     if (isBoxed(card, state)) continue;
+    const def = getCardDef(resolveCardNo(state, card));
+    for (const ability of def?.abilities ?? []) {
+      if (ability.timing !== "startOfEnd") continue;
+      pushTrigger(state, card.instanceId, player, card.name, ability, "startOfEnd", "soe");
+    }
     for (const [idx, granted] of (card.grantedStartOfEnd ?? []).entries()) {
       const ability: AbilityDefinition = {
         timing: "startOfEnd",

@@ -26,6 +26,8 @@ function activateLabel(ability) {
     }
     if (ability.cost?.burySelf)
         costBits.push("bury this");
+    if (ability.cost?.discardSelf)
+        costBits.push("discard this");
     const effect = (0, trigger_labels_1.describeEffect)(ability.effect);
     const costSuffix = costBits.length ? ` (${costBits.join(", ")})` : "";
     return `Activate${costSuffix}: ${effect}`;

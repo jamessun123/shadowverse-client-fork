@@ -189,6 +189,14 @@ function evalCondition(state, player, condition) {
             return (0, queries_1.getPlayer)(state, player).zones.hand.length >= condition.count;
         case "ownCemeteryMin":
             return (0, queries_1.getPlayer)(state, player).zones.cemetery.length >= condition.count;
+        case "cemeteryDistinctCostRange": {
+            const costs = new Set((0, queries_1.getPlayer)(state, player).zones.cemetery.map((c) => (0, queries_1.resolveCardDefCost)(c.name)));
+            for (let cost = condition.from; cost <= condition.to; cost++) {
+                if (!costs.has(cost))
+                    return false;
+            }
+            return true;
+        }
         case "fieldTraitMax":
             return countTraitInZone(state, player, "field", condition.trait) <= condition.count;
         case "fieldCardTraitMin":

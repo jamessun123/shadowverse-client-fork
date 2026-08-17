@@ -21,6 +21,7 @@ const effect_utils_1 = require("../rules/effect-utils");
 const conditions_1 = require("../state/conditions");
 const factory_1 = require("../state/factory");
 const queries_1 = require("../state/queries");
+const passives_1 = require("../state/passives");
 const card_reset_1 = require("../state/card-reset");
 const zones_1 = require("../state/zones");
 function appendResumeEffects(state, effects) {
@@ -59,6 +60,11 @@ function getTargetCandidates(state, player, selector) {
         if ("cardType" in selector && selector.cardType && def.cardType !== selector.cardType) {
             return false;
         }
+        if ("maxCost" in selector &&
+            selector.maxCost != null &&
+            (0, queries_1.resolveCardDefCost)((0, queries_1.resolveCardNo)(state, c)) > selector.maxCost) {
+            return false;
+        }
         if ("excludeIdentityName" in selector &&
             selector.excludeIdentityName &&
             (0, reprints_1.normalizeIdentityName)(def.name) === (0, reprints_1.normalizeIdentityName)(selector.excludeIdentityName)) {
@@ -74,6 +80,12 @@ function getTargetCandidates(state, player, selector) {
         case "enemyFollower":
             return (0, queries_1.getPlayer)(state, enemy).zones.field
                 .filter((c) => (0, queries_1.isFollowerCard)(c, state))
+                .filter((c) => !(0, queries_1.hasKeyword)(c, "aura", state, enemy))
+                .filter(matchesExtra)
+                .map((c) => c.instanceId);
+        case "enemyFieldCard":
+            return (0, queries_1.getPlayer)(state, enemy).zones.field
+                .filter((c) => !(0, queries_1.isEquippedAttachment)(c))
                 .filter((c) => !(0, queries_1.hasKeyword)(c, "aura", state, enemy))
                 .filter(matchesExtra)
                 .map((c) => c.instanceId);
@@ -811,6 +823,9 @@ function resolveEffect(state, effect, player, options) {
                 if (!found || !(0, queries_1.isFollowerCard)(found.card, next))
                     break;
             }
+            const target = (0, queries_1.findInstance)(next, targetId);
+            if (target && (0, passives_1.isDestroyImmuneToAbilities)(next, target.card, target.player))
+                break;
             (0, confirmation_1.queueLastWords)(next, targetId, player);
             next = (0, zones_1.destroyFollower)(next, targetId);
             break;
@@ -1405,6 +1420,19 @@ function resolveEffect(state, effect, player, options) {
             }
             break;
         }
+        case "banishCemeteryDistinctCosts": {
+            const p = next.players[player];
+            // One card per base cost, cheapest first, so a card that could cover two
+            // costs is never spent on the wrong one.
+            for (let cost = effect.from; cost <= effect.to; cost++) {
+                const idx = p.zones.cemetery.findIndex((c) => (0, queries_1.resolveCardDefCost)(c.name) === cost);
+                if (idx < 0)
+                    continue;
+                const [card] = p.zones.cemetery.splice(idx, 1);
+                (0, tokens_1.placeLeavingPlay)(p.zones, card, "banish");
+            }
+            break;
+        }
         case "banishFromExArea": {
             const p = next.players[player];
             for (let i = 0; i < effect.count; i++) {
@@ -1437,14 +1465,15 @@ function resolveEffect(state, effect, player, options) {
             const p = next.players[player];
             if (p.zones.exArea.length >= p.exLimit)
                 break;
+            // resolutionZone covers a spell moving itself into EX as part of its own effect.
             let fromZone = null;
-            let idx = p.zones.cemetery.findIndex((c) => c.instanceId === sourceId);
-            if (idx >= 0)
-                fromZone = "cemetery";
-            if (fromZone === null) {
-                idx = p.zones.hand.findIndex((c) => c.instanceId === sourceId);
-                if (idx >= 0)
-                    fromZone = "hand";
+            let idx = -1;
+            for (const candidate of ["cemetery", "hand", "resolutionZone"]) {
+                idx = p.zones[candidate].findIndex((c) => c.instanceId === sourceId);
+                if (idx >= 0) {
+                    fromZone = candidate;
+                    break;
+                }
             }
             if (fromZone === null || idx < 0)
                 break;

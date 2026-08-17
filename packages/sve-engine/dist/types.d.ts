@@ -75,6 +75,8 @@ export interface AbilityDefinition {
             key: string;
             amount?: number;
         };
+        /** Discard the source from hand as the cost (hand-activated abilities only). */
+        discardSelf?: boolean;
     };
     quick?: boolean;
     condition?: Condition;
@@ -125,6 +127,18 @@ export type TargetSelector = {
     cardType?: CardType;
     excludeSelf?: boolean;
     /** Exclude cards whose normalized identity name equals this value. */
+    excludeIdentityName?: string;
+}
+/** Enemy field card (follower or amulet), optionally cost/trait-filtered. */
+ | {
+    type: "enemyFieldCard";
+    count?: number;
+    minCount?: number;
+    maxCount?: number;
+    trait?: string;
+    cardType?: CardType;
+    /** Printed play cost ceiling (e.g. "an enemy card that costs 2 or less"). */
+    maxCost?: number;
     excludeIdentityName?: string;
 }
 /** Enemy leader or an enemy follower (player chooses). */
@@ -293,6 +307,15 @@ export type Condition = {
 } | {
     type: "ownCemeteryMin";
     count: number;
+}
+/**
+ * True when the cemetery holds at least one card of every base cost from
+ * `from` to `to` (e.g. Prophetess of Creation's costs 1 through 10).
+ */
+ | {
+    type: "cemeteryDistinctCostRange";
+    from: number;
+    to: number;
 } | {
     type: "fieldTraitMax";
     trait: string;
@@ -597,6 +620,10 @@ export type Effect = {
 } | {
     op: "passiveKeywords";
     keywords: Keyword[];
+}
+/** Passive: destroy abilities cannot remove this card (ability damage still can). */
+ | {
+    op: "cannotBeDestroyedByAbilities";
 } | {
     op: "playCostReduction";
     amount: number;
@@ -651,6 +678,12 @@ export type Effect = {
     op: "banishFromCemetery";
     filter: DeckFilter;
     count: number;
+}
+/** Banish one cemetery card of each base cost from `from` to `to`. */
+ | {
+    op: "banishCemeteryDistinctCosts";
+    from: number;
+    to: number;
 } | {
     op: "banishFromExArea";
     filter: DeckFilter;
