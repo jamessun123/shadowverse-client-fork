@@ -10,13 +10,17 @@ import { runConfirmationTiming } from "../rules/confirmation";
 const FALLBACK_MAIN = "Vanilla Soldier";
 const FALLBACK_EVO = "Eager Recruit Evolved";
 
-/** Resolve a deck entry to a known registry name so unknown cards stay playable. */
+/**
+ * Resolve a deck entry to its registry name when known.
+ * Unknown names are kept as-is so choice modals (search/summon) still show the
+ * real card art instead of rewriting every unimplemented card to Vanilla Soldier.
+ */
 function resolveDeckCardName(nameOrCardNo: string, fallback: string): string {
   if (!nameOrCardNo) return fallback;
   const def = getCardDef(nameOrCardNo);
   if (def?.name) return def.name;
-  console.warn(`[sve-engine] Unknown deck card "${nameOrCardNo}" — using ${fallback}`);
-  return fallback;
+  console.warn(`[sve-engine] Unknown deck card "${nameOrCardNo}" — keeping original name`);
+  return nameOrCardNo;
 }
 
 function clearTurnScopedCardState(card: CardInstance): void {
