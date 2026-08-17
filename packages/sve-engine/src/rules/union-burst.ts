@@ -22,6 +22,65 @@ export function recordUnionBurstActivated(
   return next;
 }
 
+function stashPendingUnionBurst(
+  state: GameState,
+  player: PlayerId,
+  sourceInstanceId: string,
+  ability: AbilityDefinition,
+): GameState {
+  const next = markResolvingUnionBurst(state, sourceInstanceId);
+  if (!next.resolutionContext) {
+    next.resolutionContext = { effectStack: [ability.effect] };
+  }
+  next.resolutionContext.pendingUnionBurst = { player, sourceInstanceId, ability };
+  next.resolutionContext.resolvingUnionBurstSourceId = sourceInstanceId;
+  return next;
+}
+
+/**
+ * Start a Union Burst. Optional-cost UBs (Karyl / Christina) are stashed until
+ * the player actually pays; skipping must not count as an activation.
+ */
+export function beginUnionBurstActivation(
+  state: GameState,
+  player: PlayerId,
+  sourceInstanceId: string,
+  ability: AbilityDefinition | undefined,
+): GameState {
+  if (!ability?.unionBurst) return state;
+  if (ability.effect.op === "optionalCost") {
+    return stashPendingUnionBurst(state, player, sourceInstanceId, ability);
+  }
+  const next = markResolvingUnionBurst(state, sourceInstanceId);
+  return recordUnionBurstActivated(next, player, sourceInstanceId, ability);
+}
+
+/** Record a stashed optional-cost Union Burst once the player pays. */
+export function commitPendingUnionBurst(state: GameState): GameState {
+  const pending = state.resolutionContext?.pendingUnionBurst;
+  if (!pending) return state;
+  const next = recordUnionBurstActivated(
+    state,
+    pending.player,
+    pending.sourceInstanceId,
+    pending.ability,
+  );
+  if (next.resolutionContext) {
+    delete next.resolutionContext.pendingUnionBurst;
+  }
+  return next;
+}
+
+/** Drop a stashed Union Burst when the player skips or cannot pay. */
+export function cancelPendingUnionBurst(state: GameState): GameState {
+  const next = state;
+  if (next.resolutionContext) {
+    delete next.resolutionContext.pendingUnionBurst;
+    delete next.resolutionContext.resolvingUnionBurstSourceId;
+  }
+  return next;
+}
+
 function abilityStillResolving(state: GameState): boolean {
   if (state.pendingChoices) return true;
   return (state.resolutionContext?.resumeAfterChoice?.length ?? 0) > 0;

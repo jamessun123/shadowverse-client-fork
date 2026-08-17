@@ -12,10 +12,10 @@ import {
   queueOnOpponentDeckToCemetery,
   queueOnAbilityDamageTaken,
   queueOnAbilityDamageDealt,
+  queueOnEvolveAbilities,
 } from "../rules/trigger-queue";
-import { scheduleOrRecordUnionBurstActivated } from "../rules/union-burst";
+import { beginUnionBurstActivation, cancelPendingUnionBurst, commitPendingUnionBurst, recordUnionBurstActivated } from "../rules/union-burst";
 import {
-  contextForTriggerResolution,
   finishDeferredTriggers,
   getChosenChooseIndices,
   getChosenChooseLabels,
@@ -1019,6 +1019,9 @@ export function resolveEffect(
       if (picked.needsPrompt) {
         return promptSelectTarget(next, player, effect, candidates, bounds);
       }
+      if (next.resolutionContext && picked.targetId) {
+        next.resolutionContext.lastSelectedTargetId = picked.targetId;
+      }
       if (effect.divided) {
         applyDivided([picked.targetId!]);
       } else {
@@ -1037,9 +1040,9 @@ export function resolveEffect(
       for (const card of p.zones.field) {
         if (effect.excludeSelf && card.instanceId === sourceId) continue;
         const def = getCardDef(card.name);
-        if (!def?.traits?.includes(effect.trait)) continue;
+        if (effect.trait && !def?.traits?.includes(effect.trait)) continue;
         // Atk/def buffs only apply to followers; amulets may still receive keywords.
-        if (def.cardType === "follower" && (effect.atk || effect.def)) {
+        if (def?.cardType === "follower" && (effect.atk || effect.def)) {
           card.modifiers.push({ atk: effect.atk ?? 0, def: effect.def ?? 0, sourceId });
         }
         if (effect.keyword && !card.grantedKeywords.includes(effect.keyword)) {
@@ -1263,8 +1266,15 @@ export function resolveEffect(
     case "noop":
       break;
 
+    case "commitPendingUnionBurst":
+      next = commitPendingUnionBurst(next);
+      break;
+
     case "optionalCost": {
-      if (!canSatisfyOptionalCost(next, player, effect.cost)) break;
+      if (!canSatisfyOptionalCost(next, player, effect.cost)) {
+        next = cancelPendingUnionBurst(next);
+        break;
+      }
       if (!next.pendingChoices) {
         next.pendingChoices = withChoiceContext(next, {
           type: "choose",
@@ -1272,11 +1282,15 @@ export function resolveEffect(
           min: 1,
           max: 1,
           reasonLabel: effect.label ?? "Optional effect",
+          commitUnionBurstOnPay: Boolean(next.resolutionContext?.pendingUnionBurst),
           options: [
             {
               index: 0,
               label: effect.label ?? "Pay cost",
-              effect: { op: "sequence", steps: [effect.cost, effect.then] },
+              effect: {
+                op: "sequence",
+                steps: [effect.cost, { op: "commitPendingUnionBurst" }, effect.then],
+              },
             },
             { index: 1, label: "Skip", effect: { op: "noop" } },
           ],
@@ -1661,15 +1675,7 @@ export function resolveEffect(
       });
 
       if (effect.triggerOnEvolve === true) {
-        const evoDef = getCardDef(evoFound.card.name);
-        for (const ability of evoDef?.abilities?.filter((a) => a.timing === "onEvolve") ?? []) {
-          next.resolutionContext = contextForTriggerResolution(next, sourceId, ability.effect);
-          next = resolveEffect(next, ability.effect, player);
-          if (next.pendingChoices || (next.resolutionContext?.resumeAfterChoice?.length ?? 0) > 0) {
-            return next;
-          }
-          next.resolutionContext = null;
-        }
+        queueOnEvolveAbilities(next, sourceId, player, false);
       }
 
       break;
@@ -1917,18 +1923,26 @@ export function resolveEffect(
       const def = getCardDef(resolveCardNo(next, target.card));
       const ub = def?.abilities?.find((a) => a.unionBurst);
       if (!ub) break;
+      let toResolve = ub.effect;
+      if (effect.skipCost && toResolve.op === "optionalCost") {
+        toResolve = toResolve.then;
+      }
       const prevCtx = next.resolutionContext;
       next.resolutionContext = {
         sourceInstanceId: target.card.instanceId,
-        effectStack: [ub.effect],
+        effectStack: [toResolve],
         resumeAfterChoice: prevCtx?.resumeAfterChoice,
         resumeOwnerInstanceId: prevCtx?.resumeOwnerInstanceId ?? prevCtx?.sourceInstanceId,
         pendingUnionBurst: prevCtx?.pendingUnionBurst,
         resolvingUnionBurstSourceId: target.card.instanceId,
         deferTriggers: prevCtx?.deferTriggers,
       };
-      next = resolveEffect(next, ub.effect, player);
-      next = scheduleOrRecordUnionBurstActivated(next, player, target.card.instanceId, ub);
+      if (effect.skipCost || ub.effect.op !== "optionalCost") {
+        next = recordUnionBurstActivated(next, player, target.card.instanceId, ub);
+      } else {
+        next = beginUnionBurstActivation(next, player, target.card.instanceId, ub);
+      }
+      next = resolveEffect(next, toResolve, player);
       if (next.pendingChoices || (next.resolutionContext?.resumeAfterChoice?.length ?? 0) > 0) {
         // Nested UB paused — keep its context (plus any stashed parent UB).
         break;
@@ -2105,21 +2119,13 @@ export function resolveEffect(
 
       // resolutionZone covers a spell moving itself into EX as part of its own effect.
       let fromZone: "cemetery" | "hand" | "resolutionZone" | null = null;
-
       let idx = -1;
-
       for (const candidate of ["cemetery", "hand", "resolutionZone"] as const) {
-
         idx = p.zones[candidate].findIndex((c) => c.instanceId === sourceId);
-
         if (idx >= 0) {
-
           fromZone = candidate;
-
           break;
-
         }
-
       }
 
       if (fromZone === null || idx < 0) break;
@@ -2391,12 +2397,16 @@ export function resolveEffect(
     case "summonFromCemetery": {
 
       const p = next.players[player];
+      const toZone = effect.to ?? "field";
 
-      const slots = p.fieldLimit - fieldOccupancy(p.zones.field);
+      if (toZone === "field") {
+        const slots = p.fieldLimit - fieldOccupancy(p.zones.field);
+        if (slots <= 0) break;
+      }
 
-      if (slots <= 0) break;
-
-      const toSummon = Math.min(effect.count, slots);
+      const toSummon = Math.min(effect.count, toZone === "field"
+        ? p.fieldLimit - fieldOccupancy(p.zones.field)
+        : effect.count);
 
       const matches = p.zones.cemetery.filter((c) => cardMatchesFilter(c.name, effect.filter));
 
@@ -2414,6 +2424,8 @@ export function resolveEffect(
           maxTotalCost: effect.maxTotalCost,
           distinctNames: effect.distinctNames,
           filter: effect.filter,
+          to: toZone,
+          playCostReduction: effect.playCostReduction,
           options: matches.map((c) => ({
             instanceId: c.instanceId,
             name: c.name,
@@ -2493,11 +2505,15 @@ export function resolveEffect(
       const amount = resolveDamageAmount(next, player, effect.amount);
       const leadersOnly = effect.leadersOnly === true;
       const followersOnly = effect.followersOnly === true;
+      const skipId = effect.excludeLastSelected
+        ? next.resolutionContext?.lastSelectedTargetId
+        : undefined;
       if (!followersOnly) {
         next = dealDamageToLeader(next, opp, amount);
       }
       if (!leadersOnly) {
         for (const card of [...next.players[opp].zones.field]) {
+          if (skipId && card.instanceId === skipId) continue;
           const def = getCardDef(card.name);
           if (def?.cardType !== "follower") continue;
           next = dealDamageToFollower(next, card.instanceId, amount);
@@ -2713,6 +2729,17 @@ export function canEffectResolve(state: GameState, player: PlayerId, effect: Eff
       return getPlayer(state, player).zones.cemetery.some((c) =>
         cardMatchesFilter(c.name, filter),
       );
+    }
+    case "summonFromCemetery": {
+      const min = effect.minCount ?? (effect.maxTotalCost != null ? 1 : 0);
+      if (min === 0) return true;
+      return getPlayer(state, player).zones.cemetery.some((c) => {
+        if (!cardMatchesFilter(c.name, effect.filter, state)) return false;
+        if (effect.maxTotalCost != null && resolveCardDefCost(c.name) > effect.maxTotalCost) {
+          return false;
+        }
+        return true;
+      });
     }
     case "discardFromHand": {
       const need = effect.count ?? 1;

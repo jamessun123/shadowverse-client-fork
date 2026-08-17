@@ -54,30 +54,34 @@ function canActivateEffectResolve(state, player, effect, sourceInstanceId) {
     switch (effect.op) {
         case "sequence":
             return effect.steps.every((step) => canActivateEffectResolve(probe, player, step, sourceInstanceId));
-        case "if": {
-            // Treat missing else / noop else as a gate (same as choose-option filtering).
-            const elseIsNoop = !effect.else || effect.else.op === "noop";
-            if (elseIsNoop) {
-                return ((0, conditions_1.evalCondition)(probe, player, effect.condition) &&
-                    canActivateEffectResolve(probe, player, effect.then, sourceInstanceId));
-            }
+        case "if":
+            // Sequence `if` without else is optional (Eris Storm). Choose-option `if`
+            // without else is gated separately in the choose cases below.
             if (!(0, conditions_1.evalCondition)(probe, player, effect.condition)) {
-                return canActivateEffectResolve(probe, player, effect.else, sourceInstanceId);
+                return effect.else
+                    ? canActivateEffectResolve(probe, player, effect.else, sourceInstanceId)
+                    : true;
             }
             return canActivateEffectResolve(probe, player, effect.then, sourceInstanceId);
-        }
         case "choose":
         case "chooseMultiple":
-            return effect.options.some((o) => (!o.additionalPpCost || getPlayer(probe, player).pp >= o.additionalPpCost) &&
-                canActivateEffectResolve(probe, player, o.effect, sourceInstanceId));
+            return effect.options.some((o) => {
+                if (o.additionalPpCost && getPlayer(probe, player).pp < o.additionalPpCost)
+                    return false;
+                if (o.effect.op === "if" && !o.effect.else) {
+                    return ((0, conditions_1.evalCondition)(probe, player, o.effect.condition) &&
+                        canActivateEffectResolve(probe, player, o.effect.then, sourceInstanceId));
+                }
+                return canActivateEffectResolve(probe, player, o.effect, sourceInstanceId);
+            });
+        case "discardFromHand": {
+            const need = effect.count ?? 1;
+            return (getPlayer(probe, player).zones.hand.filter((c) => (0, conditions_1.cardMatchesFilter)(c.name, effect.filter)).length >= need);
+        }
         case "tutorFromDeck": {
             if (effect.optional)
                 return true;
             return getPlayer(probe, player).zones.deck.some((c) => (0, conditions_1.cardMatchesFilter)(c.name, effect.filter, probe));
-        }
-        case "discardFromHand": {
-            const need = effect.count ?? 1;
-            return (getPlayer(probe, player).zones.hand.filter((c) => (0, conditions_1.cardMatchesFilter)(c.name, effect.filter)).length >= need);
         }
         default:
             return true;

@@ -265,6 +265,26 @@ export function queueFanfare(state: GameState, instanceId: string, player: Playe
   }
 }
 
+/** Queue On Evolve / On Super Evolve so Union Burst flags survive confirmation. */
+export function queueOnEvolveAbilities(
+  state: GameState,
+  instanceId: string,
+  player: PlayerId,
+  includeSuperEvolve = false,
+): void {
+  const found = findInstance(state, instanceId);
+  if (!found || isBoxed(found.card, state)) return;
+  const def = getCardDef(resolveCardNo(state, found.card));
+  for (const ability of def?.abilities ?? []) {
+    if (ability.timing === "onEvolve") {
+      pushTrigger(state, instanceId, player, found.card.name, ability, "onEvolve", "oe");
+    }
+    if (includeSuperEvolve && ability.timing === "onSuperEvolve") {
+      pushTrigger(state, instanceId, player, found.card.name, ability, "onSuperEvolve", "ose");
+    }
+  }
+}
+
 export function queueStartOfEndAbilities(state: GameState, player: PlayerId): void {
   for (const card of [...getPlayer(state, player).zones.field]) {
     if (isBoxed(card, state)) continue;
@@ -556,6 +576,8 @@ export function queueOnUnionBurstActivated(
     if (fieldCard.instanceId === activatorInstanceId) continue;
     if (isEquippedAttachment(fieldCard)) continue;
     if (isBoxed(fieldCard, state)) continue;
+    if (isEquippedAttachment(fieldCard)) continue;
+    if (!isFollowerCard(fieldCard, state)) continue;
     const def = getCardDef(resolveCardNo(state, fieldCard));
     for (const [idx, ability] of (def?.abilities ?? []).entries()) {
       if (ability.timing !== "onUnionBurstActivated") continue;

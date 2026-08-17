@@ -354,7 +354,7 @@
       { "timing": "evolve", "cost": { "pp": 2 }, "effect": { "op": "noop" } },
       {
         "timing": "fanfare",
-        "effect": { "op": "autoEvolveIf", "condition": { "type": "fieldTraitMin", "trait": "Princess Connect", "count": 4 } }
+        "effect": { "op": "autoEvolveIf", "condition": { "type": "fieldTraitMin", "trait": "Princess Connect", "count": 4 }, "triggerOnEvolve": true }
       }
     ]
   },
@@ -445,11 +445,13 @@
       {
         "timing": "onSuperEvolve",
         "effect": {
-          "op": "sequence",
-          "steps": [
-            { "op": "tutorFromCemetery", "filter": { "cardType": "spell" }, "to": "exArea", "playCostReduction": 2 },
-            { "op": "tutorFromCemetery", "filter": { "cardType": "spell" }, "to": "exArea", "playCostReduction": 2 }
-          ]
+          "op": "summonFromCemetery",
+          "filter": { "cardType": "spell" },
+          "count": 2,
+          "minCount": 0,
+          "distinctNames": true,
+          "to": "exArea",
+          "playCostReduction": 2
         }
       }
     ]
@@ -959,7 +961,7 @@
           "op": "sequence",
           "steps": [
             { "op": "dealDamage", "amount": 4, "targets": { "type": "enemyFollower", "count": 1 } },
-            { "op": "autoEvolveIf", "condition": { "type": "maxPpEquals", "count": 10 } }
+            { "op": "autoEvolveIf", "condition": { "type": "maxPpEquals", "count": 10 }, "triggerOnEvolve": true }
           ]
         }
       }
@@ -1401,7 +1403,7 @@
           "op": "sequence",
           "steps": [
             { "op": "dealDamage", "amount": 4, "targets": { "type": "enemyFollower", "count": 1 } },
-            { "op": "dealDamageAllEnemies", "amount": 1, "followersOnly": true }
+            { "op": "dealDamageAllEnemies", "amount": 1, "followersOnly": true, "excludeLastSelected": true }
           ]
         }
       },
@@ -1782,7 +1784,7 @@
         "timing": "activated",
         "equipHostActivate": true,
         "cost": { "engage": true },
-        "effect": { "op": "buffFieldTrait", "trait": "Princess Connect", "atk": 1, "def": 1 }
+        "effect": { "op": "buffFieldTrait", "atk": 1, "def": 1 }
       }
     ]
   },

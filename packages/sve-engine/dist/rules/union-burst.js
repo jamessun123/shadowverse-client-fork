@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.recordUnionBurstActivated = recordUnionBurstActivated;
+exports.beginUnionBurstActivation = beginUnionBurstActivation;
+exports.commitPendingUnionBurst = commitPendingUnionBurst;
+exports.cancelPendingUnionBurst = cancelPendingUnionBurst;
 exports.scheduleOrRecordUnionBurstActivated = scheduleOrRecordUnionBurstActivated;
 exports.flushPendingUnionBurst = flushPendingUnionBurst;
 exports.markResolvingUnionBurst = markResolvingUnionBurst;
@@ -19,6 +22,48 @@ function recordUnionBurstActivated(state, player, sourceInstanceId, ability) {
     flags.unionBurstsActivatedThisTurn = count;
     (0, trigger_queue_1.queueOnUnionBurstActivated)(next, sourceInstanceId, player);
     (0, actionLog_1.appendUnionBurstLogEntry)(next, player, sourceInstanceId, count);
+    return next;
+}
+function stashPendingUnionBurst(state, player, sourceInstanceId, ability) {
+    const next = markResolvingUnionBurst(state, sourceInstanceId);
+    if (!next.resolutionContext) {
+        next.resolutionContext = { effectStack: [ability.effect] };
+    }
+    next.resolutionContext.pendingUnionBurst = { player, sourceInstanceId, ability };
+    next.resolutionContext.resolvingUnionBurstSourceId = sourceInstanceId;
+    return next;
+}
+/**
+ * Start a Union Burst. Optional-cost UBs (Karyl / Christina) are stashed until
+ * the player actually pays; skipping must not count as an activation.
+ */
+function beginUnionBurstActivation(state, player, sourceInstanceId, ability) {
+    if (!ability?.unionBurst)
+        return state;
+    if (ability.effect.op === "optionalCost") {
+        return stashPendingUnionBurst(state, player, sourceInstanceId, ability);
+    }
+    const next = markResolvingUnionBurst(state, sourceInstanceId);
+    return recordUnionBurstActivated(next, player, sourceInstanceId, ability);
+}
+/** Record a stashed optional-cost Union Burst once the player pays. */
+function commitPendingUnionBurst(state) {
+    const pending = state.resolutionContext?.pendingUnionBurst;
+    if (!pending)
+        return state;
+    const next = recordUnionBurstActivated(state, pending.player, pending.sourceInstanceId, pending.ability);
+    if (next.resolutionContext) {
+        delete next.resolutionContext.pendingUnionBurst;
+    }
+    return next;
+}
+/** Drop a stashed Union Burst when the player skips or cannot pay. */
+function cancelPendingUnionBurst(state) {
+    const next = state;
+    if (next.resolutionContext) {
+        delete next.resolutionContext.pendingUnionBurst;
+        delete next.resolutionContext.resolvingUnionBurstSourceId;
+    }
     return next;
 }
 function abilityStillResolving(state) {

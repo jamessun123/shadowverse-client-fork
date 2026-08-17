@@ -183,6 +183,9 @@ for (const [name, overlay] of Object.entries(handAuthored)) {
  * Token DSL refs may omit the trailing " TOKEN" suffix (e.g. "Assembly Droid").
  */
 function getCardDef(nameOrCardNo) {
+    // Legacy misspelling used in older decks / deck-builder lists.
+    if (nameOrCardNo === "Prophetless of Creation")
+        nameOrCardNo = "Prophetess of Creation";
     if (registry.has(nameOrCardNo))
         return registry.get(nameOrCardNo);
     const mapped = cardNoToName.get(nameOrCardNo);
